@@ -13,7 +13,7 @@
  *
  * Written with AI assistance (Claude).
  */
-import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
+import { cloneElement, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   analyzeTrend,
@@ -162,6 +162,7 @@ export function Panel(p: Props) {
   const reduce = useReducedMotion();
   const [season, setSeason] = useState<Season>("all");
   const [printing, setPrinting] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
@@ -355,7 +356,7 @@ export function Panel(p: Props) {
         <>
           {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
           {rankBadge}
-          {fingerprintEl}
+          {fingerprintEl && cloneElement(fingerprintEl, { eager: true })}
           {hasAnswer && ok && <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />}
         </>
       }
@@ -735,7 +736,9 @@ export function Panel(p: Props) {
   return (
     <>
       {report}
-      <motion.aside className="side" aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
+      <motion.aside className={`side ${sheetOpen ? "sheet-open" : ""}`} aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
+        {/* phones and tablets: the column is a bottom sheet; this handle makes it taller or shorter */}
+        <button className="sheet-grab" onClick={() => setSheetOpen((o) => !o)} aria-expanded={sheetOpen} aria-label={tr ? (sheetOpen ? "Paneli küçült" : "Paneli büyüt") : sheetOpen ? "Shrink the panel" : "Expand the panel"} />
         <header className="side-head">
           <nav className="trail" aria-label="breadcrumb">
             {p.trail.map((s, i) => (

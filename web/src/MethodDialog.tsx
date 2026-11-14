@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { METHOD_LIMITS, METHOD_STEPS } from "./content.ts";
 import { t, type Lang } from "./i18n.ts";
 import { References } from "./Evidence.tsx";
+import { METHOD_EXTRAS, METHOD_EXTRAS_TITLE } from "./methodExtras.ts";
 
 export function MethodDialog({ lang, open, onClose }: { lang: Lang; open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -38,6 +39,15 @@ export function MethodDialog({ lang, open, onClose }: { lang: Lang; open: boolea
             </motion.li>
           ))}
         </ol>
+        <h3>{METHOD_EXTRAS_TITLE[lang]}</h3>
+        <ul className="steps extras">
+          {METHOD_EXTRAS.map((s, k) => (
+            <li key={k}>
+              <strong>{s.title[lang]}</strong>
+              <p>{s.body[lang]}</p>
+            </li>
+          ))}
+        </ul>
         <h3>{t(lang, "limits")}</h3>
         <p className="fine">{METHOD_LIMITS[lang]}</p>
         <h3>{t(lang, "sources")}</h3>

@@ -18,6 +18,7 @@ import type { TrendResult, VariableInfo, VariablesFile } from "./data.ts";
 import type { AreaSummary } from "./continentStats.ts";
 import type { ChangePoint } from "./changepoint.ts";
 import { METHOD_LIMITS, METHOD_STEPS } from "./content.ts";
+import { METHOD_EXTRAS, METHOD_EXTRAS_TITLE } from "./methodExtras.ts";
 import { Provenance, References } from "./Evidence.tsx";
 import { smartSigned, unitLabel, type Lang } from "./i18n.ts";
 import { COLD, WARM } from "./trendField.ts";
@@ -222,6 +223,14 @@ export function Report(p: ReportProps) {
           {/* the step titles carry their own numbers */}
           <ul>
             {METHOD_STEPS.map((s, k) => (
+              <li key={k}>
+                <b>{s.title[lang]}.</b> {s.body[lang]}
+              </li>
+            ))}
+          </ul>
+          <h2>{METHOD_EXTRAS_TITLE[lang]}</h2>
+          <ul>
+            {METHOD_EXTRAS.map((s, k) => (
               <li key={k}>
                 <b>{s.title[lang]}.</b> {s.body[lang]}
               </li>

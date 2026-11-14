@@ -52,6 +52,7 @@ import { RANK_TAB_LABEL } from "./useRankRows.ts";
 import type { PlaceCells } from "./Fingerprint.tsx";
 import "./reactbits/reactbits.css";
 import "./App.css";
+import "./responsive.css";
 
 
 

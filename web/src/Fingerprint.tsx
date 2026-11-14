@@ -8,7 +8,7 @@
  *
  * Written with AI assistance (Claude).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Feature, MultiPolygon, Polygon } from "geojson";
 import {
   analyzeTrend,
@@ -86,6 +86,8 @@ interface Props {
   onVariable: (id: VarId) => void;
   onCountry: (id: string) => void;
   onAdmin1: (country: string, id: string) => void;
+  /** load at once (the PDF report); otherwise only when the card scrolls into view */
+  eager?: boolean;
 }
 
 /** Signed number, Turkish with a decimal comma (same as the main card). */
@@ -107,13 +109,24 @@ export function Fingerprint(p: Props) {
   const { lang } = p;
   const ids = useMemo(() => p.variables.map((v) => v.id), [p.variables]);
   const [stack, setStack] = useState<TrendStack | null>(null);
+  // the nine maps are ~15 MB: on a phone the card sits below the fold of the bottom sheet,
+  // so nothing is downloaded until it is actually scrolled into view
+  const anchor = useRef<HTMLSpanElement>(null);
+  const [seen, setSeen] = useState(!!p.eager);
   useEffect(() => {
+    if (seen || !anchor.current) return;
+    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && setSeen(true), { rootMargin: "200px" });
+    io.observe(anchor.current);
+    return () => io.disconnect();
+  }, [seen]);
+  useEffect(() => {
+    if (!seen) return;
     let dead = false;
     void loadTrendStack(ids).then((s) => !dead && setStack(s));
     return () => {
       dead = true;
     };
-  }, [ids]);
+  }, [ids, seen]);
   const scales = useMemo(() => {
     const out: Partial<Record<VarId, number>> = {};
     if (stack) for (const id of ids) if (stack[id]) out[id] = scaleOf(stack[id]!);
@@ -201,7 +214,12 @@ export function Fingerprint(p: Props) {
     };
   }, [p.place, placeMeans, scales, provinceVectors, countryVectors, p.countryId]);
 
-  if (!stack) return <TextShimmer>{T.loading[lang]}</TextShimmer>;
+  if (!stack)
+    return (
+      <span ref={anchor}>
+        <TextShimmer>{T.loading[lang]}</TextShimmer>
+      </span>
+    );
 
   const byId = new Map(p.variables.map((v) => [v.id, v]));
   const anySeries = rows.some((r) => r.source === "series");
