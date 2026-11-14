@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.2",
   "kind": "region_index",
   "countries": [
     {
@@ -14,34 +14,53 @@
         44.8,
         42.1
       ],
+      "continent": "AS",
+      "cells": 259.6,
       "admin1": [
         {
           "id": "TR-21",
           "name": {
             "en": "Diyarbakır",
             "tr": "Diyarbakır"
-          }
+          },
+          "cells": 4.96,
+          "low_resolution": false
         },
         {
           "id": "TR-42",
           "name": {
             "en": "Konya",
             "tr": "Konya"
-          }
+          },
+          "cells": 13.2,
+          "low_resolution": false
         },
         {
           "id": "TR-06",
           "name": {
             "en": "Ankara",
             "tr": "Ankara"
-          }
+          },
+          "cells": 8.63,
+          "low_resolution": false
         },
         {
           "id": "TR-34",
           "name": {
             "en": "Istanbul",
             "tr": "İstanbul"
-          }
+          },
+          "cells": 1.65,
+          "low_resolution": false
+        },
+        {
+          "id": "TR-77",
+          "name": {
+            "en": "Yalova",
+            "tr": "Yalova"
+          },
+          "cells": 0.23,
+          "low_resolution": true
         }
       ]
     },
@@ -57,20 +76,26 @@
         36.9,
         31.7
       ],
+      "continent": "AF",
+      "cells": 290.07,
       "admin1": [
         {
           "id": "EG-C",
           "name": {
             "en": "Cairo",
             "tr": "Kahire"
-          }
+          },
+          "cells": 0.94,
+          "low_resolution": true
         },
         {
           "id": "EG-ASN",
           "name": {
             "en": "Aswan",
             "tr": "Asvan"
-          }
+          },
+          "cells": 4.4,
+          "low_resolution": false
         }
       ]
     },
@@ -86,22 +111,128 @@
         -34.8,
         5.3
       ],
+      "continent": "SA",
+      "cells": 2240.99,
       "admin1": [
         {
           "id": "BR-AM",
           "name": {
             "en": "Amazonas",
             "tr": "Amazonas"
-          }
+          },
+          "cells": 407.99,
+          "low_resolution": false
         },
         {
           "id": "BR-SP",
           "name": {
             "en": "São Paulo",
             "tr": "São Paulo"
-          }
+          },
+          "cells": 69.74,
+          "low_resolution": false
         }
       ]
+    }
+  ],
+  "continents": [
+    {
+      "id": "AF",
+      "name": {
+        "en": "Africa",
+        "tr": "Afrika"
+      },
+      "bbox": [
+        -20,
+        -36,
+        52,
+        38
+      ],
+      "cells": 7807.7
+    },
+    {
+      "id": "AN",
+      "name": {
+        "en": "Antarctica",
+        "tr": "Antarktika"
+      },
+      "bbox": [
+        -180,
+        -90,
+        180,
+        -60
+      ],
+      "cells": 18845.3
+    },
+    {
+      "id": "AS",
+      "name": {
+        "en": "Asia",
+        "tr": "Asya"
+      },
+      "bbox": [
+        26,
+        -11,
+        146,
+        56
+      ],
+      "cells": 9353.8
+    },
+    {
+      "id": "EU",
+      "name": {
+        "en": "Europe",
+        "tr": "Avrupa"
+      },
+      "bbox": [
+        -25,
+        34,
+        45,
+        72
+      ],
+      "cells": 11808.1
+    },
+    {
+      "id": "NA",
+      "name": {
+        "en": "North America",
+        "tr": "Kuzey Amerika"
+      },
+      "bbox": [
+        -170,
+        7,
+        -50,
+        84
+      ],
+      "cells": 11381.3
+    },
+    {
+      "id": "OC",
+      "name": {
+        "en": "Oceania",
+        "tr": "Okyanusya"
+      },
+      "bbox": [
+        110,
+        -48,
+        180,
+        0
+      ],
+      "cells": 2406.4
+    },
+    {
+      "id": "SA",
+      "name": {
+        "en": "South America",
+        "tr": "Güney Amerika"
+      },
+      "bbox": [
+        -82,
+        -56,
+        -34,
+        13
+      ],
+      "cells": 4754.6
     }
   ]
 }

@@ -19,6 +19,7 @@ import {
   DMC_MAGIC,
   MISSING_INT16,
   SCHEMA_VERSION,
+  type ContinentId,
   type Packing,
   type RegionHeader,
   type RegionIndexFile,
@@ -31,12 +32,42 @@ import {
   type VariablesFile,
 } from "../../contract/types.ts";
 
-export { analyzeTrend, anomalies, monthLabels } from "./trend.ts";
+import { analyzeTrend as analyzeRaw } from "./trend.ts";
+import type { TrendOptions, TrendResult } from "../../contract/types.ts";
+
+export { anomalies, monthLabels } from "./trend.ts";
 export type * from "../../contract/types.ts";
 
-const DATA_URL = `${import.meta.env.BASE_URL}data/`;
-/** Point-mode tiles live on Cloudflare R2 in production (set VITE_TILES_URL). */
-const TILES_URL: string = import.meta.env.VITE_TILES_URL ?? `${DATA_URL}tiles/`;
+/** Variables flagged `experimental` in variables.json (filled by loadVariables). */
+const experimental = new Set<VarId>();
+
+/**
+ * Result card numbers for a series. For experimental variables (data-quality
+ * problems, see VariableInfo.experimental) "strong" is lowered to "possible"
+ * and `capped` is set, so the card can explain why.
+ */
+export function analyzeTrend(series: Series, opts?: TrendOptions): TrendResult {
+  const r = analyzeRaw(series, opts);
+  if (experimental.has(series.var) && r.level === "strong") {
+    return { ...r, level: "possible", capped: true };
+  }
+  return r;
+}
+
+/**
+ * Where the data files live.
+ *  - Local development and tests: unset → mock files in web/public/data/
+ *  - Production (Vercel env var): VITE_DATA_URL = public Cloudflare R2 URL with the real files
+ * Tiles default to `${DATA_URL}tiles/`; VITE_TILES_URL can override them separately.
+ */
+function withSlash(u: string): string {
+  return u.endsWith("/") ? u : `${u}/`;
+}
+const DATA_URL: string = withSlash(import.meta.env.VITE_DATA_URL || `${import.meta.env.BASE_URL}data/`);
+const TILES_URL: string = withSlash(import.meta.env.VITE_TILES_URL || `${DATA_URL}tiles/`);
+
+/** Base URL data is read from (shown in the About page / for debugging). */
+export const dataSource = { data: DATA_URL, tiles: TILES_URL };
 
 export class DataError extends Error {}
 
@@ -105,7 +136,11 @@ function unpack(raw: Int16Array, p: Packing): Float64Array {
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export function loadVariables(): Promise<VariablesFile> {
-  return cached("variables", () => fetchJson<VariablesFile>(`${DATA_URL}variables.json`));
+  return cached("variables", async () => {
+    const v = await fetchJson<VariablesFile>(`${DATA_URL}variables.json`);
+    for (const x of v.variables) if (x.experimental) experimental.add(x.id);
+    return v;
+  });
 }
 
 export async function getVariable(id: VarId): Promise<VariableInfo> {
@@ -153,6 +188,33 @@ export async function getRegionSeries(
     start: header.start,
     values: unpack(data.subarray(at, at + n), header.packing[v]),
     label,
+  };
+}
+
+/**
+ * 1.2: monthly series for a continent ("AF", "AN", "AS", "EU", "NA", "OC", "SA").
+ * Example: getContinentSeries("EU", "T2M").
+ */
+export async function getContinentSeries(continent: ContinentId, varId: VarId): Promise<Series> {
+  const [file, index, info] = await Promise.all([
+    cached("region:continents", () => fetchDmc<RegionHeader>(`${DATA_URL}regions/continents.bin`)),
+    listCountries(),
+    getVariable(varId),
+  ]);
+  const { header, data } = file;
+  const r = header.regions.findIndex((x) => x.id === continent);
+  if (r < 0) throw new DataError(`No data for continent ${continent}`);
+  const v = header.vars.indexOf(varId);
+  if (v < 0) throw new DataError(`${varId} not in continents.bin`);
+  const n = header.months;
+  const at = (r * header.vars.length + v) * n;
+  const c = index.continents?.find((x) => x.id === continent);
+  return {
+    var: varId,
+    unit: info.unit,
+    start: header.start,
+    values: unpack(data.subarray(at, at + n), header.packing[v]),
+    label: c?.name ?? { en: continent, tr: continent },
   };
 }
 

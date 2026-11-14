@@ -18,7 +18,7 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_DIR = ROOT / "contract" / "schema"
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.2"
 MAGIC = b"DMC1"
 MISSING_INT16 = -32768
 

@@ -112,9 +112,12 @@ export function analyzeTrend(series: Series, opts: TrendOptions = {}): TrendResu
   // R4: annual p < 0.01 AND pre-whitened monthly p < 0.01 (same direction)
   //     AND trimming 5 years at both ends still p < 0.05 (same direction) → "strong"
   // (R4+ adds ERA5 agreement + no jump flag; those come as precomputed badges, contract 1.x)
+  // Both labels also need the autocorrelation-corrected 95% CI to exclude 0
+  // (rule added 2026-11-14 for consistency; same in worker/protocol.py).
+  const ciExcludesZero = sen.ci95[0] > 0 || sen.ci95[1] < 0;
   let level: TrendResult["level"] = "none";
-  if (mk.p < 0.05) level = "possible";
-  if (mk.p < 0.01 && sign !== 0) {
+  if (mk.p < 0.05 && ciExcludesZero) level = "possible";
+  if (mk.p < 0.01 && sign !== 0 && ciExcludesZero) {
     const pw = preWhitenedMK(monthly);
     const trimmed = annual.filter((_, k) => years[k] >= startYear + 5 && years[k] <= endYear - 5);
     const tr = trimmed.length >= MIN_YEARS ? mannKendall(trimmed) : null;
