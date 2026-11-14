@@ -65,13 +65,17 @@ export function analyzeTrend(series: Series, opts: TrendOptions = {}): TrendResu
   // Annual means: a year counts only if every selected month is present.
   const byYear = new Map<number, number[]>();
   const monthly: number[] = []; // selected months in time order (for pre-whitening)
+  // Winter (Dec–Feb) crosses the new year: December counts towards the NEXT year's winter,
+  // so "winter 1990" = Dec 1989 + Jan 1990 + Feb 1990 (standard meteorological seasons).
+  const wraps = months.includes(12) && months.includes(1) && months.length < 12;
   anom.forEach((v, k) => {
     const { year, month } = monthAt(series, k);
-    if (year < startYear || year > endYear || !months.includes(month)) return;
+    const sy = wraps && month === 12 ? year + 1 : year;
+    if (sy < startYear || sy > endYear || !months.includes(month)) return;
     monthly.push(v);
-    const arr = byYear.get(year) ?? [];
+    const arr = byYear.get(sy) ?? [];
     arr.push(v);
-    byYear.set(year, arr);
+    byYear.set(sy, arr);
   });
   const years: number[] = [];
   const annual: number[] = [];
@@ -144,4 +148,54 @@ export function analyzeTrend(series: Series, opts: TrendOptions = {}): TrendResu
     totalChange: (slopePerDecade * (nYears - 1)) / 10,
     line: { intercept, slopePerYear: sen.slope },
   };
+}
+
+/** Meteorological seasons (months 1–12). Winter crosses the new year. */
+export const SEASONS = {
+  all: undefined,
+  winter: [12, 1, 2],
+  spring: [3, 4, 5],
+  summer: [6, 7, 8],
+  autumn: [9, 10, 11],
+} as const;
+export type Season = keyof typeof SEASONS;
+
+export interface Robustness {
+  /** windows that could be tested (at least MIN_YEARS long, inside the data) */
+  windows: { startYear: number; endYear: number; level: TrendResult["level"]; slopePerDecade: number }[];
+  /** how many give the same answer as the chosen period: same level AND same direction */
+  same: number;
+}
+
+/**
+ * Start/end-year sensitivity: the same test with the period moved by `shift` years
+ * (later start, earlier end, earlier start, later end — where the data allows).
+ * Display only; the level itself already requires a trimmed check for "strong".
+ */
+export function robustness(
+  series: Series,
+  opts: TrendOptions,
+  ref: TrendResult,
+  limits: { start: number; end: number } = DEFAULT_TEST_YEARS,
+  shift = 5,
+): Robustness {
+  const s0 = ref.startYear;
+  const e0 = ref.endYear;
+  const cands: [number, number][] = [
+    [s0 + shift, e0],
+    [s0, e0 - shift],
+    [s0 - shift, e0],
+    [s0, e0 + shift],
+  ];
+  const windows = cands
+    .filter(([a, b]) => a >= limits.start && b <= limits.end && b - a + 1 >= MIN_YEARS)
+    .map(([a, b]) => {
+      const r = analyzeTrend(series, { ...opts, startYear: a, endYear: b });
+      return { startYear: a, endYear: b, level: r.status === "ok" ? r.level : ("none" as const), slopePerDecade: r.slopePerDecade };
+    });
+  const dir = Math.sign(ref.slopePerDecade);
+  const same = windows.filter(
+    (w) => w.level === ref.level && (ref.level === "none" || Math.sign(w.slopePerDecade) === dir),
+  ).length;
+  return { windows, same };
 }

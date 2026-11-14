@@ -22,7 +22,12 @@ import {
   type VariableInfo,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
-import { cardText, chanceText, decimalsFor, meaningHead, noTrendText, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
+import { cardText, chanceText, decimalsFor, meaningHead, noTrendText, robustText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
+import { robustness, SEASONS, type Season } from "./trend.ts";
+
+const SEASON_LABEL: Record<Season, StringKey> = {
+  all: "seasonAll", winter: "seasonWinter", spring: "seasonSpring", summer: "seasonSummer", autumn: "seasonAutumn",
+};
 import { CONTINENTS, type Node } from "./geo.ts";
 import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
@@ -108,7 +113,7 @@ export function Panel(p: Props) {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<ChartView>("anomaly");
   const reduce = useReducedMotion();
-  const [season, setSeason] = useState<"all" | "summer">("all");
+  const [season, setSeason] = useState<Season>("all");
   const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
 
   const targetKey = JSON.stringify(p.target);
@@ -142,9 +147,17 @@ export function Panel(p: Props) {
   const result = useMemo(
     () =>
       shown
-        ? analyzeTrend(shown, { startYear: years[0], endYear: years[1], months: season === "summer" ? [6, 7, 8] : undefined })
+        ? analyzeTrend(shown, { startYear: years[0], endYear: years[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined })
         : null,
     [shown, years, season],
+  );
+  // Start/end-year sensitivity (display only): same test with the period moved by 5 years
+  const robust = useMemo(
+    () =>
+      shown && result && result.status === "ok"
+        ? robustness(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, result, variables.test_years)
+        : null,
+    [shown, result, season, variables.test_years],
   );
 
   const place = shown?.label[lang] ?? "";
@@ -167,7 +180,9 @@ export function Panel(p: Props) {
   const ok = result?.status === "ok";
   const statusPlace = shown && result ? place : areaName || p.trail[p.trail.length - 1]?.label || "";
   const statusValue =
-    shown && result && ok
+    shown && result && ok && result.level === "none"
+      ? t(lang, "none")
+      : shown && result && ok
       ? `${fmtSigned(result.slopePerDecade, decimalsFor(result.slopePerDecade, v.decimals + 1))} ${unit}/${t(lang, "decade")}`
       : p.area && !shown
         ? `${fmtSigned(p.area.summary.meanSlope, decimalsFor(p.area.summary.meanSlope, v.decimals + 1))} ${unit}/${t(lang, "decade")}`
@@ -187,7 +202,7 @@ export function Panel(p: Props) {
       return {
         cls: "none",
         head: t(lang, "none"),
-        body: noTrendText(lang, result.slopePerDecade, unit, v.decimals, { start: result.startYear, end: result.endYear }),
+        body: noTrendText(lang, { start: result.startYear, end: result.endYear }),
       };
     const dir = result.slopePerDecade >= 0 ? "up" : "down";
     return {
@@ -297,7 +312,7 @@ export function Panel(p: Props) {
               </div>
             )}
             {ok && "meaning" in card && card.meaning && <p className="meaning">{card.meaning}</p>}
-            {ok && (
+            {ok && result.level !== "none" && (
               <p className="headline">
                 <NumberTicker className="big" value={result.slopePerDecade} decimals={decimalsFor(result.slopePerDecade, v.decimals + 1)} signed comma={lang === "tr"} />
                 <span className="unit">
@@ -335,7 +350,7 @@ export function Panel(p: Props) {
               <div className="stat">
                 <dt>{t(lang, "totalLabel")}</dt>
                 <dd>
-                  {fmtSigned(result.totalChange, v.decimals)} <small>{unit}</small>
+                  {result.level === "none" ? t(lang, "unclear") : <>{fmtSigned(result.totalChange, v.decimals)} <small>{unit}</small></>}
                 </dd>
               </div>
               <div className="stat">
@@ -345,6 +360,11 @@ export function Panel(p: Props) {
                 </dd>
               </div>
             </dl>
+          )}
+          {ok && robust && robust.windows.length > 0 && (
+            <p className={robust.same === robust.windows.length ? "note" : "warn"} title={t(lang, "robustTitle")}>
+              {robustText(lang, robust.same, robust.windows.length)}
+            </p>
           )}
           <button className="link-btn" onClick={() => p.onTab("chart")}>
             <Icon name="chart" size={16} /> {t(lang, "seeChart")}
@@ -401,12 +421,13 @@ export function Panel(p: Props) {
         <div>
           {t(lang, "season")}
           <div className="seg small" role="group">
-            {(["all", "summer"] as const).map((s) => (
+            {(["all", "winter", "spring", "summer", "autumn"] as const).map((s) => (
               <button key={s} className={season === s ? "on" : ""} onClick={() => setSeason(s)}>
-                {t(lang, s === "all" ? "seasonAll" : "seasonSummer")}
+                {t(lang, SEASON_LABEL[s])}
               </button>
             ))}
           </div>
+          <p className="fine">{t(lang, "seasonHint")}</p>
         </div>
       </div>
       {v.caveat && <p className="note">{v.caveat[lang]}</p>}

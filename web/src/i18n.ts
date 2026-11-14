@@ -91,7 +91,16 @@ const S = {
   period: { en: "Period", tr: "Dönem" },
   season: { en: "Season", tr: "Mevsim" },
   seasonAll: { en: "All year", tr: "Tüm yıl" },
-  seasonSummer: { en: "Summer (Jun–Aug)", tr: "Yaz (Haz–Ağu)" },
+  seasonSummer: { en: "Summer", tr: "Yaz" },
+  seasonWinter: { en: "Winter", tr: "Kış" },
+  seasonSpring: { en: "Spring", tr: "İlkbahar" },
+  seasonAutumn: { en: "Autumn", tr: "Sonbahar" },
+  seasonHint: {
+    en: "Winter = Dec–Feb (December counts to the next year), spring = Mar–May, summer = Jun–Aug, autumn = Sep–Nov.",
+    tr: "Kış = Ara–Şub (Aralık bir sonraki yıla sayılır), ilkbahar = Mar–May, yaz = Haz–Ağu, sonbahar = Eyl–Kas.",
+  },
+  robustTitle: { en: "Does the period matter?", tr: "Dönem seçimi sonucu değiştiriyor mu?" },
+  unclear: { en: "unclear", tr: "belirsiz" },
   trendMap: { en: "World trend map", tr: "Dünya trend haritası" },
   legendUp: { en: "rising", tr: "artış" },
   legendDown: { en: "falling", tr: "azalış" },
@@ -238,21 +247,27 @@ export function cardText(lang: Lang, c: CardInput): string {
   return c.level === "strong" ? base : `${base} Still, the evidence is not strong enough to be sure.`;
 }
 
-/** Sentence when no clear change was found. */
-export function noTrendText(
-  lang: Lang,
-  slope: number,
-  unit: string,
-  decimals: number,
-  years?: { start: number; end: number },
-): string {
-  const s = q(lang, slope, decimals, unit);
+/** Sentence when no clear change was found. No direction and no slope: a non-significant
+ *  slope has no reliable sign (Collaud Coen et al. 2020). */
+export function noTrendText(lang: Lang, years?: { start: number; end: number }): string {
   if (lang === "tr") {
     const lead = years ? `${years.start}–${years.end} arasında belirgin bir değişim yok.` : "Belirgin bir değişim yok.";
-    return `${lead} Küçük bir ${slope >= 0 ? "artış" : "azalış"} görünüyor (her 10 yılda ${s}), ` +
-      `ama bu, yıldan yıla olan doğal iniş çıkışlardan ayırt edilemeyecek kadar küçük. Daha uzun bir dönem seçmeyi dene.`;
+    return `${lead} Yıldan yıla olan doğal iniş çıkışlar, olası bir eğilimden daha büyük; ` +
+      `bu yüzden artış mı azalış mı olduğunu söyleyemiyoruz. Daha uzun bir dönem seçmeyi dene.`;
   }
   const lead = years ? `Over ${years.start}–${years.end} there is no clear change.` : "There is no clear change.";
-  return `${lead} A small ${slope >= 0 ? "rise" : "fall"} shows up (${s} per decade), ` +
-    `but it is too small to tell apart from the normal ups and downs between years. Try a longer period.`;
+  return `${lead} The normal ups and downs between years are bigger than any trend, ` +
+    `so we cannot say whether it went up or down. Try a longer period.`;
+}
+
+/** One line about start/end-year sensitivity. */
+export function robustText(lang: Lang, same: number, total: number, shift = 5): string {
+  if (lang === "tr") {
+    return same === total
+      ? `Dönemin başı ya da sonu ${shift} yıl kaydırılınca da aynı sonuç çıkıyor (${total}/${total}).`
+      : `Dikkat: dönem ${shift} yıl kaydırılınca sonuç ${total - same} denemede değişiyor (${same}/${total} aynı). Sonuç seçilen yıllara duyarlı.`;
+  }
+  return same === total
+    ? `Moving the start or end by ${shift} years gives the same answer (${total}/${total}).`
+    : `Careful: moving the period by ${shift} years changes the answer in ${total - same} of ${total} tries. The result depends on the years chosen.`;
 }

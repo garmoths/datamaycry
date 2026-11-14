@@ -206,3 +206,14 @@ def test_fast_mk_equals_mk():
         a, b = P.fast_mk(x), P.mann_kendall(x)
         assert a.s == b.s and a.var_s == pytest.approx(b.var_s) and abs(a.p - b.p) < 1e-12
         assert abs(P.fast_prewhitened_mk(x).p - P.prewhitened_mk(x).p) < 1e-12
+
+
+def test_winter_counts_december_to_next_year():
+    """Winter 1990 = Dec 1989 + Jan 1990 + Feb 1990 (meteorological seasons)."""
+    v = np.zeros(N)
+    yr, mo = P.month_index(START, N)
+    v[(yr == 1989) & (mo == 12)] = 30.0   # only December 1989 is special
+    r = P.analyze(v, START, months=[12, 1, 2])
+    a = dict(zip(r.years, r.annual))
+    assert a[1990] > a[1989] + 5          # Dec 1989 lifts winter 1990, not winter 1989
+    assert 1980 not in a                  # winter 1980 needs Dec 1979: not in the data

@@ -14,8 +14,10 @@ describe("smartFixed", () => {
   it("prints zero as zero", () => {
     expect(smartFixed(0, 2)).toBe("0.00");
   });
-  it("no-trend sentence shows the real size of a tiny slope", () => {
-    expect(noTrendText("en", 0.004, "mm/day", 2)).toContain("0.0040 mm/day");
+  it("no-trend sentence names no direction and no slope", () => {
+    const s = noTrendText("tr", { start: 1980, end: 2025 });
+    expect(s).toContain("belirgin bir değişim yok");
+    expect(s).not.toMatch(/\d,\d|artış görünüyor|azalış görünüyor/);
   });
 });
 
@@ -43,7 +45,9 @@ describe("plain-language card", () => {
     expect(s).toContain("kanıt henüz yeterince güçlü değil");
   });
   it("Turkish puts the percent sign first", () => {
-    expect(noTrendText("tr", -0.21, "%", 1)).toContain("her 10 yılda %0,21");
+    const s = cardText("tr", { level: "strong", place: "Konya", unit: "%", ci: [-0.9, -0.2], p: 0.001, total: -2,
+      startYear: 1980, endYear: 2025, decimals: 1, varId: "GWETROOT", variable: "Toprak nemi", dir: "down", slope: -0.5 });
+    expect(s).toContain("her 10 yılda ortalama %0,5");
   });
   it("chance in words", () => {
     expect(chanceText("en", 0.0004)).toBe("less than 1 in 1,000");

@@ -160,9 +160,11 @@ export function Chart(props: Props) {
                 fill: "toself", fillcolor: rgba(col, 0.16), line: { width: 0 }, name: L.band[lang], hoverinfo: "skip" },
               { x: xs, y: loess(years, a, 0.5), type: "scatter", mode: "lines", name: L.smooth[lang],
                 line: { color: "rgba(255,255,255,0.85)", width: 1.6, dash: "dot" }, hovertemplate: `${num}<extra>${L.smooth[lang]}</extra>` },
-              { x: xs, y: years.map(at), type: "scatter", mode: "lines", name: L.trend[lang],
-                line: { color: rgba(col), width: 3, dash: strong ? "solid" : "dash" }, hovertemplate: `${num}<extra>${L.trend[lang]}</extra>` },
             );
+            // A non-significant slope has no reliable sign: draw only its range, not a line
+            if (strong)
+              traces.push({ x: xs, y: years.map(at), type: "scatter", mode: "lines", name: L.trend[lang],
+                line: { color: rgba(col), width: 3 }, hovertemplate: `${num}<extra>${L.trend[lang]}</extra>` });
           }
         }
         shapes.push(period);
