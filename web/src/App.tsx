@@ -26,6 +26,7 @@ import { Starfield } from "./Starfield.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { anomalyTileUrl, preloadFrames, rangeTrendUrl, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
 import { PeriodScale } from "./PeriodScale.tsx";
+import { onGlassPointer } from "./glassLight.ts";
 import { TimeBar } from "./TimeBar.tsx";
 import { clampTimeline, frameMs, nextYear, playFrom, type Timeline } from "./timeline.ts";
 import {
@@ -553,7 +554,7 @@ export default function App() {
   const setYears = (y: [number, number]) => setPeriod(y[0] === fullYears[0] && y[1] === fullYears[1] ? null : y);
 
   return (
-    <div className={`app ${sideOpen ? "" : "side-closed"}`}>
+    <div className={`app ${sideOpen ? "" : "side-closed"}`} onPointerMove={onGlassPointer}>
       <Starfield />
       {!noGl && (
         <Globe
