@@ -7,6 +7,20 @@ const S = {
   mock: { en: "MOCK DATA", tr: "SAHTE VERİ" },
   view: { en: "View", tr: "Görünüm" },
   share: { en: "Share", tr: "Paylaş" },
+  mockTip: {
+    en: "Demo data with a made-up pattern. Real NASA MERRA-2 numbers replace it without changing the app.",
+    tr: "Uydurma desenli demo veri. Gerçek NASA MERRA-2 sayıları uygulama değişmeden yerine geçecek.",
+  },
+  tabSummary: { en: "Summary", tr: "Özet" },
+  tabChart: { en: "Chart", tr: "Grafik" },
+  tabExplore: { en: "Explore", tr: "Keşfet" },
+  panelTabs: { en: "Inspector", tr: "Bilgi paneli" },
+  seeChart: { en: "See the chart and change the period", tr: "Grafiği gör, dönemi değiştir" },
+  downloadCsv: { en: "Download the monthly series (CSV)", tr: "Aylık seriyi indir (CSV)" },
+  chartEmpty: {
+    en: "Pick a city or a grid cell with data to see its monthly series since 1980. Or try a case:",
+    tr: "1980'den bu yana aylık seriyi görmek için verisi olan bir şehir ya da ızgara hücresi seç. Ya da bir vaka dene:",
+  },
   copied: { en: "Link copied", tr: "Bağlantı kopyalandı" },
   landOnly: { en: "land only", tr: "sadece kara" },
   curious: { en: "What are you curious about?", tr: "Ne merak ediyorsun?" },
@@ -72,15 +86,15 @@ const S = {
   trendMap: { en: "World trend map", tr: "Dünya trend haritası" },
   legendUp: { en: "rising", tr: "artış" },
   legendDown: { en: "falling", tr: "azalış" },
-  legendFaint: { en: "clear colour = strong evidence · see-through = weak or small", tr: "net renk = güçlü kanıt · saydam = zayıf ya da küçük" },
+  legendFaint: { en: "faint = weak or small change", tr: "soluk = zayıf ya da küçük değişim" },
   source: { en: "Source: NASA MERRA-2 reanalysis", tr: "Kaynak: NASA MERRA-2 reanaliz verisi" },
   statNote: {
     en: "“Statistically significant” means the change is unlikely to be pure chance.",
     tr: "“İstatistiksel olarak anlamlı”, değişimin tesadüf olma ihtimalinin düşük olduğu anlamına gelir.",
   },
-  strong: { en: "🟢 Strong evidence", tr: "🟢 Güçlü kanıt" },
-  possible: { en: "🟡 Possible trend", tr: "🟡 Olası trend" },
-  none: { en: "⚪ No trend shown", tr: "⚪ Trend gösterilemedi" },
+  strong: { en: "Strong evidence", tr: "Güçlü kanıt" },
+  possible: { en: "Possible trend", tr: "Olası trend" },
+  none: { en: "No trend shown", tr: "Trend gösterilemedi" },
   tooShort: {
     en: "Pick at least 10 years — shorter periods cannot be tested.",
     tr: "En az 10 yıl seç — daha kısa dönemler test edilemez.",
@@ -152,21 +166,21 @@ export function cardText(lang: Lang, c: CardInput): string {
     const verb = c.dir === "up" ? "artmış" : "azalmış";
     const head =
       c.level === "strong"
-        ? c.dir === "up" ? "📈 Anlamlı artış" : "📉 Anlamlı azalış"
-        : c.dir === "up" ? "📈 Olası artış" : "📉 Olası azalış";
+        ? c.dir === "up" ? "Anlamlı artış" : "Anlamlı azalış"
+        : c.dir === "up" ? "Olası artış" : "Olası azalış";
     return `${head}: ${c.place} bölgesinde ${c.variable.toLowerCase()} her 10 yılda ortalama ${slope} ${c.unit} ${verb} (%95 GA: ${ci}). Bunun tesadüf olma ihtimali ${c.level === "strong" ? "çok düşük" : "düşük"} (${p}). ${c.startYear}'den bu yana toplam ≈ ${total}.`;
   }
   const verb = c.dir === "up" ? "risen" : "fallen";
   const head =
     c.level === "strong"
-      ? c.dir === "up" ? "📈 Significant increase" : "📉 Significant decrease"
-      : c.dir === "up" ? "📈 Possible increase" : "📉 Possible decrease";
+      ? c.dir === "up" ? "Significant increase" : "Significant decrease"
+      : c.dir === "up" ? "Possible increase" : "Possible decrease";
   return `${head}: in ${c.place}, ${c.variable.toLowerCase()} has ${verb} by about ${slope} ${c.unit} per decade (95% CI: ${ci}). It is ${c.level === "strong" ? "very unlikely" : "unlikely"} to be chance (${p}). Since ${c.startYear}, total ≈ ${total}.`;
 }
 
 export function noTrendText(lang: Lang, slope: number, unit: string, decimals: number): string {
   const s = `${sign(slope, decimals)} ${unit}`;
   return lang === "tr"
-    ? `〰️ Anlamlı bir trend yok. Değişim görülüyor (${s}/10 yıl) ama tesadüften ayırt edilemiyor. Daha uzun bir dönem seçmeyi deneyin.`
-    : `〰️ No significant trend. Some change is visible (${s}/decade) but it cannot be told apart from chance. Try a longer period.`;
+    ? `Anlamlı bir trend yok. Değişim görülüyor (${s}/10 yıl) ama tesadüften ayırt edilemiyor. Daha uzun bir dönem seçmeyi deneyin.`
+    : `No significant trend. Some change is visible (${s}/decade) but it cannot be told apart from chance. Try a longer period.`;
 }

@@ -29,7 +29,7 @@ export function ViewTabs<T extends string>({ tabs, value, onChange, label }: { t
               />
             )}
             <span className="tab-content">
-              <Icon name={t.icon} size={17} />
+              <Icon name={t.icon} size={15} />
               {t.label}
             </span>
           </button>

@@ -1,20 +1,23 @@
 :root {
-  --bg: #060a16;
-  /* panels sit over a bright satellite picture: nearly opaque so text stays readable */
-  --panel: rgba(10, 15, 30, 0.94);
+  /* neutral zinc surfaces (from Pin UI's dark theme): the colour is left to the data */
+  --bg: #09090b;
+  --card: #18181b;
+  --strip: #0f0f12;
+  --panel: rgba(24, 24, 27, 0.92);
   --panel-2: rgba(255, 255, 255, 0.045);
-  --line: rgba(255, 255, 255, 0.1);
-  --line-strong: rgba(255, 255, 255, 0.18);
-  --text: #eef2fb;
-  --text-2: #c4cee3;
-  --muted: #9aa8c4;
-  --accent: #ffd166;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #fafafa;
+  --text-2: #d4d4d8;
+  --muted: #a1a1aa;
+  --link: #93c5fd;
+  --accent: #ffd166; /* selection on the map only */
   --up: #ca4830;
   --down: #2166ac;
-  --radius: 14px;
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --radius: 18px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 28px rgba(0, 0, 0, 0.55);
   --sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
-  font: 14.5px/1.5 var(--sans);
+  font: 13px/1.5 var(--sans);
   font-feature-settings: "cv11", "ss01";
   color: var(--text);
   background: var(--bg);

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { cellOf, tileOf } from "./data.ts";
 import { CELL_LEVEL, children, dataTileOf, gridLines, nodeBounds, nodeCenter, pathToCell, WORLD_NODE, type Node } from "./geo.ts";
-import { bspline, buildField, cellAlpha, mercatorLat, polarFade, renderTile, trendColor } from "./trendImage.ts";
+import { bspline, buildField, cellAlpha, evidence, mercatorLat, polarFade, renderTile, trendColor } from "./trendImage.ts";
 
 describe("trend field", () => {
   it("places Mercator rows at the right latitude", () => {
@@ -13,10 +13,11 @@ describe("trend field", () => {
     const N = 361 * 576;
     const slope = new Float32Array(N).fill(NaN);
     const level = new Uint8Array(N).fill(255);
+    const pValue = new Float32Array(N).fill(NaN);
     // a strongly rising patch around 0°N 0°E (row 180, column 288)
-    for (let i = 170; i <= 190; i++) for (let j = 278; j <= 298; j++) { slope[i * 576 + j] = 1; level[i * 576 + j] = 2; }
+    for (let i = 170; i <= 190; i++) for (let j = 278; j <= 298; j++) { slope[i * 576 + j] = 1; level[i * 576 + j] = 2; pValue[i * 576 + j] = 1e-4; }
     const grid = { nlat: 361, nlon: 576, lat0: -90, lon0: -180, dlat: 0.5, dlon: 0.625 } as const;
-    const field = buildField({ grid, slopePerDecade: slope, level });
+    const field = buildField({ grid, slopePerDecade: slope, level, pValue });
     // z=1 tile x=1,y=0 covers 0…180°E, 0…85°N; its bottom-left corner is the patch
     const px = renderTile(field, 1, 1, 0, 64);
     const at = (c: number, r: number) => px[(r * 64 + c) * 4 + 3];
@@ -43,9 +44,14 @@ describe("trend field", () => {
     expect(polarFade(84.5)).toBe(0);
   });
   it("fades small or unproven changes so the Earth shows through", () => {
-    expect(cellAlpha(2, 1)).toBeGreaterThan(cellAlpha(1, 1));
-    expect(cellAlpha(1, 1)).toBeGreaterThan(cellAlpha(0, 1));
-    expect(cellAlpha(2, 0.05)).toBeLessThan(cellAlpha(2, 1) / 2);
+    expect(cellAlpha(evidence(1e-4), 1)).toBeGreaterThan(cellAlpha(evidence(0.03), 1));
+    expect(cellAlpha(evidence(0.03), 1)).toBeGreaterThan(cellAlpha(evidence(0.5), 1));
+    expect(cellAlpha(evidence(1e-4), 0.05)).toBeLessThan(cellAlpha(evidence(1e-4), 1) / 2);
+  });
+  it("evidence changes smoothly across p = 0.05 (no hard edge)", () => {
+    expect(evidence(0.051) - evidence(0.049)).toBeLessThan(0.01);
+    expect(evidence(0.5)).toBe(0);
+    expect(evidence(1e-5)).toBe(1);
   });
 });
 

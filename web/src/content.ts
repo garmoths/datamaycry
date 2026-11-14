@@ -118,8 +118,8 @@ export const METHOD_STEPS: { title: T; body: T }[] = [
   {
     title: { en: "5 · Label carefully", tr: "5 · Temkinli etiketle" },
     body: {
-      en: "🟢 Strong evidence needs several checks to agree (false alarm ≈ 0.2 %). 🟡 Possible = p < 0.05 only. ⚪ otherwise.",
-      tr: "🟢 Güçlü kanıt için birden çok kontrol uyuşmalı (yanlış alarm ≈ %0,2). 🟡 Olası = sadece p < 0,05. ⚪ diğer durumlar.",
+      en: "Strong evidence needs several checks to agree (false alarm ≈ 0.2 %). Possible trend = p < 0.05 only. Otherwise: no trend shown.",
+      tr: "Güçlü kanıt için birden çok kontrol uyuşmalı (yanlış alarm ≈ %0,2). Olası trend = sadece p < 0,05. Diğer durumlarda: trend gösterilemedi.",
     },
   },
 ];

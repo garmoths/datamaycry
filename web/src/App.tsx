@@ -17,7 +17,8 @@ import {
   type VariablesFile,
 } from "./data.ts";
 import { Globe, type Marker, type View } from "./Globe.tsx";
-import { Panel, type AreaInfo, type CountryRow, type Target } from "./Panel.tsx";
+import { Panel, type AreaInfo, type CountryRow, type PanelTab, type Status, type Target } from "./Panel.tsx";
+import { StatusIsland } from "./StatusIsland.tsx";
 import { trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
 import {
   bboxOf,
@@ -66,6 +67,8 @@ export default function App() {
   const [noGl, setNoGl] = useState(false);
   const [methodOpen, setMethodOpen] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
+  const [tab, setTab] = useState<PanelTab>("explore");
+  const [status, setStatus] = useState<Status>({ place: "", value: null, level: null, loading: false });
 
   const [continent, setContinent] = useState<string | null>(null);
   const [countryId, setCountryId] = useState<string | null>(null);
@@ -144,6 +147,7 @@ export default function App() {
   const flyTo = useCallback((b: Bounds, key: string) => setView({ bounds: b, key }), []);
 
   const reset = useCallback(() => {
+      setTab("explore");
     setContinent(null);
     setCountryId(null);
     setAdmin1Id(null);
@@ -153,6 +157,7 @@ export default function App() {
 
   const pickContinent = useCallback(
     (id: string) => {
+      setTab("summary");
       setContinent(id);
       setCountryId(null);
       setAdmin1Id(null);
@@ -163,6 +168,7 @@ export default function App() {
 
   const pickCountry = useCallback(
     (id: string) => {
+      setTab("summary");
       if (!bounds) return;
       const row = bounds.countries.features.find((f) => f.properties.id === id);
       if (row) setContinent(row.properties.continent);
@@ -176,6 +182,7 @@ export default function App() {
 
   const pickAdmin1 = useCallback(
     (country: string, id: string) => {
+      setTab("summary");
       if (!bounds) return;
       // a province can be reached straight from search or a link: keep the trail complete
       const row = bounds.countries.features.find((x) => x.properties.id === country);
@@ -202,6 +209,7 @@ export default function App() {
   // block / data tile / sub-tile. The camera only moves when the click lands in a new 10° tile.
   const pickCell = useCallback(
     (i: number, j: number) => {
+      setTab("summary");
       const next = pathToCell(i, j);
       const tile = next[2];
       const sameTile = path[2] && path[2].i0 === tile.i0 && path[2].j0 === tile.j0;
@@ -362,7 +370,7 @@ export default function App() {
       {noGl && <div className="globe fallback">{t(lang, "webgl")}</div>}
 
       <div className="brandbar">
-        <Logo size={34} />
+        <Logo size={28} />
         <ViewTabs
           label={t(lang, "view")}
           value={mode}
@@ -374,16 +382,22 @@ export default function App() {
         />
       </div>
 
+      <StatusIsland lang={lang} status={status} variable={variable.name[lang]} onOpen={() => setTab("summary")} />
+
       <header className="top">
-        {variables.is_mock && <span className="mockbadge">{t(lang, "mock")}</span>}
-        <button className="seg-btn" onClick={copyLink} aria-live="polite">
-          <Icon name="link" size={17} /> {t(lang, copied ? "copied" : "share")}
+        {variables.is_mock && (
+          <span className="mockbadge" data-tip={t(lang, "mockTip")}>
+            {t(lang, "mock")}
+          </span>
+        )}
+        <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
+          <Icon name="link" size={16} />
         </button>
-        <button className="seg-btn" onClick={() => setMethodOpen(true)}>
-          <Icon name="info" size={17} /> {t(lang, "howItWorks")}
+        <button className="icon-btn" onClick={() => setMethodOpen(true)} aria-label={t(lang, "howItWorks")} data-tip={t(lang, "howItWorks")}>
+          <Icon name="info" size={16} />
         </button>
-        <button className="seg-btn" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language">
-          <Icon name="language" size={17} /> {lang === "en" ? "TR" : "EN"}
+        <button className="icon-btn lang" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language" data-tip={lang === "en" ? "Türkçe" : "English"}>
+          {lang === "en" ? "TR" : "EN"}
         </button>
       </header>
 
@@ -427,6 +441,9 @@ export default function App() {
           setQuestion(q);
           if (q) setVarId(q.vars[0]);
         }}
+        tab={tab}
+        onTab={setTab}
+        onStatus={setStatus}
       />
     </div>
   );

@@ -141,7 +141,12 @@ export function Globe(props: Props) {
     // keep the globe centred in the space the side panel leaves free
     const pad = () => {
       const wide = window.innerWidth > 900;
-      map.setPadding({ top: 40, left: 0, right: wide ? 460 : 0, bottom: wide ? 0 : 340 });
+      // left: the variable rail (54 + 12 px); right: the inspector (380 + 24 px)
+      map.setPadding(
+        wide
+          ? { top: 44, left: 66, right: 404, bottom: 0 }
+          : { top: 110, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.48) },
+      );
     };
     pad();
     window.addEventListener("resize", pad);
