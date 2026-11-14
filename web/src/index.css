@@ -1,30 +1,33 @@
 :root {
   /*
-   * "Instrument": a quiet, neutral graphite UI. No gradients, no glows: the only
+   * Quiet, neutral zinc UI that floats over the globe. No gradients, no glows: the only
    * saturated colours on screen are the data (trend palette, orange place dots) and one
-   * restrained blue for focus, links and the active state.
+   * restrained blue for focus and links.
    */
-  --bg: #0a0b0d;
-  --surface: #111215;
-  --surface-2: #17191d;
-  --surface-3: #1e2025;
-  --line: #24262c;
-  --line-strong: #33363d;
-  --text: #ececee;
-  --text-2: #b3b6bd;
-  --muted: #7d818a;
+  --bg: #09090b;
+  --surface: rgba(17, 17, 19, 0.94);
+  --surface-solid: #111113;
+  --surface-2: #19191c;
+  --surface-3: #222226;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+  --text: #f2f2f3;
+  --text-2: #b4b4bb;
+  --muted: #7c7c85;
   --accent: #7aa7ff;
   --hot: #ff8c32;
   --link: #93b6ff;
-  --up: #d9694f;
-  --down: #4f8fd6;
+  --up: #e0725a;
+  --down: #5b9be0;
   --ok: #6fbf8b;
   --warn: #d9a441;
-  --radius: 10px;
-  --radius-s: 6px;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --sans: "IBM Plex Sans", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 16px;
+  --radius-m: 12px;
+  --radius-s: 8px;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --display: "Outfit", "Geist", system-ui, sans-serif;
+  --sans: "Geist", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   font: 13px/1.5 var(--sans);
   color: var(--text);

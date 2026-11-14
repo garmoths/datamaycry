@@ -44,7 +44,8 @@ export function TimeBar(p: Props) {
   const pos = (y: number) => `${((y - tl.min) / span) * 100}%`;
   const scale = Math.max(1e-9, ...p.means.filter(Number.isFinite).map(Math.abs));
   const years = Array.from({ length: span + 1 }, (_, k) => tl.min + k);
-  const ticks = years.filter((y) => y % 10 === 0 || y === tl.max);
+  // decades, plus the last year unless a decade label sits right next to it
+  const ticks = years.filter((y) => y === tl.max || (y % 10 === 0 && tl.max - y >= 6));
 
   return (
     <section className="timebar" aria-label={t(lang, "timeTravel")}>
@@ -67,7 +68,7 @@ export function TimeBar(p: Props) {
 
       <div className="tb-main">
         <div className="tb-head">
-          <span className="tb-year">{tl.year}</span>
+          {/* the year itself is the big label on the map */}
           <span className="tb-mean">{busy ? `${t(lang, "preparing")} ${Math.round((p.preload ?? 0) * 100)}%` : ""}</span>
           <span className="tb-tools">
             <span className="seg small" role="group" aria-label={t(lang, "speed")}>

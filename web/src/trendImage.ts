@@ -16,27 +16,54 @@ export * from "./trendField.ts";
 
 const fields = new Map<VarId, TrendField>(); // main-thread fallback only
 const sources = new Map<VarId, TrendMap>();
-let worker: Worker | null | undefined;
+let pool: Worker[] | null | undefined;
 let nextId = 1;
 const waiting = new Map<number, (png: ArrayBuffer | null) => void>();
+const rangeWaiting = new Map<number, (r: { ok: boolean; field?: TrendField }) => void>();
+/** Tile painters running side by side: a zoom step asks for 30–80 tiles at once, and one
+ *  worker painting them in a row made new zoom levels arrive late. Leave a core free. */
+export const POOL_SIZE = Math.max(1, Math.min(3, ((typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 2) - 1));
 
-function tileWorker(): Worker | null {
-  if (worker !== undefined) return worker;
-  try {
-    worker = new Worker(new URL("./trendTileWorker.ts", import.meta.url), { type: "module" });
-    worker.onmessage = (e: MessageEvent<{ id: number; png: ArrayBuffer | null }>) => {
-      waiting.get(e.data.id)?.(e.data.png);
-      waiting.delete(e.data.id);
-    };
-    worker.onerror = () => {
-      worker = null; // fall back to the main thread from now on
-      for (const done of waiting.values()) done(null);
-      waiting.clear();
-    };
-  } catch {
-    worker = null;
+function onWorkerMessage(e: MessageEvent<{ id: number; png: ArrayBuffer | null; ok?: boolean; field?: TrendField }>) {
+  const r = rangeWaiting.get(e.data.id);
+  if (r) {
+    r({ ok: !!e.data.ok, field: e.data.field });
+    rangeWaiting.delete(e.data.id);
+    return;
   }
-  return worker;
+  waiting.get(e.data.id)?.(e.data.png);
+  waiting.delete(e.data.id);
+}
+
+function workers(): Worker[] | null {
+  if (pool !== undefined) return pool;
+  try {
+    pool = Array.from({ length: POOL_SIZE }, () => {
+      const w = new Worker(new URL("./trendTileWorker.ts", import.meta.url), { type: "module" });
+      w.onmessage = onWorkerMessage;
+      w.onerror = () => {
+        pool = null; // fall back to the main thread from now on
+        for (const done of waiting.values()) done(null);
+        waiting.clear();
+        for (const done of rangeWaiting.values()) done({ ok: false });
+        rangeWaiting.clear();
+      };
+      return w;
+    });
+  } catch {
+    pool = null;
+  }
+  return pool;
+}
+
+/** The first worker: it holds the yearly maps (animation, period trends). */
+function tileWorker(): Worker | null {
+  return workers()?.[0] ?? null;
+}
+
+/** The same tile always goes to the same worker, so that worker's PNG cache hits on the way back. */
+export function workerIndex(z: number, x: number, y: number, n: number): number {
+  return (((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0) % n;
 }
 
 async function paintHere(varId: VarId, z: number, x: number, y: number): Promise<ArrayBuffer> {
@@ -58,9 +85,8 @@ let registered = false;
 export function trendTileUrl(varId: VarId, map: TrendMap): string {
   if (!sources.has(varId)) {
     sources.set(varId, map);
-    const w = tileWorker();
-    if (w) {
-      // copies, so the app keeps its own arrays; the copies are transferred, not cloned again
+    // every worker gets its own copy (transferred, not cloned again)
+    for (const w of workers() ?? []) {
       const slope = map.slopePerDecade.slice(), pValue = map.pValue.slice(), level = map.level.slice();
       w.postMessage({ kind: "trendmap", varId, grid: map.grid, slope, pValue, level }, [slope.buffer, pValue.buffer, level.buffer]);
     }
@@ -69,7 +95,8 @@ export function trendTileUrl(varId: VarId, map: TrendMap): string {
     registered = true;
     addProtocol("trend", async (params) => {
       const [v, z, x, y] = params.url.replace("trend://", "").split("/");
-      const w = tileWorker();
+      const p = workers();
+      const w = p ? p[workerIndex(+z, +x, +y, p.length)] : null;
       let png: ArrayBuffer | null = null;
       if (w) {
         const id = nextId++;
@@ -136,6 +163,23 @@ export function anomalyTileUrl(f: AnomalyFrames): (frame: number, smooth: boolea
     });
   }
   return (frame, smooth) => `anom://${f.var}/${frame}${smooth ? "s" : ""}/{z}/{x}/{y}`;
+}
+
+/** Trend map of a chosen period, computed in the worker from the yearly maps (1° × 1.25°).
+ *  Resolves to a trend:// URL, or null when it could not be computed. */
+export async function rangeTrendUrl(f: AnomalyFrames, from: number, to: number): Promise<string | null> {
+  anomalyTileUrl(f); // the worker needs this variable's yearly maps
+  const w = tileWorker();
+  if (!w) return null;
+  const key = `${f.var}@${from}-${to}`;
+  const id = nextId++;
+  // computed once in the first worker, then handed to the others
+  const r = await new Promise<{ ok: boolean; field?: TrendField }>((done) => {
+    rangeWaiting.set(id, done);
+    w.postMessage({ kind: "rangetrend", id, varId: f.var, key, i0: from - f.years[0], i1: to - f.years[0], share: (workers()?.length ?? 1) > 1 });
+  });
+  if (r.ok && r.field) for (const other of workers()?.slice(1) ?? []) other.postMessage({ kind: "field", varId: key, field: r.field });
+  return r.ok ? `trend://${key}/{z}/{x}/{y}` : null;
 }
 
 /** Paint (and cache) the given tiles for every frame ahead of playback. Reports progress 0…1. */

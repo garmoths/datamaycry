@@ -1,15 +1,14 @@
 /**
- * The analysis column on the right of the globe, read top to bottom:
- *   where am I → the answer → the calculation behind it → its shape over time →
- *   the provinces of this country → how it was checked.
+ * The analysis panel on the right of the globe: where am I → the answer → its shape over
+ * time. Places are found with the search bar and the globe, so the panel lists none.
  * Every selection replays a short staggered entrance, so a change of place is felt.
  * The drawer (full chart / explore / sources) slides in from the left only when asked.
  *
  * Two kinds of answers:
- *  - a monthly series (the places in regions/index.json, continents, grid cells): the full
- *    Mann-Kendall + Sen calculation is run here and shown step by step (diagnostics.ts);
- *  - every other place (world, any country, any province): a summary of the world trend
- *    map inside its borders, with the spread of the cell slopes (continentStats.ts).
+ *  - a monthly series (countries, provinces, continents, grid cells): the full
+ *    Mann-Kendall + Sen protocol is run here;
+ *  - the world and provinces without a series: a summary of the world trend map inside
+ *    its borders (continentStats.ts).
  *
  * Written with AI assistance (Claude).
  */
@@ -31,21 +30,18 @@ import {
   type TrendMap,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
-import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartFixed, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
+import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
 import { emergence, robustness, SEASONS, type Season } from "./trend.ts";
 
 const SEASON_LABEL: Record<Season, StringKey> = {
   all: "seasonAll", winter: "seasonWinter", spring: "seasonSpring", summer: "seasonSummer", autumn: "seasonAutumn",
 };
 import { CONTINENTS, type Node } from "./geo.ts";
-import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
 import type { AreaSummary } from "./continentStats.ts";
-import { diagnose } from "./diagnostics.ts";
 import { Icon, type IconName } from "./icons.tsx";
-import { QUESTIONS, VAR_ICONS, monthLabel, type Question } from "./content.ts";
-import { BadgeList, Provenance, ProvinceSelect, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
-import { CiBar, Gates, Histogram, StatGrid, ZCurve } from "./MathViz.tsx";
+import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
+import { Provenance, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
 import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
@@ -56,12 +52,6 @@ import { MonthStrip } from "./MonthStrip.tsx";
 import { Report } from "./Report.tsx";
 import { RankBadge, RankingPane } from "./Ranking.tsx";
 import { RANK_TAB_LABEL, type RankInputs, type RankScope } from "./useRankRows.ts";
-
-/** Signed number with the variable's decimals; Turkish uses a decimal comma. */
-const fmtSignedIn = (lang: Lang) => (x: number, d: number) => {
-  const s = smartSigned(x, d);
-  return lang === "tr" ? s.replace(".", ",") : s;
-};
 
 /** Summary of the world / a continent / a country / a province, from the per-cell trend map. */
 export interface AreaInfo {
@@ -95,6 +85,12 @@ export type DrawerTab = "chart" | "explore" | "sources" | "rank";
 
 interface Props {
   lang: Lang;
+  /** the side panel can be hidden; the drawer works either way */
+  open: boolean;
+  onClose: () => void;
+  /** analysed period, chosen on the period scale (top left) or in the chart drawer */
+  years: [number, number];
+  onYears: (y: [number, number]) => void;
   /** 1.4 time travel: while playing, the card and chart cover [from, year] (null = off) */
   anim?: { from: number; year: number; to: number } | null;
   mode: "region" | "point";
@@ -154,7 +150,6 @@ function Card({ className = "", children }: { className?: string; children: Reac
 export function Panel(p: Props) {
   const { lang, variable: v, variables } = p;
   const tr = lang === "tr";
-  const fmtSigned = fmtSignedIn(lang);
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -163,7 +158,7 @@ export function Panel(p: Props) {
   const [season, setSeason] = useState<Season>("all");
   const [printing, setPrinting] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
+  const { years, onYears: setYears } = p;
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
   const eff = useMemo<[number, number]>(
@@ -237,7 +232,6 @@ export function Panel(p: Props) {
   const rankBadge = rankScope && (
     <RankBadge scope={rankScope} id={(p.admin1Id ?? p.countryId)!} inputs={rankInputs} onOpen={() => p.onDrawer("rank")} cardFromSeries={!!p.target} />
   );
-  const diag = useMemo(() => (result ? diagnose(result) : null), [result]);
   const ok = result?.status === "ok";
   const unit = unitLabel(v.unit, lang);
   const per = `${unit} / ${t(lang, "decade")}`;
@@ -245,10 +239,6 @@ export function Panel(p: Props) {
   const country = p.index.find((c) => c.id === p.countryId);
   const province = p.provinces.find((a) => a.id === p.admin1Id) ?? null;
   const countryName = country?.name[lang] ?? p.countryRows.find((c) => c.id === p.countryId)?.[`name_${lang}`] ?? "";
-  const countriesHere = p.countryRows
-    .filter((c) => c.continent === p.continent)
-    .sort((a, b) => a[`name_${lang}`].localeCompare(b[`name_${lang}`], lang));
-  const dataIds = new Set(p.index.map((c) => c.id));
   const areaName = !p.area
     ? ""
     : p.area.kind === "world"
@@ -262,7 +252,11 @@ export function Panel(p: Props) {
   const verdict = ((): { cls: string; meaning?: string | null; body: string } | null => {
     if (!result) return null;
     if (result.status === "too_short") return { cls: "none", body: t(lang, p.anim ? "animWait" : "tooShort") };
-    if (result.status === "insufficient_data") return { cls: "none", body: t(lang, "insufficient") };
+    if (result.status === "insufficient_data") {
+      // land-only variables have no values at all over atolls, sea cells and land ice
+      const empty = v.land_only && shown && !Array.from(shown.values).some(Number.isFinite);
+      return { cls: "none", body: t(lang, empty ? "landOnlyEmpty" : "insufficient") };
+    }
     if (result.status === "constant") return { cls: "none", body: t(lang, "constant") };
     // no clear change: no direction and no number (a non-significant slope is noise)
     if (result.level === "none") return { cls: "none", body: noTrendText(lang, { start: result.startYear, end: result.endYear }) };
@@ -301,10 +295,10 @@ export function Panel(p: Props) {
     URL.revokeObjectURL(a.href);
   };
 
-  const period = `${monthLabel(variables.period.start, lang)} – ${monthLabel(variables.period.end, lang)}`;
   const hasAnswer = !!(shown && result && !shownError && verdict);
-  const title = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
-  const f1 = (x: number) => fmtSigned(x, v.decimals + 1);
+  const fullTitle = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
+  // "Diyarbakır, Türkiye" → "Diyarbakır" when the trail above already says Türkiye
+  const title = p.trail.length > 1 ? fullTitle.split(",")[0].trim() : fullTitle;
 
   // one entrance per selection: place, variable, and whether the answer is a series or a summary
   const sceneKey = `${p.mode}|${targetKey}|${p.area?.kind ?? ""}|${p.continent ?? ""}|${p.countryId ?? ""}|${p.admin1Id ?? ""}|${v.id}|${hasAnswer}`;
@@ -378,13 +372,10 @@ export function Panel(p: Props) {
       )}
       {ok && verdict!.meaning && <p className="meaning">{verdict!.meaning}</p>}
       {ok && result!.level !== "none" && (
-        <>
-          <p className="label">{t(lang, "slopeLabel")}</p>
-          <div className="headline">
-            <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
-            <span className="unit">{per}</span>
-          </div>
-        </>
+        <div className="headline">
+          <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
+          <span className="unit">{per}</span>
+        </div>
       )}
       <p className="card-text">{verdict!.body}</p>
       {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
@@ -403,7 +394,7 @@ export function Panel(p: Props) {
       )}
       {/* other known limits (precipitation, aerosol, mountain snow): a quiet note */}
       {!v.experimental && result!.cappedReason !== "experimental" && v.caveat && <p className="note">{v.caveat[lang]}</p>}
-      {province?.lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
+      {ok && province?.lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
       {emerged && (
         <p className="emerged">
           {emerged.possible === null && emerged.strong === null ? (
@@ -433,7 +424,7 @@ export function Panel(p: Props) {
   ) : p.area ? (
     <Card className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
       <p className="label">
-        {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")} · {t(lang, "slopeLabel").toLowerCase()}
+        {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")}
       </p>
       <div className="headline">
         <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
@@ -446,13 +437,18 @@ export function Panel(p: Props) {
         {p.area.kind === "province"
           ? p.area.nearest
             ? tr
-              ? "Bu bölge bir ızgara hücresinden küçük; sayı, merkezine en yakın tek hücrenin trendi."
-              : "This region is smaller than one grid cell; the number is the trend of the single cell nearest its centre."
-            : tr
-              ? `Sınırları içindeki ${p.area.summary.cells} ızgara hücresinin dünya trend haritasındaki değerlerinden. Bu bölgenin aylık serisi henüz veride yok.`
-              : `From the world trend map values of the ${p.area.summary.cells} grid cells inside its borders. A monthly series for this region is not in the data yet.`
+              ? "Bölge bir hücreden küçük; sayı en yakın hücrenin trendi."
+              : "Smaller than one grid cell; the number is the nearest cell's trend."
+            : t(lang, "countryNoteNoSeries")
           : t(lang, p.area.kind === "country" ? (country ? "countryNoteSeries" : "countryNoteNoSeries") : p.area.kind === "world" ? "worldNote" : "continentNote")}
       </p>
+      {(years[0] !== variables.test_years.start || years[1] !== variables.test_years.end) && (
+        <p className="fine">
+          {tr
+            ? `Bu özet ${variables.test_years.start}–${variables.test_years.end} için; seçilen dönem haritada gösteriliyor.`
+            : `This summary is for ${variables.test_years.start}–${variables.test_years.end}; the chosen period is shown on the map.`}
+        </p>
+      )}
     </Card>
   ) : (
     <Card className="verdict idle">
@@ -469,77 +465,11 @@ export function Panel(p: Props) {
     </Card>
   );
 
-  // ── the calculation ────────────────────────────────────────────────────────
-  const math =
-    hasAnswer && ok && diag ? (
-      <Card className="math">
-        <header className="card-head">
-          <h3>{tr ? "Hesap adımları" : "The calculation"}</h3>
-          <span className="pill">Mann-Kendall · Sen</span>
-        </header>
-        <ZCurve z={diag.z} p={diag.p} lang={lang} />
-        <StatGrid
-          items={[
-            { label: tr ? "Yıl (n)" : "Years (n)", value: diag.n, hint: tr ? "Teste giren tam yıl sayısı" : "Complete years in the test" },
-            { label: tr ? "Yıl çifti" : "Year pairs", value: diag.pairs.toLocaleString(lang), hint: "n·(n−1)/2" },
-            { label: "S", value: `${diag.s > 0 ? "+" : ""}${diag.s}`, hint: tr ? "Artan çift − azalan çift" : "Rising pairs − falling pairs" },
-            { label: "Kendall τ", value: smartSigned(diag.tau, 2), hint: tr ? "S ÷ çift sayısı: −1 hep azalış, +1 hep artış" : "S ÷ pairs: −1 always falling, +1 always rising" },
-            { label: "Z", value: smartSigned(diag.z, 2), hint: "(S ∓ 1) / √Var(S)" },
-            { label: "p", value: diag.p < 0.001 ? "< 0.001" : diag.p.toFixed(3), hint: t(lang, "statNote") },
-          ]}
-        />
-        <h4>{tr ? "Sen eğimi ve %95 aralığı" : "Sen's slope and its 95 % range"}</h4>
-        <CiBar slope={diag.slopePerDecade} ci={diag.ci95} unit={per} decimals={v.decimals} lang={lang} />
-        <StatGrid
-          items={[
-            { label: tr ? "Eğim / 10 yıl" : "Slope / decade", value: f1(diag.slopePerDecade), hint: tr ? "Tüm yıl çiftlerinin eğimlerinin ortancası" : "Median of the slopes of all year pairs" },
-            { label: tr ? "Toplam değişim" : "Total change", value: result!.level === "none" ? t(lang, "unclear") : `${fmtSigned(result!.totalChange, v.decimals)} ${unit}`, hint: `${result!.startYear}–${result!.endYear}` },
-            { label: tr ? "Otokorelasyon r₁" : "Autocorrelation r₁", value: diag.r1.toFixed(2), hint: tr ? "Bir yılın bir sonrakine benzerliği; aralığı genişletir" : "How much one year resembles the next; widens the range" },
-            { label: tr ? "Etkili yıl" : "Effective years", value: diag.nEff.toFixed(1), hint: "n·(1−r₁)/(1+r₁)" },
-            { label: tr ? "Gürültü (σ)" : "Noise (σ)", value: `${smartFixed(diag.noise, v.decimals + 1)} ${unit}`, hint: tr ? "Yıllık değerlerin trend çizgisi etrafındaki yayılımı" : "Spread of the annual values around the trend line" },
-            { label: tr ? "Sinyal / gürültü" : "Signal / noise", value: diag.snr.toFixed(1), hint: tr ? "|Toplam değişim| ÷ gürültü" : "|Total change| ÷ noise" },
-          ]}
-        />
-        <h4>{tr ? "Etikete giden kontroller" : "Checks behind the label"}</h4>
-        <Gates d={diag} lang={lang} />
-        {result!.capped && <p className="fine">{tr ? "Dört kontrol de geçti, ama etiket bilerek “olası”da tutuldu (yukarıdaki nota bak)." : "All four checks pass, but the label is deliberately kept at “possible” (see the note above)."}</p>}
-      </Card>
-    ) : p.area ? (
-      <Card className="math">
-        <header className="card-head">
-          <h3>{tr ? "Hücre eğimlerinin dağılımı" : "Spread of the cell slopes"}</h3>
-          <span className="pill">
-            {p.area.summary.cells.toLocaleString(lang)} {tr ? "hücre" : p.area.summary.cells === 1 ? "cell" : "cells"}
-          </span>
-        </header>
-        {p.area.summary.cells > 1 && <Histogram s={p.area.summary} unit={per} decimals={v.decimals} lang={lang} />}
-        <StatGrid
-          items={[
-            { label: tr ? "Ortalama" : "Mean", value: f1(p.area.summary.meanSlope), hint: tr ? "Alan ağırlıklı (cos enlem)" : "Area-weighted (cos latitude)" },
-            { label: tr ? "Ortanca" : "Median", value: f1(p.area.summary.median) },
-            { label: tr ? "Yayılım (σ)" : "Spread (σ)", value: smartFixed(p.area.summary.sd, v.decimals + 1) },
-            { label: tr ? "Ortadaki %80" : "Middle 80 %", value: `${f1(p.area.summary.p10)} … ${f1(p.area.summary.p90)}`, wide: true, hint: tr ? "Alanın %10'u bunun altında, %10'u üstünde" : "10 % of the area lies below, 10 % above" },
-            { label: tr ? "Artan alan" : "Area rising", value: pct(p.area.summary.upShare), hint: tr ? "Eğimi sıfırın üstünde olan alan" : "Area whose slope is above zero" },
-            { label: tr ? "Çoklu test sonrası anlamlı" : "Significant after FDR", value: pct(p.area.summary.fdrShare), wide: true, hint: tr ? "Çoklu test düzeltmesinden (Benjamini-Hochberg) sonra da anlamlı kalan alan" : "Area still significant after the multiple-testing correction (Benjamini-Hochberg)" },
-            { label: tr ? "Dönem" : "Period", value: `${variables.test_years.start}–${variables.test_years.end}` },
-          ]}
-        />
-        <p className="fine">
-          {tr
-            ? `Her hücrede ${variables.test_years.start}–${variables.test_years.end} yıllık anomalilerine Mann-Kendall testi ve Sen eğimi uygulandı; birim ${per}.`
-            : `Each cell: Mann-Kendall test and Sen's slope on its ${variables.test_years.start}–${variables.test_years.end} annual anomalies; unit ${per}.`}
-        </p>
-      </Card>
-    ) : null;
-
   // ── shape over time ────────────────────────────────────────────────────────
   const shape =
     hasAnswer && ok ? (
       <Card className="shape">
-        <header className="card-head">
-          <h3>
-            {result!.startYear}–{result!.endYear}
-          </h3>
+        <header className="card-head end">
           <button className="link-btn" onClick={() => p.onDrawer("chart")}>
             <Icon name="expand" size={14} /> {tr ? "Grafiği aç" : "Open chart"}
           </button>
@@ -556,77 +486,9 @@ export function Panel(p: Props) {
       </Card>
     ) : null;
 
-  // ── where next ─────────────────────────────────────────────────────────────
-  const next =
-    p.mode === "point" ? (
-      <Card className="ladder-card">
-        <header className="card-head">
-          <h3>{t(lang, "scales")}</h3>
-        </header>
-        <ScaleLadder lang={lang} path={p.path} onGo={p.onScale} />
-      </Card>
-    ) : p.countryId ? (
-      <Card className="places">
-        <header className="card-head">
-          <h3>{t(lang, "provinces")}</h3>
-          <span className="pill">{p.provinces.length || "…"}</span>
-        </header>
-        {p.provinces.length ? (
-          <ProvinceSelect lang={lang} countryId={p.countryId} rows={p.provinces} value={p.admin1Id} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
-        ) : (
-          <TextShimmer>{tr ? "İller yükleniyor…" : "Loading provinces…"}</TextShimmer>
-        )}
-      </Card>
-    ) : (
-      <Card className="places">
-        <header className="card-head">
-          <h3>{t(lang, p.continent ? "countries" : "continents")}</h3>
-          {p.continent && <span className="pill">{countriesHere.length}</span>}
-        </header>
-        <div className="chips scroll">
-          {p.continent
-            ? countriesHere.map((c) => (
-                <button key={c.id} className="chip" onClick={() => p.onCountry(c.id)}>
-                  {c[`name_${lang}`]}
-                  {dataIds.has(c.id) && <i className="data-dot" />}
-                </button>
-              ))
-            : CONTINENTS.map((c) => (
-                <button key={c.id} className="chip" onClick={() => p.onContinent(c.id)}>
-                  {c[lang]}
-                </button>
-              ))}
-        </div>
-      </Card>
-    );
-
-  // ── how it was checked ─────────────────────────────────────────────────────
-  const checks = (
-    <Card className="checks">
-      {hasAnswer && ok && result!.badges && result!.badges.length > 0 && (
-        <>
-          <header className="card-head">
-            <h3>{t(lang, "checksTitle")}</h3>
-          </header>
-          <BadgeList badges={result!.badges} lang={lang} decimals={v.decimals} />
-        </>
-      )}
-      <p className="prov-line">
-        <Icon name="book" size={14} />
-        <span>
-          {variables.is_mock ? (tr ? "Demo veri" : "Demo data") : "NASA MERRA-2 v5.12.4"} · {period} · {tr ? "referans" : "baseline"} {variables.baseline_years.start}–{variables.baseline_years.end}
-        </span>
-      </p>
-      <button className="link-btn" onClick={() => p.onDrawer("sources")}>
-        {t(lang, "allSources")}
-      </button>
-    </Card>
-  );
-
   // ── drawer contents ───────────────────────────────────────────────────────
   const chartPane = hasAnswer ? (
     <>
-      <p className="eyebrow">{v.name[lang]}</p>
       <h2>{place}</h2>
       <div className="seg" role="group">
         {(["anomaly", "raw", "seasons"] as const).map((k) => (
@@ -656,7 +518,6 @@ export function Panel(p: Props) {
           <p className="fine">{t(lang, "seasonHint")}</p>
         </div>
       </div>
-      {v.caveat && <p className="note">{v.caveat[lang]}</p>}
       <button className="link-btn" onClick={downloadCsv}>
         <Icon name="download" size={15} /> {t(lang, "downloadCsv")}
       </button>
@@ -736,13 +597,25 @@ export function Panel(p: Props) {
   return (
     <>
       {report}
-      <motion.aside className={`side ${sheetOpen ? "sheet-open" : ""}`} aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
+      <AnimatePresence initial={false}>
+      {p.open && (
+      <motion.aside
+        className={`side ${sheetOpen ? "sheet-open" : ""}`}
+        aria-live="polite"
+        initial={reduce ? false : { x: 40, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={reduce ? undefined : { x: 40, opacity: 0 }}
+        transition={{ duration: 0.35, ease: EASE }}
+      >
         {/* phones and tablets: the column is a bottom sheet; this handle makes it taller or shorter */}
         <button className="sheet-grab" onClick={() => setSheetOpen((o) => !o)} aria-expanded={sheetOpen} aria-label={tr ? (sheetOpen ? "Paneli küçült" : "Paneli büyüt") : sheetOpen ? "Shrink the panel" : "Expand the panel"} />
         <header className="side-head">
+          <button className="icon-btn side-close" onClick={p.onClose} aria-label={t(lang, "closePanel")}>
+            <Icon name="close" size={16} />
+          </button>
           <nav className="trail" aria-label="breadcrumb">
-            {p.trail.map((s, i) => (
-              <button key={i} className="crumb" onClick={s.go} disabled={i === p.trail.length - 1}>
+            {p.trail.slice(0, -1).map((s, i) => (
+              <button key={i} className="crumb" onClick={s.go}>
                 {s.label}
               </button>
             ))}
@@ -751,27 +624,21 @@ export function Panel(p: Props) {
           <h1 key={title}>
             <BlurText text={title} animateBy="words" trigger="load" direction="bottom" delay={50} blur={6} distance={6} stepDuration={0.22} />
           </h1>
-          <p className="eyebrow">
-            <Icon name={VAR_ICONS[v.id]} size={14} /> {v.name[lang]}
-            <span className="unit">{unit}</span>
-            {v.experimental && <span className="tag exp">{t(lang, "experimentalTag")}</span>}
-            {hasAnswer && province && <span className="tag">{tr ? "aylık seri" : "monthly series"}</span>}
-            {!hasAnswer && p.area && <span className="tag">{tr ? "trend haritası" : "trend map"}</span>}
-          </p>
+          {v.experimental && (
+            <p className="eyebrow">
+              <span className="tag exp">{t(lang, "experimentalTag")}</span>
+            </p>
+          )}
         </header>
         <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
           {answer}
           {fingerprintEl && <Card className="fingerprint">{fingerprintEl}</Card>}
-          {math}
           {shape}
           {monthCard}
         </motion.div>
-        {/* not re-keyed: the province filter and its scroll position survive a selection */}
-        <motion.div className="side-body" variants={scene} initial="hidden" animate="show">
-          {next}
-          {checks}
-        </motion.div>
       </motion.aside>
+      )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {p.drawer && (

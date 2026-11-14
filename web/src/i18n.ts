@@ -15,7 +15,7 @@ const S = {
     tr: "Bağımsız bir kaynak bu yer için farklı bir sonuç veriyor, bu yüzden etiket “olası”da tutuldu.",
   },
   aboutData: { en: "About these numbers", tr: "Bu sayılar hakkında" },
-  allSources: { en: "All sources and references", tr: "Tüm kaynaklar ve kaynakça" },
+  allSources: { en: "Sources", tr: "Kaynaklar" },
   sources: { en: "Sources", tr: "Kaynakça" },
   areaShares: { en: "Across the continent's grid cells", tr: "Kıtanın ızgara hücrelerinde" },
   cappedTitle: { en: "That is why we do not call it a clear change.", tr: "Bu yüzden “net değişim” demiyoruz." },
@@ -62,24 +62,24 @@ const S = {
   meanTrendAll: { en: "Average trend, land and sea", tr: "Ortalama trend, kara ve deniz" },
   decade: { en: "decade", tr: "10 yıl" },
   worldNote: {
-    en: "Area-weighted over every grid cell with data. Pick a continent, then a country and a city to dig deeper.",
-    tr: "Verisi olan tüm ızgara hücrelerinde alan ağırlıklı. Daha derine inmek için bir kıta, sonra ülke ve şehir seç.",
+    en: "Area-weighted average of every grid cell with data. Pick a continent to dig deeper.",
+    tr: "Verisi olan tüm hücrelerin alan ağırlıklı ortalaması. Ayrıntı için bir kıta seç.",
   },
   countryNoteSeries: {
-    en: "From the world trend map inside the borders. The chart below uses the country's own monthly series.",
-    tr: "Sınırlar içindeki dünya trend haritasından. Aşağıdaki grafik ülkenin kendi aylık serisini kullanıyor.",
+    en: "Average of the grid cells inside the borders. Pick a province to dig deeper.",
+    tr: "Sınırlar içindeki hücrelerin ortalaması. Ayrıntı için bir il seç.",
   },
   countryNoteNoSeries: {
-    en: "From the world trend map inside the borders. A monthly series for this country is not in the demo data yet.",
-    tr: "Sınırlar içindeki dünya trend haritasından. Bu ülkenin aylık serisi henüz demo veride yok.",
+    en: "Average of the grid cells inside the borders.",
+    tr: "Sınırlar içindeki hücrelerin ortalaması.",
   },
   strongUp: { en: "clear rise", tr: "net artış" },
   strongDown: { en: "clear fall", tr: "net azalış" },
   possibleShare: { en: "likely", tr: "muhtemel" },
-  noneShare: { en: "no clear change", tr: "belirgin değişim yok" },
+  noneShare: { en: "unclear", tr: "belirsiz" },
   continentNote: {
-    en: "From the world trend map, area-weighted over land cells. A continent time series is not in the data yet — pick a country for the chart.",
-    tr: "Dünya trend haritasından, kara hücrelerinde alan ağırlıklı. Kıta için zaman serisi henüz veride yok — grafik için bir ülke seç.",
+    en: "Area-weighted average of the land cells. Pick a country to dig deeper.",
+    tr: "Kara hücrelerinin alan ağırlıklı ortalaması. Ayrıntı için bir ülke seç.",
   },
   variable: { en: "Variable", tr: "Değişken" },
   world: { en: "World", tr: "Dünya" },
@@ -130,6 +130,10 @@ const S = {
     en: "Too many missing years here — no test possible.",
     tr: "Burada çok fazla eksik yıl var — test yapılamıyor.",
   },
+  landOnlyEmpty: {
+    en: "This variable exists only over land; on the data grid this place is sea or ice.",
+    tr: "Bu değişken yalnızca karada var; veri ızgarasında burası deniz ya da buz.",
+  },
   constant: {
     en: "The data does not vary (for example no snow at all) — nothing to test.",
     tr: "Veri hiç değişmiyor (ör. hiç kar yok) — test edilecek bir şey yok.",
@@ -152,6 +156,11 @@ const S = {
   play: { en: "Play", tr: "Oynat" },
   pause: { en: "Pause", tr: "Duraklat" },
   closeAnim: { en: "Back to the trend map", tr: "Trend haritasına dön" },
+  openPanel: { en: "Show panel", tr: "Paneli aç" },
+  periodStart: { en: "First year", tr: "Başlangıç yılı" },
+  periodEnd: { en: "Last year", tr: "Bitiş yılı" },
+  periodReset: { en: "Whole period", tr: "Tüm dönem" },
+  closePanel: { en: "Hide panel", tr: "Paneli kapat" },
   animYear: { en: "Year", tr: "Yıl" },
   animRange: { en: "Years", tr: "Yıllar" },
   speed: { en: "Speed", tr: "Hız" },
@@ -257,7 +266,10 @@ export interface CardInput {
   decimals: number;
 }
 
-/** Result-card sentences for high-school and university students (PLAN.md §3.5 step 8). No cause-and-effect claims. */
+/** Result-card sentences for high-school and university students (PLAN.md §3.5 step 8).
+ *  The place, the variable and the rate per decade are already on screen (title, dock, big
+ *  number), so the text adds only what is new: the total change, the likely range and the
+ *  chance of a fluke. No cause-and-effect claims. */
 export function cardText(lang: Lang, c: CardInput): string {
   const d = c.decimals;
   const m = c.varId ? MEANING[c.varId]?.[lang] : undefined;
@@ -268,44 +280,40 @@ export function cardText(lang: Lang, c: CardInput): string {
   if (lang === "tr") {
     const verb = m ? m[c.dir][1] : c.dir === "up" ? "artmış" : "azalmış";
     const what = m ? "" : `${c.variable.toLocaleLowerCase("tr")} `;
+    const range = `${c.unit === "%" ? q(lang, lo, d, c.unit) : plain(lang, lo, d)} ile ${q(lang, hi, d, c.unit)}`;
     const base =
-      `${c.place}: ${years} arasında ${what}her 10 yılda ortalama ${q(lang, c.slope, d, c.unit)} ${verb}; ` +
-      `toplamda yaklaşık ${q(lang, c.total, d, c.unit)}. ` +
-      `Gerçek değer büyük ihtimalle her 10 yılda ${c.unit === "%" ? q(lang, lo, d, c.unit) : plain(lang, lo, d)} ile ${q(lang, hi, d, c.unit)} arasında. ` +
-      `Bunun şans eseri olma ihtimali ${chance}.`;
-    return c.level === "strong" ? base : `${base} Yine de emin olmak için kanıt henüz yeterince güçlü değil.`;
+      `${years} arasında ${what}toplam yaklaşık ${q(lang, c.total, d, c.unit)} ${verb}. ` +
+      `Gerçek eğim büyük ihtimalle 10 yılda ${range} arası; şans eseri olma ihtimali ${chance}.`;
+    return c.level === "strong" ? base : `${base} Yine de kanıt henüz kesin değil.`;
   }
   const verb = m ? m[c.dir][1] : c.dir === "up" ? "increased" : "decreased";
-  const subject = m ? `${c.place} has` : `In ${c.place}, ${c.variable.toLowerCase()} has`;
+  const subject = m ? "it has" : `${c.variable.toLowerCase()} has`;
   const base =
-    `${subject} ${verb} by about ${plain(lang, c.slope, d)} ${c.unit} per decade over ${years}, ` +
-    `about ${plain(lang, c.total, d)} ${c.unit} in total. ` +
-    `The true rate is most likely between ${plain(lang, lo, d)} and ${plain(lang, hi, d)} ${c.unit} per decade. ` +
-    `The chance that this is a fluke is ${chance}.`;
-  return c.level === "strong" ? base : `${base} Still, the evidence is not strong enough to be sure.`;
+    `Over ${years} ${subject} ${verb} by about ${plain(lang, c.total, d)} ${c.unit} in total. ` +
+    `The true rate is most likely ${plain(lang, lo, d)} to ${plain(lang, hi, d)} ${c.unit} per decade; ` +
+    `the chance this is a fluke is ${chance}.`;
+  return c.level === "strong" ? base : `${base} Still, the evidence is not conclusive yet.`;
 }
 
 /** Sentence when no clear change was found. No direction and no slope: a non-significant
  *  slope has no reliable sign (Collaud Coen et al. 2020). */
 export function noTrendText(lang: Lang, years?: { start: number; end: number }): string {
   if (lang === "tr") {
-    const lead = years ? `${years.start}–${years.end} arasında belirgin bir değişim yok.` : "Belirgin bir değişim yok.";
-    return `${lead} Yıldan yıla olan doğal iniş çıkışlar, olası bir eğilimden daha büyük; ` +
-      `bu yüzden artış mı azalış mı olduğunu söyleyemiyoruz. Daha uzun bir dönem seçmeyi dene.`;
+    const lead = years ? `${years.start}–${years.end} arasında belirgin bir değişim yok` : "Belirgin bir değişim yok";
+    return `${lead}: yıldan yıla doğal iniş çıkışlar olası bir eğilimden büyük, yönü söylenemiyor. Daha uzun bir dönem dene.`;
   }
-  const lead = years ? `Over ${years.start}–${years.end} there is no clear change.` : "There is no clear change.";
-  return `${lead} The normal ups and downs between years are bigger than any trend, ` +
-    `so we cannot say whether it went up or down. Try a longer period.`;
+  const lead = years ? `Over ${years.start}–${years.end} there is no clear change` : "There is no clear change";
+  return `${lead}: the normal ups and downs between years are bigger than any trend, so the direction is unknown. Try a longer period.`;
 }
 
 /** One line about start/end-year sensitivity. */
 export function robustText(lang: Lang, same: number, total: number, shift = 5): string {
   if (lang === "tr") {
     return same === total
-      ? `Dönemin başı ya da sonu ${shift} yıl kaydırılınca da aynı sonuç çıkıyor (${total}/${total}).`
-      : `Dikkat: dönem ${shift} yıl kaydırılınca sonuç ${total - same} denemede değişiyor (${same}/${total} aynı). Sonuç seçilen yıllara duyarlı.`;
+      ? `Dönem ${shift} yıl kaydırılsa da sonuç aynı.`
+      : `Dönem ${shift} yıl kaydırılınca sonuç ${total} denemeden ${total - same} tanesinde değişiyor; seçilen yıllara duyarlı.`;
   }
   return same === total
-    ? `Moving the start or end by ${shift} years gives the same answer (${total}/${total}).`
-    : `Careful: moving the period by ${shift} years changes the answer in ${total - same} of ${total} tries. The result depends on the years chosen.`;
+    ? `Moving the period by ${shift} years gives the same answer.`
+    : `Moving the period by ${shift} years changes the answer in ${total - same} of ${total} tries; it depends on the years chosen.`;
 }

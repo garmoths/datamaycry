@@ -9,7 +9,7 @@ export type IconName =
   | "globe" | "grid" | "info" | "chevron" | "language"
   | "thermometer" | "droplet" | "wind" | "rain" | "evaporation" | "runoff"
   | "sprout" | "snow" | "haze" | "sun" | "drought" | "flame" | "kite" | "search" | "link" | "chart" | "download" | "check" | "alert" | "book" | "pin" | "flag" | "close" | "expand"
-  | "play" | "pause" | "clock";
+  | "play" | "pause" | "clock" | "panel";
 
 const PATHS: Record<IconName, string> = {
   globe: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M3 12h18 M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9 M12 3c-2.6 2.6-3.8 5.6-3.8 9s1.2 6.4 3.8 9",
@@ -34,6 +34,7 @@ const PATHS: Record<IconName, string> = {
   pin: "M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z M12 7.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5",
   flag: "M5 21V4 M5 4h11l-2 4 2 4H5",
   close: "M6 6l12 12 M18 6L6 18",
+  panel: "M4 5h16v14H4z M14 5v14",
   expand: "M14 4h6v6 M20 4l-7 7 M10 20H4v-6 M4 20l7-7",
   check: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M8 12.5l2.7 2.7L16 9.8",
   alert: "M12 3.5l9 16H3z M12 10v4.5 M12 17.3v.2",

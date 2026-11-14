@@ -102,7 +102,11 @@ export interface TrendField {
 }
 
 /** Colour + opacity for every grid cell; built once per variable (~10 ms). */
-export function buildField(map: Pick<TrendMap, "grid" | "slopePerDecade" | "level" | "pValue">): TrendField {
+export function buildField(
+  map: Pick<TrendMap, "grid" | "slopePerDecade" | "level" | "pValue">,
+  /** cell geometry when it is not the MERRA-2 grid (period maps use the 1° × 1.25° grid) */
+  geo?: { lat0: number; lon0: number; dlat: number; dlon: number },
+): TrendField {
   const { nlat, nlon } = map.grid;
   const n = nlat * nlon;
   // scale colours so the strongest 2 % of cells saturate
@@ -126,6 +130,8 @@ export function buildField(map: Pick<TrendMap, "grid" | "slopePerDecade" | "leve
   // one 1-2-1 pass in each direction before the B-spline: soft, natural transitions
   // (the map is a regional overview; exact cell values are in the panel)
   rgba = smooth121(rgba, nlat, nlon);
+  if (geo)
+    return { nlat, nlon, rgba, ...geo, capN: capColor(rgba, nlat, nlon, 1, geo.lat0, geo.dlat), capS: capColor(rgba, nlat, nlon, -1, geo.lat0, geo.dlat) };
   return { nlat, nlon, rgba, capN: capColor(rgba, nlat, nlon, 1), capS: capColor(rgba, nlat, nlon, -1) };
 }
 

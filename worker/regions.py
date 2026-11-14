@@ -23,6 +23,7 @@ import shapely
 from shapely.geometry import box
 
 from download import ROOT
+from names import place_name
 
 NE = ROOT / "data" / "raw" / "naturalearth"
 OUT = ROOT / "data" / "derived"
@@ -111,12 +112,8 @@ def main() -> None:
         cells_equiv(t0.assign(weight=np.cos(np.radians(t0.lat)) * t0.frac)), \
         cells_equiv(tc.assign(weight=np.cos(np.radians(tc.lat)) * tc.frac))
 
-    def name(row, col_en, col_tr, fallback):
-        def ok(v):
-            return isinstance(v, str) and v.strip() and v.lower() != "nan"
-        en = next((row.get(c) for c in (col_en, fallback) if ok(row.get(c))), row.get("rid") or "?")
-        tr = row.get(col_tr) if ok(row.get(col_tr)) else en
-        return {"en": str(en), "tr": str(tr)}
+    def name(row, col_en, col_tr, fallback, country=None):
+        return place_name([row.get(col_en), row.get(fallback)], row.get(col_tr), country)
 
     countries = []
     for _, c in a0.sort_values("ADM0_A3").iterrows():
@@ -124,13 +121,14 @@ def main() -> None:
         if not re.fullmatch(r"[A-Z0-9]{3}", cid) or cid not in ce0.index:
             continue
         provs = a1[a1.adm0_a3 == cid]
+        cname = name(c, "NAME_EN", "NAME_TR", "NAME")
         countries.append({
-            "id": cid, "name": name(c, "NAME_EN", "NAME_TR", "NAME"),
+            "id": cid, "name": cname,
             "continent": CONTINENT_IDS.get(c.CONTINENT, (None,))[0],
             "bbox": [round(float(v), 3) for v in c.geometry.bounds],
             "cells": round(float(ce0[cid]), 2),
             "admin1": [{
-                "id": p.rid, "name": name(p, "name_en", "name_tr", "name"),
+                "id": p.rid, "name": name(p, "name_en", "name_tr", "name", cname),
                 "cells": round(float(ce1.get(p.rid, 0.0)), 3),
                 "low_resolution": bool(ce1.get(p.rid, 0.0) < LOW_RES_CELLS),
             } for _, p in provs.sort_values("rid").iterrows()],
