@@ -114,7 +114,8 @@ npm run preview      # internet yoksa demo için lokal sunucu
 | `react`, `react-dom` | 19.3 | Arayüz |
 | `maplibre-gl` | 6.18 | 3D globe, ülke/il sınırları, seçim, `flyTo` |
 | `pmtiles` | 4.5 | Sıkıştırılmış sınır dosyasını MapLibre'ye vermek |
-| `plotly.js-dist-min` | 4.3 | Zaman serisi grafiği, trend çizgisi |
+| `plotly.js-basic-dist-min` | 4.3 | Zaman serisi grafiği, trend çizgisi. Tam paket yerine sadece scatter/bar içeren hafif sürüm (4,6 MB yerine 1,2 MB), aynı API |
+| `motion` | 14.14 | Arayüz animasyonları (ölçek merdiveni, sayı sayacı, panel geçişleri); `prefers-reduced-motion`'a uyar |
 | `vite` (dev) | 8.3 | Geliştirme sunucusu ve build |
 | `typescript` (dev) | 7.0 | Tip kontrolü (sözleşme tipleri) |
 | `vitest` (dev) | 3.2 | Birim ve parite testleri |

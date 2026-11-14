@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "maplibre-gl": "^6.18.0",
-    "plotly.js-dist-min": "^4.3.0",
+    "motion": "^14.14.0",
+    "plotly.js-basic-dist-min": "^4.3.0",
     "pmtiles": "^4.5.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
