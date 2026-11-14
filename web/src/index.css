@@ -25,6 +25,7 @@
   --radius-m: 12px;
   --radius-s: 8px;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --display: "Outfit", "Geist", system-ui, sans-serif;
   --sans: "Geist", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);

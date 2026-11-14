@@ -8,6 +8,8 @@ import { Icon } from "./icons.tsx";
 
 /** a trend needs at least 10 years (same rule as the cards) */
 export const MIN_SPAN = 9;
+/** thumb diameter in px (App.css .period-track input thumbs) */
+const THUMB = 20;
 
 interface Props {
   lang: Lang;
@@ -22,15 +24,34 @@ interface Props {
 
 export function PeriodScale({ lang, min, max, value: [a, b], busy, onChange, onReset }: Props) {
   const span = max - min;
-  // the native thumb (16 px) travels from 8 px to width − 8 px: the fill follows the thumb centres
-  const pos = (y: number) => `calc(8px + (100% - 16px) * ${(y - min) / span})`;
+  // the native thumb travels from THUMB/2 to width − THUMB/2: the fill follows the thumb centres
+  const pos = (y: number) => `calc(${THUMB / 2}px + (100% - ${THUMB}px) * ${(y - min) / span})`;
   const full = a === min && b === max;
   return (
     <section className={`period ${full ? "" : "on"}`} aria-label={t(lang, "period")}>
-      <span className="period-label">{t(lang, "period")}</span>
+      <div className="period-head">
+        <span className="period-label">{t(lang, "period")}</span>
+        <b className="period-years">
+          {a}
+          <i>–</i>
+          {b}
+        </b>
+        {/* fixed slot, so nothing moves under the cursor when it appears */}
+        <span className="period-slot">
+          {busy ? (
+            <span className="period-spin" aria-label={t(lang, "preparing")} />
+          ) : (
+            !full && (
+              <button className="period-reset" onClick={onReset} aria-label={t(lang, "periodReset")} title={t(lang, "periodReset")}>
+                <Icon name="close" size={14} />
+              </button>
+            )
+          )}
+        </span>
+      </div>
       <div className="period-track">
         <div className="period-rail" />
-        <div className="period-fill" style={{ left: pos(a), width: `calc((100% - 16px) * ${(b - a) / span})` }} />
+        <div className="period-fill" style={{ left: pos(a), width: `calc((100% - ${THUMB}px) * ${(b - a) / span})` }} />
         <input
           type="range"
           min={min}
@@ -57,21 +78,10 @@ export function PeriodScale({ lang, min, max, value: [a, b], busy, onChange, onR
           }}
         />
       </div>
-      <b className="period-years">
-        {a}–{b}
-      </b>
-      {/* fixed slot, so the track never changes width under the cursor */}
-      <span className="period-slot">
-        {busy ? (
-          <span className="period-spin" aria-label={t(lang, "preparing")} />
-        ) : (
-          !full && (
-            <button className="period-reset" onClick={onReset} aria-label={t(lang, "periodReset")}>
-              <Icon name="close" size={14} />
-            </button>
-          )
-        )}
-      </span>
+      <div className="period-ticks" aria-hidden>
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
     </section>
   );
 }
