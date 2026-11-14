@@ -1,0 +1,95 @@
+{
+  "generated": "2026-11-14",
+  "data": "NASA MERRA-2 v5.12.4 monthly, 1980–2025",
+  "criteria_fixed_before_run": true,
+  "passed": 6,
+  "total": 6,
+  "experiments": [
+    {
+      "id": "P1",
+      "name": "Water balance: global precipitation = global evaporation",
+      "physics": "Over decades the atmosphere stores no extra water, so what evaporates must fall.",
+      "expected": "|P − E| / P < 3 %",
+      "source": "Bosilovich, Robertson, Takacs et al. (2017), J. Climate 30, 1177–1196",
+      "result": {
+        "precip_mm_day": 2.9553,
+        "evap_mm_day": 2.9559,
+        "imbalance_pct": 0.02
+      },
+      "passed": true
+    },
+    {
+      "id": "P2",
+      "name": "Clausius-Clapeyron: ocean humidity vs temperature",
+      "physics": "Saturation vapour pressure grows ~7 % per K; with near-constant relative humidity, so does q.",
+      "expected": "5–8 % per K",
+      "source": "Held & Soden (2006), J. Climate 19, 5686–5702",
+      "result": {
+        "pct_per_K": 7.32,
+        "r": 0.996,
+        "region": "ocean (FROCEAN ≥ 0.9), 60°S–60°N, annual means"
+      },
+      "passed": true
+    },
+    {
+      "id": "P3",
+      "name": "Arctic amplification",
+      "physics": "Sea-ice and snow loss lower the surface albedo, so the Arctic warms faster than the globe.",
+      "expected": "Arctic (≥ 66.5°N) trend / global trend between 2 and 5",
+      "source": "Rantanen et al. (2022), Communications Earth & Environment 3, 168",
+      "result": {
+        "arctic_C_per_decade": 0.443,
+        "global_C_per_decade": 0.162,
+        "ratio": 2.74
+      },
+      "passed": true
+    },
+    {
+      "id": "P4",
+      "name": "Mount Pinatubo eruption (June 1991)",
+      "physics": "Stratospheric sulfate aerosol reflects sunlight: aerosol optical depth peaks, the surface cools the next year.",
+      "expected": "global AOD maximum in 1991 or 1992 AND 1992 global T2M ≥ 0.1 °C below the 1990–91 mean",
+      "source": "Hansen et al. (1992), GRL 19, 215–218; Soden et al. (2002), Science 296, 727–730",
+      "result": {
+        "aod_peak_year": 1992,
+        "aod_1992": 0.2376,
+        "aod_mean_1980_2025": 0.1415,
+        "t2m_1992_minus_1990_91_C": -0.254
+      },
+      "passed": true
+    },
+    {
+      "id": "P5",
+      "name": "El Niño events in the tropical Pacific",
+      "physics": "El Niño warms the central/east equatorial Pacific; the data must show the documented events.",
+      "expected": "≥ 2 of the 3 warmest Niño-3.4 DJF anomalies are 1982–83, 1997–98, 2015–16",
+      "source": "NOAA CPC Oceanic Niño Index (ONI) event list",
+      "result": {
+        "warmest_djf_dec_years": [
+          2015,
+          2023,
+          1997
+        ],
+        "anomalies_C": [
+          2.12,
+          1.83,
+          1.73
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "P6",
+      "name": "Snow amount vs temperature (NH land 40–70°N)",
+      "physics": "Warmer years melt more snow and turn more snowfall into rain.",
+      "expected": "correlation of annual snow and temperature anomalies < −0.3",
+      "source": "Brown & Robinson (2011), The Cryosphere 5, 219–229",
+      "result": {
+        "r": -0.383,
+        "snow_mm_per_decade": -0.435,
+        "t2m_C_per_decade": 0.293
+      },
+      "passed": true
+    }
+  ]
+}

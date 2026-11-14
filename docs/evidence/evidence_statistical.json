@@ -1,0 +1,102 @@
+{
+  "generated": "2026-11-14",
+  "seed": 20261114,
+  "criteria_fixed_before_run": true,
+  "S1_false_alarms": {
+    "question": "With no trend at all, how often does the card claim one?",
+    "criterion": "possible-or-strong \u2264 7 % and strong \u2264 0.5 % for every phi",
+    "results": [
+      {
+        "phi": 0.0,
+        "sims": 2000,
+        "possible_or_strong_pct": 3.75,
+        "strong_pct": 0.15
+      },
+      {
+        "phi": 0.3,
+        "sims": 2000,
+        "possible_or_strong_pct": 5.45,
+        "strong_pct": 0.25
+      },
+      {
+        "phi": 0.6,
+        "sims": 2000,
+        "possible_or_strong_pct": 5.35,
+        "strong_pct": 0.45
+      }
+    ],
+    "passed": true
+  },
+  "S2_power": {
+    "question": "If a real trend exists, how often do we detect it? (46 years, phi = 0.3)",
+    "reference": {
+      "place": "Diyarbak\u0131r (TR-21), T2M",
+      "trend_C_per_decade": 0.417,
+      "monthly_anomaly_sd_C": 1.713,
+      "trend_sd_per_decade": 0.243
+    },
+    "criterion": "a 0.3 SD/decade trend is detected in \u2265 90 % of runs",
+    "results": [
+      {
+        "trend_sd_per_decade": 0.0,
+        "sims": 600,
+        "detected_pct": 4.3,
+        "strong_pct": 0.2
+      },
+      {
+        "trend_sd_per_decade": 0.05,
+        "sims": 600,
+        "detected_pct": 18.2,
+        "strong_pct": 2.7
+      },
+      {
+        "trend_sd_per_decade": 0.1,
+        "sims": 600,
+        "detected_pct": 50.5,
+        "strong_pct": 16.7
+      },
+      {
+        "trend_sd_per_decade": 0.15,
+        "sims": 600,
+        "detected_pct": 88.8,
+        "strong_pct": 52.5
+      },
+      {
+        "trend_sd_per_decade": 0.2,
+        "sims": 600,
+        "detected_pct": 98.0,
+        "strong_pct": 83.2
+      },
+      {
+        "trend_sd_per_decade": 0.3,
+        "sims": 600,
+        "detected_pct": 100.0,
+        "strong_pct": 99.3
+      },
+      {
+        "trend_sd_per_decade": 0.5,
+        "sims": 600,
+        "detected_pct": 100.0,
+        "strong_pct": 100.0
+      }
+    ],
+    "passed": true
+  },
+  "S3_ci_coverage": {
+    "question": "Does the 95 % range contain the true trend about 95 % of the time?",
+    "criterion": "coverage \u2265 90 % (PLAN \u00a73.7-2b measured ~93 %)",
+    "results": [
+      {
+        "phi": 0.3,
+        "sims": 1000,
+        "coverage_pct": 94.9
+      },
+      {
+        "phi": 0.6,
+        "sims": 1000,
+        "coverage_pct": 95.1
+      }
+    ],
+    "passed": true
+  }
+}
