@@ -1372,6 +1372,20 @@ dialog.method::backdrop {
 }
 
 /* contract 1.1 / 1.2 notes on the answer card: experimental variable, low-resolution province */
+/* "No clear change": the number is noise, so it must not look like a result */
+.verdict.none .headline .big {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .warn {
   margin: 10px 0 0;
   padding: 8px 10px;

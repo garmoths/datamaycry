@@ -158,8 +158,8 @@
         "tr": "Toprak nemi"
       },
       "description": {
-        "en": "How wet the soil is where plant roots are (0% dry, 100% saturated).",
-        "tr": "Bitki köklerinin olduğu topraktaki ıslaklık (%0 kuru, %100 doygun)."
+        "en": "How wet the soil is where plant roots are, from the driest this soil gets to fully soaked. Even deserts stay around 30%, so compare places by their change, not their level.",
+        "tr": "Bitki köklerinin olduğu toprağın ıslaklığı: o toprağın en kuru halinden tamamen doygun haline kadar. Çöller bile %30 civarında kalır; yerleri seviyesiyle değil değişimiyle karşılaştır."
       },
       "unit": "%",
       "unit_raw": "1",
@@ -225,7 +225,11 @@
         "offset": 0
       },
       "decimals": 0,
-      "land_only": true
+      "land_only": true,
+      "caveat": {
+        "en": "In mountains snow is shown lower than it really is: each grid square (about 50 km) averages peaks and valleys together. Use it for the direction of change, not the amount.",
+        "tr": "Dağlık bölgelerde kar gerçekte olduğundan az görünür: her ızgara karesi (yaklaşık 50 km) dağları ve ovaları birlikte ortalar. Miktar için değil, değişimin yönü için kullan."
+      }
     },
     {
       "id": "TOTEXTTAU",

@@ -53,8 +53,10 @@ VARS = [
      (1.4, 1.0, 0.02, 0.3, None)),
     ("GWETROOT", "M2TMNXLND", "%", "1", 100, 0, 0.01, 1, True,
      ("Soil moisture", "Toprak nemi"),
-     ("How wet the soil is where plant roots are (0% dry, 100% saturated).",
-      "Bitki köklerinin olduğu topraktaki ıslaklık (%0 kuru, %100 doygun)."),
+     ("How wet the soil is where plant roots are, from the driest this soil gets to fully soaked. "
+      "Even deserts stay around 30%, so compare places by their change, not their level.",
+      "Bitki köklerinin olduğu toprağın ıslaklığı: o toprağın en kuru halinden tamamen doygun haline kadar. "
+      "Çöller bile %30 civarında kalır; yerleri seviyesiyle değil değişimiyle karşılaştır."),
      (45, 12, -1.0, 3, 0)),
     ("RUNOFF", "M2TMNXLND", "mm/day", "kg m-2 s-1", 86400, 0, 0.02, 2, True,
      ("Surface runoff", "Yüzey akışı"),
@@ -77,6 +79,10 @@ CAVEAT = {
                 "Reanaliz yağış verisi, uydu gözlemleri değiştiğinde sıçrama yapabilir."),
     "TOTEXTTAU": ("Aerosol data can jump in years when new satellite observations were added.",
                   "Aerosol verisi yeni uydu gözlemlerinin eklendiği yıllarda sıçrama yapabilir."),
+    "SNOMAS": ("In mountains snow is shown lower than it really is: each grid square (about 50 km) averages "
+               "peaks and valleys together. Use it for the direction of change, not the amount.",
+               "Dağlık bölgelerde kar gerçekte olduğundan az görünür: her ızgara karesi (yaklaşık 50 km) dağları ve "
+               "ovaları birlikte ortalar. Miktar için değil, değişimin yönü için kullan."),
     "RUNOFF": ("Experimental: in some places the model's runoff is far larger than the rain that fell, "
                "more often in recent years. Trends are never marked as strong evidence.",
                "Deneysel: bazı yerlerde modelin akış değeri düşen yağıştan çok daha büyük ve bu son yıllarda "

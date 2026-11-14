@@ -313,6 +313,8 @@ export function Panel(p: Props) {
                 {result.capped && <b>{t(lang, "cappedTitle")}</b>} {v.caveat[lang]}
               </p>
             )}
+            {/* other known limits of a variable (precipitation, aerosol, mountain snow): a quiet note */}
+            {!result.capped && !v.experimental && v.caveat && <p className="note">{v.caveat[lang]}</p>}
             {/* contract 1.2: provinces smaller than one grid cell */}
             {lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
           </div>
