@@ -88,20 +88,32 @@ SOURCE_FIELD: dict[str, str] = {}  # PRECTOTCORR rejected after GPCP comparison 
 
 # Mock countries: a handful of provinces each (real ids from Natural Earth / ISO 3166-2).
 COUNTRIES = [
-    ("TUR", ("Turkey", "Türkiye"), [25.6, 35.8, 44.8, 42.1], [
-        ("TR-21", ("Diyarbakır", "Diyarbakır"), 37.9, 40.2),
-        ("TR-42", ("Konya", "Konya"), 37.9, 32.5),
-        ("TR-06", ("Ankara", "Ankara"), 39.9, 32.9),
-        ("TR-34", ("Istanbul", "İstanbul"), 41.0, 29.0),
+    # id, name, bbox, continent, cells, provinces (id, name, lat, lon, cells) — cells from regions.py
+    ("TUR", ("Turkey", "Türkiye"), [25.6, 35.8, 44.8, 42.1], "AS", 259.6, [
+        ("TR-21", ("Diyarbakır", "Diyarbakır"), 37.9, 40.2, 4.96),
+        ("TR-42", ("Konya", "Konya"), 37.9, 32.5, 13.2),
+        ("TR-06", ("Ankara", "Ankara"), 39.9, 32.9, 8.63),
+        ("TR-34", ("Istanbul", "İstanbul"), 41.0, 29.0, 1.65),
+        ("TR-77", ("Yalova", "Yalova"), 40.6, 29.2, 0.23),  # low resolution example
     ]),
-    ("EGY", ("Egypt", "Mısır"), [24.7, 22.0, 36.9, 31.7], [
-        ("EG-C", ("Cairo", "Kahire"), 30.0, 31.2),
-        ("EG-ASN", ("Aswan", "Asvan"), 24.1, 32.9),
+    ("EGY", ("Egypt", "Mısır"), [24.7, 22.0, 36.9, 31.7], "AF", 290.07, [
+        ("EG-C", ("Cairo", "Kahire"), 30.0, 31.2, 0.94),
+        ("EG-ASN", ("Aswan", "Asvan"), 24.1, 32.9, 4.4),
     ]),
-    ("BRA", ("Brazil", "Brezilya"), [-74.0, -33.8, -34.8, 5.3], [
-        ("BR-AM", ("Amazonas", "Amazonas"), -3.4, -65.0),
-        ("BR-SP", ("São Paulo", "São Paulo"), -22.0, -48.5),
+    ("BRA", ("Brazil", "Brezilya"), [-74.0, -33.8, -34.8, 5.3], "SA", 2240.99, [
+        ("BR-AM", ("Amazonas", "Amazonas"), -3.4, -65.0, 407.99),
+        ("BR-SP", ("São Paulo", "São Paulo"), -22.0, -48.5, 69.74),
     ]),
+]
+# Continents: camera bbox for flyTo (not the data extent), cells from regions.py
+CONTINENTS = [
+    ("AF", ("Africa", "Afrika"), [-20, -36, 52, 38], 7807.7, 5),
+    ("AN", ("Antarctica", "Antarktika"), [-180, -90, 180, -60], 18845.3, -80),
+    ("AS", ("Asia", "Asya"), [26, -11, 146, 56], 9353.8, 35),
+    ("EU", ("Europe", "Avrupa"), [-25, 34, 45, 72], 11808.1, 52),
+    ("NA", ("North America", "Kuzey Amerika"), [-170, 7, -50, 84], 11381.3, 45),
+    ("OC", ("Oceania", "Okyanusya"), [110, -48, 180, 0], 2406.4, -25),
+    ("SA", ("South America", "Güney Amerika"), [-82, -56, -34, 13], 4754.6, -15),
 ]
 # Point-mode mock tile around Diyarbakır/eastern Turkey: ty=12 (30–40°N), tx=22 (40–50°E)
 MOCK_TILES = [(12, 22)]
@@ -158,28 +170,38 @@ def write_variables() -> None:
     (OUT / "variables.json").write_text(json.dumps(doc, ensure_ascii=False, indent=2))
 
 
+def write_region_file(name: str, regions: list[dict], lats: np.ndarray) -> None:
+    blocks, packing = [], []
+    for k, v in enumerate(VARS):
+        vals = series(len(regions), v[11], lats, seed_shift=k)
+        blocks.append(pack(vals, v[6], 0))
+        packing.append({"scale": v[6], "offset": 0})
+    payload = np.stack(blocks, axis=1)  # [region][var][month]
+    header = {
+        "schema_version": SCHEMA_VERSION, "kind": "region", "country": name,
+        "start": START, "months": MONTHS, "regions": regions,
+        "vars": [v[0] for v in VARS], "packing": packing,
+    }
+    validate(header, "region_header")
+    write_dmc(OUT / "regions" / f"{name}.bin", header, payload)
+
+
 def write_regions() -> None:
-    index = {"schema_version": SCHEMA_VERSION, "kind": "region_index", "countries": []}
-    for cid, cname, bbox, provs in COUNTRIES:
+    index = {"schema_version": SCHEMA_VERSION, "kind": "region_index", "countries": [],
+             "continents": [{"id": cid, "name": {"en": n[0], "tr": n[1]}, "bbox": bbox, "cells": cells}
+                            for cid, n, bbox, cells, _ in CONTINENTS]}
+    for cid, cname, bbox, cont, ccells, provs in COUNTRIES:
         index["countries"].append({
             "id": cid, "name": {"en": cname[0], "tr": cname[1]}, "bbox": bbox,
-            "admin1": [{"id": pid, "name": {"en": n[0], "tr": n[1]}} for pid, n, _, _ in provs],
+            "continent": cont, "cells": ccells,
+            "admin1": [{"id": pid, "name": {"en": n[0], "tr": n[1]}, "cells": cells,
+                        "low_resolution": cells < 1.0} for pid, n, _, _, cells in provs],
         })
         lats = np.array([np.mean([p[2] for p in provs])] + [p[2] for p in provs])
         regions = [{"id": cid, "level": "country"}] + [{"id": p[0], "level": "admin1"} for p in provs]
-        blocks, packing = [], []
-        for k, v in enumerate(VARS):
-            vals = series(len(regions), v[11], lats, seed_shift=k)
-            blocks.append(pack(vals, v[6], 0))
-            packing.append({"scale": v[6], "offset": 0})
-        payload = np.stack(blocks, axis=1)  # [region][var][month]
-        header = {
-            "schema_version": SCHEMA_VERSION, "kind": "region", "country": cid,
-            "start": START, "months": MONTHS, "regions": regions,
-            "vars": [v[0] for v in VARS], "packing": packing,
-        }
-        validate(header, "region_header")
-        write_dmc(OUT / "regions" / f"{cid}.bin", header, payload)
+        write_region_file(cid, regions, lats)
+    write_region_file("continents", [{"id": c[0], "level": "continent"} for c in CONTINENTS],
+                      np.array([c[4] for c in CONTINENTS], dtype=float))
     validate(index, "region_index")
     (OUT / "regions" / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2))
 

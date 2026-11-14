@@ -6,6 +6,7 @@ import {
   analyzeTrend,
   anomalies,
   cellOf,
+  getContinentSeries,
   getPointSeries,
   getRegionSeries,
   getTrendMap,
@@ -88,6 +89,19 @@ describe("data.ts on mock data", () => {
     const r = analyzeTrend({ ...base, var: "RUNOFF", values });
     expect(r.level).toBe("possible");
     expect(r.capped).toBe(true);
+  });
+
+  it("continents and province resolution (contract 1.2)", async () => {
+    const idx = await listCountries();
+    expect(idx.continents?.map((c) => c.id)).toEqual(["AF", "AN", "AS", "EU", "NA", "OC", "SA"]);
+    const tur = idx.countries.find((c) => c.id === "TUR");
+    expect(tur?.continent).toBe("AS");
+    expect(tur?.admin1.find((p) => p.id === "TR-77")?.low_resolution).toBe(true);
+    expect(tur?.admin1.find((p) => p.id === "TR-42")?.low_resolution).toBe(false);
+    const s = await getContinentSeries("EU", "T2M");
+    expect(s.values).toHaveLength(561);
+    expect(s.label.tr).toBe("Avrupa");
+    expect(analyzeTrend(s).status).toBe("ok");
   });
 
   it("trend map has one value per grid cell", async () => {

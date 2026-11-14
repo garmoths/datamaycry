@@ -38,6 +38,15 @@ def check(data_dir: Path) -> int:
         assert d.size == len(h["regions"]) * len(h["vars"]) * months, f"{c['id']}: payload size"
         n += 1
 
+    if index.get("continents"):
+        h, d = read_dmc(data_dir / "regions" / "continents.bin")
+        validate(h, "region_header")
+        assert h["country"] == "continents" and h["months"] == months
+        assert [r["id"] for r in h["regions"]] == [c["id"] for c in index["continents"]]
+        assert all(r["level"] == "continent" for r in h["regions"])
+        assert d.size == len(h["regions"]) * len(h["vars"]) * months
+        n += 1
+
     ncell = 361 * 576
     for f in sorted((data_dir / "trend_map").glob("*.bin")):
         h, d = read_dmc(f)

@@ -3,6 +3,19 @@
 Rules: adding a field → minor (1.x). Removing/renaming → major (2.0), Enes + Rumet agree.
 One PR per change: `types.ts` + `schema/` + `worker/mock.py` + `web/src/data.ts` + this file.
 
+## 1.2 — 2026-11-14 (additions only)
+- Continents: `RegionIndexFile.continents` (id, name, camera `bbox`, `cells`) and
+  `regions/continents.bin` (header `country: "continents"`, `level: "continent"`).
+  New `data.ts` function: `getContinentSeries(continent, var)`. Ids: AF AN AS EU NA OC SA.
+  Natural Earth puts Russia in Europe.
+- `CountryInfo.continent`, `CountryInfo.cells`.
+- `Admin1Info.cells` (area in grid-cell equivalents) and `Admin1Info.low_resolution`
+  (< 1 cell). 49% of the world's 4,596 provinces are below one cell; in Turkey:
+  Yalova, Kilis, Bartın, Osmaniye, Düzce. UI: show "low resolution: value is a blend of
+  neighbouring cells" on those cards.
+- Province ids: ISO 3166-2 when valid and unique, else Natural Earth `adm1_code`
+  (ISO codes repeat 95 times worldwide). All 81 Turkish provinces use ISO codes.
+
 ## 1.1 — 2026-11-14 (additions only)
 - `VariableInfo.experimental?: boolean` — variable has known data-quality problems.
   `analyzeTrend` never returns `level: "strong"` for it; the card must show `caveat`.

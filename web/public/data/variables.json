@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "kind": "variables",
   "dataset": "MOCK DATA (not real) — MERRA-2 v5.12.4 layout",
   "processed_at": "mock",

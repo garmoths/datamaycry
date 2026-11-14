@@ -87,9 +87,86 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "cells": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "low_resolution": {
+                  "type": "boolean"
                 }
               }
             }
+          },
+          "continent": {
+            "enum": [
+              "AF",
+              "AN",
+              "AS",
+              "EU",
+              "NA",
+              "OC",
+              "SA",
+              null
+            ]
+          },
+          "cells": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "continents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "bbox"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "AF",
+              "AN",
+              "AS",
+              "EU",
+              "NA",
+              "OC",
+              "SA"
+            ]
+          },
+          "name": {
+            "type": "object",
+            "required": [
+              "en",
+              "tr"
+            ],
+            "properties": {
+              "en": {
+                "type": "string",
+                "minLength": 1
+              },
+              "tr": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "bbox": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "cells": {
+            "type": "number",
+            "minimum": 0
           }
         }
       }

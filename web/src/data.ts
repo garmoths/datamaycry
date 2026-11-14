@@ -19,6 +19,7 @@ import {
   DMC_MAGIC,
   MISSING_INT16,
   SCHEMA_VERSION,
+  type ContinentId,
   type Packing,
   type RegionHeader,
   type RegionIndexFile,
@@ -176,6 +177,33 @@ export async function getRegionSeries(
     start: header.start,
     values: unpack(data.subarray(at, at + n), header.packing[v]),
     label,
+  };
+}
+
+/**
+ * 1.2: monthly series for a continent ("AF", "AN", "AS", "EU", "NA", "OC", "SA").
+ * Example: getContinentSeries("EU", "T2M").
+ */
+export async function getContinentSeries(continent: ContinentId, varId: VarId): Promise<Series> {
+  const [file, index, info] = await Promise.all([
+    cached("region:continents", () => fetchDmc<RegionHeader>(`${DATA_URL}regions/continents.bin`)),
+    listCountries(),
+    getVariable(varId),
+  ]);
+  const { header, data } = file;
+  const r = header.regions.findIndex((x) => x.id === continent);
+  if (r < 0) throw new DataError(`No data for continent ${continent}`);
+  const v = header.vars.indexOf(varId);
+  if (v < 0) throw new DataError(`${varId} not in continents.bin`);
+  const n = header.months;
+  const at = (r * header.vars.length + v) * n;
+  const c = index.continents?.find((x) => x.id === continent);
+  return {
+    var: varId,
+    unit: info.unit,
+    start: header.start,
+    values: unpack(data.subarray(at, at + n), header.packing[v]),
+    label: c?.name ?? { en: continent, tr: continent },
   };
 }
 

@@ -23,7 +23,7 @@
     },
     "country": {
       "type": "string",
-      "pattern": "^[A-Z0-9]{3}$"
+      "pattern": "^([A-Z0-9]{3}|continents)$"
     },
     "start": {
       "type": "string",
@@ -49,7 +49,8 @@
           "level": {
             "enum": [
               "country",
-              "admin1"
+              "admin1",
+              "continent"
             ]
           }
         }
