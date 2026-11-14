@@ -13,7 +13,7 @@
  * Written with AI assistance (Claude).
  */
 
-export const SCHEMA_VERSION = "1.2" as const;
+export const SCHEMA_VERSION = "1.3" as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared
@@ -164,6 +164,50 @@ export interface RegionIndexFile {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 2b) regions/badges.json (1.3) — independent-source checks per region
+//
+// Rule (fixed 2026-11-14 before computing any badge): both series go through the
+// same protocol (annual anomalies, MK + Sen, corrected 95% CI) over the same years.
+//   agree        same direction AND the two 95% CIs overlap
+//   disagree     opposite directions with at least one p < 0.05,
+//                OR same direction but the CIs do not overlap
+//   inconclusive anything else (e.g. opposite directions, neither significant)
+// A "disagree" badge lowers "strong" to "possible" for that region and variable
+// when the analysed years cover at least 80% of the badge's years (PLAN.md R4+).
+// (The default card 1980–2025 covers GPCP's 1983–2025; a 2000–2025 card does not.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type BadgeSource = "GPCP" | "GHCN";
+export type BadgeStatus = "agree" | "disagree" | "inconclusive";
+
+export interface TrendSummary {
+  slopePerDecade: number;
+  ci95: [number, number];
+  pValue: number;
+}
+
+export interface Badge {
+  /** GPCP = NASA GPCP v3.3 (satellite + gauge precipitation),
+   *  GHCN = NOAA GHCN-M v4 homogenized station temperature. */
+  source: BadgeSource;
+  var: VarId;
+  status: BadgeStatus;
+  years: { start: number; end: number };
+  /** MERRA-2 over the same years (may differ slightly from the default card). */
+  ours: TrendSummary;
+  ref: TrendSummary;
+  /** e.g. "3 stations: DIYARBAKIR, SIVEREK, ERGANI" */
+  detail?: I18nText;
+}
+
+export interface BadgesFile {
+  schema_version: string;
+  kind: "badges";
+  /** region id (continent, country or province) → badges */
+  regions: Record<string, Badge[]>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Binary container "DMC1" — used by regions/*.bin, trend_map/*.bin, tiles/*.bin
 //
 //   bytes 0..3   ASCII "DMC1"
@@ -238,6 +282,8 @@ export interface Series {
   values: Float64Array;
   /** Human label: "Diyarbakır, Türkiye" or "37.50°N, 40.00°E". */
   label: I18nText;
+  /** 1.3: region id (continent, country or province) for region series; absent in Point mode. */
+  region?: string;
 }
 
 export type TrendLevel = "strong" | "possible" | "none";
@@ -267,8 +313,12 @@ export interface TrendResult {
   /** Mann-Kendall two-sided p on annual mean anomalies. */
   pValue: number;
   level: TrendLevel;
-  /** 1.1: true when the variable is experimental and "strong" was lowered to "possible". */
+  /** 1.1: true when "strong" was lowered to "possible". */
   capped?: boolean;
+  /** 1.3: why it was lowered. */
+  cappedReason?: "experimental" | "badge_disagree";
+  /** 1.3: badges of this region and variable (only region series). */
+  badges?: Badge[];
   /** slopePerDecade × (nYears − 1) / 10 */
   totalChange: number;
   /** Annual mean anomalies used for the test (for the chart). */

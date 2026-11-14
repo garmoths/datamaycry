@@ -6,6 +6,7 @@ import {
   analyzeTrend,
   anomalies,
   cellOf,
+  getBadges,
   getContinentSeries,
   getPointSeries,
   getRegionSeries,
@@ -102,6 +103,24 @@ describe("data.ts on mock data", () => {
     expect(s.values).toHaveLength(561);
     expect(s.label.tr).toBe("Avrupa");
     expect(analyzeTrend(s).status).toBe("ok");
+  });
+
+  it("badges: disagreement lowers strong, only when the period covers the badge (1.3)", async () => {
+    const b = await getBadges("TR-21");
+    expect(b.map((x) => x.source).sort()).toEqual(["GHCN", "GPCP"]);
+    const base = await getRegionSeries("TUR", "TR-42", "PRECTOT");
+    expect(base.region).toBe("TR-42");
+    const values = Float64Array.from(base.values, (_, k) => 1 + k * 0.002 + Math.sin(k) * 0.01);
+    const s = { ...base, values };
+    const def = analyzeTrend(s); // 1980–2025 covers GPCP 1983–2025
+    expect(def.level).toBe("possible");
+    expect(def.cappedReason).toBe("badge_disagree");
+    expect(def.badges?.[0].status).toBe("disagree");
+    const late = analyzeTrend(s, { startYear: 2000, endYear: 2025 }); // covers 60% → no cap
+    expect(late.level).toBe("strong");
+    // Diyarbakır precipitation badge agrees → no cap
+    const d = await getRegionSeries("TUR", "TR-21", "PRECTOT");
+    expect(analyzeTrend({ ...d, values }).level).toBe("strong");
   });
 
   it("trend map has one value per grid cell", async () => {

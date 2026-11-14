@@ -206,6 +206,28 @@ def write_regions() -> None:
     (OUT / "regions" / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2))
 
 
+def write_badges() -> None:
+    """Fake badges (contract 1.3) covering every status, so the UI can be built."""
+    def b(source, var, status, ours, ref, years=(1980, 2025), detail=None):
+        x = {"source": source, "var": var, "status": status, "years": {"start": years[0], "end": years[1]},
+             "ours": {"slopePerDecade": ours, "ci95": [ours - 0.1, ours + 0.1], "pValue": 0.001},
+             "ref": {"slopePerDecade": ref, "ci95": [ref - 0.1, ref + 0.1], "pValue": 0.002}}
+        if detail:
+            x["detail"] = {"en": f"{detail[0]} station(s): {detail[1]}", "tr": f"{detail[0]} istasyon: {detail[1]}"}
+        return x
+    regions = {
+        "TR-21": [b("GHCN", "T2M", "agree", 0.42, 0.55, detail=(1, "DIYARBAKIR")),
+                  b("GPCP", "PRECTOT", "agree", -0.06, -0.05, (1983, 2025))],
+        "TR-42": [b("GHCN", "T2M", "agree", 0.37, 0.50, detail=(1, "KONYA")),
+                  b("GPCP", "PRECTOT", "disagree", 0.30, -0.25, (1983, 2025))],
+        "TUR": [b("GHCN", "T2M", "agree", 0.44, 0.50, detail=(36, "RIZE, KASTAMONU, SIVAS, VAN, ISPARTA +31")),
+                b("GPCP", "PRECTOT", "inconclusive", -0.01, 0.0, (1983, 2025))],
+    }
+    doc = {"schema_version": SCHEMA_VERSION, "kind": "badges", "regions": regions}
+    validate(doc, "badges")
+    (OUT / "regions" / "badges.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+
+
 def write_trend_maps() -> None:
     lat = np.linspace(-90, 90, NLAT)[:, None]
     lon = np.linspace(-180, 180 - 0.625, NLON)[None, :]
@@ -252,6 +274,7 @@ if __name__ == "__main__":
     OUT.mkdir(parents=True)
     write_variables()
     write_regions()
+    write_badges()
     write_trend_maps()
     write_tiles()
     n = check(OUT)

@@ -47,6 +47,18 @@ def check(data_dir: Path) -> int:
         assert d.size == len(h["regions"]) * len(h["vars"]) * months
         n += 1
 
+    bf = data_dir / "regions" / "badges.json"
+    if bf.exists():
+        badges = json.loads(bf.read_text())
+        validate(badges, "badges")
+        known = {c["id"] for c in index.get("continents", [])}
+        for c in index["countries"]:
+            known.add(c["id"])
+            known.update(a["id"] for a in c["admin1"])
+        unknown = sorted(set(badges["regions"]) - known)
+        assert not unknown, f"badges for unknown regions: {unknown[:5]}"
+        n += 1
+
     ncell = 361 * 576
     for f in sorted((data_dir / "trend_map").glob("*.bin")):
         h, d = read_dmc(f)
