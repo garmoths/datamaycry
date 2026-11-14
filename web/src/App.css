@@ -1360,3 +1360,25 @@ dialog.method::backdrop {
     transition: none;
   }
 }
+
+/* contract 1.1 / 1.2 notes on the answer card: experimental variable, low-resolution province */
+.warn {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #fde68a;
+  background: rgba(217, 168, 43, 0.1);
+  border: 1px solid rgba(217, 168, 43, 0.25);
+}
+
+.warn b {
+  font-weight: 600;
+  color: #fef3c7;
+}
+
+.tag.exp {
+  background: rgba(217, 168, 43, 0.15);
+  color: #fde68a;
+}

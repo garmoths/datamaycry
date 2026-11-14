@@ -11,6 +11,8 @@ import {
   analyzeTrend,
   getPointSeries,
   getRegionSeries,
+  getContinentSeries,
+  type ContinentId,
   monthLabels,
   anomalies,
   type CountryInfo,
@@ -48,6 +50,8 @@ export interface Status {
 export type Target =
   | { type: "region"; country: string; admin1: string | null }
   | { type: "point"; lat: number; lon: number }
+  /** contract 1.2: continent series (regions/continents.bin) */
+  | { type: "continent"; id: ContinentId }
   | null;
 
 export interface CountryRow {
@@ -111,7 +115,9 @@ export function Panel(p: Props) {
     const load =
       p.target.type === "region"
         ? getRegionSeries(p.target.country, p.target.admin1, v.id)
-        : getPointSeries(p.target.lat, p.target.lon, v.id);
+        : p.target.type === "continent"
+          ? getContinentSeries(p.target.id, v.id)
+          : getPointSeries(p.target.lat, p.target.lon, v.id);
     load
       .then((s) => !dead && setSeries(s))
       .catch((e: Error) => {
@@ -138,6 +144,7 @@ export function Panel(p: Props) {
 
   const place = shown?.label[lang] ?? "";
   const country = p.index.find((c) => c.id === p.countryId);
+  const lowRes = !!country?.admin1.find((a) => a.id === p.admin1Id)?.low_resolution;
   const countriesHere = p.countryRows
     .filter((c) => c.continent === p.continent)
     .sort((a, b) => a[`name_${lang}`].localeCompare(b[`name_${lang}`], lang));
@@ -284,6 +291,15 @@ export function Panel(p: Props) {
               </p>
             )}
             <p className="card-text">{card.body}</p>
+            {/* contract 1.1: experimental variables never reach "strong"; say why */}
+            {(result.capped || v.experimental) && v.caveat && (
+              <p className="warn">
+                {/* the caveat already starts with "Experimental:"; only add why the level dropped */}
+                {result.capped && <b>{t(lang, "cappedTitle")}</b>} {v.caveat[lang]}
+              </p>
+            )}
+            {/* contract 1.2: provinces smaller than one grid cell */}
+            {lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
           </div>
           {ok && (
             <dl className="stats">
@@ -317,8 +333,8 @@ export function Panel(p: Props) {
         </motion.section>
       )}
 
-      {p.area && !shown && (
-        <AreaCard lang={lang} area={p.area} v={v} name={areaName} hasSeries={!!country} />
+      {p.area && (!shown || p.area.kind === "continent") && (
+        <AreaCard lang={lang} area={p.area} v={v} name={areaName} hasSeries={!!country} compact={!!shown} />
       )}
 
       {p.mode === "region" && p.countryId && country && (
@@ -405,6 +421,7 @@ export function Panel(p: Props) {
           <div>
             <strong>{v.name[lang]}</strong> <span className="unit">{unit}</span>
             {v.land_only && <span className="tag">{t(lang, "landOnly")}</span>}
+            {v.experimental && <span className="tag exp">{t(lang, "experimentalTag")}</span>}
             <p>{v.description[lang]}</p>
           </div>
         </div>
@@ -529,7 +546,8 @@ export function Panel(p: Props) {
   );
 }
 
-function AreaCard({ lang, area, v, name, hasSeries }: { lang: Lang; area: AreaInfo; v: VariableInfo; name: string; hasSeries: boolean }) {
+/** `compact`: shown under the place's own series (continents) — no second title. */
+function AreaCard({ lang, area, v, name, hasSeries, compact = false }: { lang: Lang; area: AreaInfo; v: VariableInfo; name: string; hasSeries: boolean; compact?: boolean }) {
   const s = area.summary;
   const parts = [
     { key: "strongUp", share: s.strongUp, cls: "share-up" },
@@ -543,10 +561,16 @@ function AreaCard({ lang, area, v, name, hasSeries }: { lang: Lang; area: AreaIn
   const unit = unitLabel(v.unit, lang);
   return (
     <section className="answer">
-      <p className="eyebrow">
-        {t(lang, title)} · {v.name[lang]}
-      </p>
-      <h2>{name}</h2>
+      {compact ? (
+        <h3>{t(lang, "areaShares")}</h3>
+      ) : (
+        <>
+          <p className="eyebrow">
+            {t(lang, title)} · {v.name[lang]}
+          </p>
+          <h2>{name}</h2>
+        </>
+      )}
       <div className="verdict">
         <p className="fine">{t(lang, area.kind === "world" ? "meanTrendAll" : "meanTrend")}</p>
         <p className="headline">

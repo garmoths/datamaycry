@@ -8,6 +8,7 @@
  * Written with AI assistance (Claude).
  */
 import type { FeatureCollection, Feature, LineString, Polygon, MultiPolygon, Position } from "geojson";
+import type { ContinentId } from "./data.ts";
 
 export type Bounds = [west: number, south: number, east: number, north: number];
 
@@ -59,14 +60,15 @@ export function bboxOf(features: Feature<Polygon | MultiPolygon>[]): Bounds {
 }
 
 /** Continents → names + camera box. The two Americas stay separate (Natural Earth does the same). */
-export const CONTINENTS: { id: string; en: string; tr: string; bbox: Bounds }[] = [
-  { id: "Africa", en: "Africa", tr: "Afrika", bbox: [-18, -35, 52, 38] },
-  { id: "Asia", en: "Asia", tr: "Asya", bbox: [26, -10, 146, 56] },
-  { id: "Europe", en: "Europe", tr: "Avrupa", bbox: [-25, 35, 45, 71] },
-  { id: "North America", en: "North America", tr: "Kuzey Amerika", bbox: [-168, 7, -52, 72] },
-  { id: "South America", en: "South America", tr: "Güney Amerika", bbox: [-82, -56, -34, 13] },
-  { id: "Oceania", en: "Oceania", tr: "Okyanusya", bbox: [112, -48, 180, -5] },
-  { id: "Antarctica", en: "Antarctica", tr: "Antarktika", bbox: [-180, -85, 180, -62] },
+/** `code` is the contract's ContinentId (regions/continents.bin, data.getContinentSeries). */
+export const CONTINENTS: { id: string; code: ContinentId; en: string; tr: string; bbox: Bounds }[] = [
+  { id: "Africa", code: "AF", en: "Africa", tr: "Afrika", bbox: [-18, -35, 52, 38] },
+  { id: "Asia", code: "AS", en: "Asia", tr: "Asya", bbox: [26, -10, 146, 56] },
+  { id: "Europe", code: "EU", en: "Europe", tr: "Avrupa", bbox: [-25, 35, 45, 71] },
+  { id: "North America", code: "NA", en: "North America", tr: "Kuzey Amerika", bbox: [-168, 7, -52, 72] },
+  { id: "South America", code: "SA", en: "South America", tr: "Güney Amerika", bbox: [-82, -56, -34, 13] },
+  { id: "Oceania", code: "OC", en: "Oceania", tr: "Okyanusya", bbox: [112, -48, 180, -5] },
+  { id: "Antarctica", code: "AN", en: "Antarctica", tr: "Antarktika", bbox: [-180, -85, 180, -62] },
 ];
 
 // ─── Scale ladder (Point mode) ──────────────────────────────────────────────

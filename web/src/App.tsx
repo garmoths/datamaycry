@@ -283,9 +283,14 @@ export default function App() {
 
   const target: Target = useMemo(() => {
     if (mode === "point") return point ? { type: "point", lat: point.lat, lon: point.lon } : null;
-    if (!countryId || !index.some((c) => c.id === countryId)) return null;
+    // contract 1.2: a continent on its own has a real monthly series too
+    if (!countryId) {
+      const c = CONTINENTS.find((x) => x.id === continent);
+      return c && variables?.variables && index.length ? { type: "continent", id: c.code } : null;
+    }
+    if (!index.some((c) => c.id === countryId)) return null;
     return { type: "region", country: countryId, admin1: admin1Id };
-  }, [mode, point, countryId, admin1Id, index]);
+  }, [mode, point, continent, countryId, admin1Id, index, variables]);
 
   const trail = useMemo(() => {
     const out: { label: string; go: () => void }[] = [{ label: t(lang, "world"), go: reset }];

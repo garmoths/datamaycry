@@ -7,6 +7,13 @@ const S = {
   mock: { en: "MOCK DATA", tr: "SAHTE VERİ" },
   view: { en: "View", tr: "Görünüm" },
   share: { en: "Share", tr: "Paylaş" },
+  experimentalTag: { en: "experimental", tr: "deneysel" },
+  areaShares: { en: "Across the continent's grid cells", tr: "Kıtanın ızgara hücrelerinde" },
+  cappedTitle: { en: "Lowered to “possible”.", tr: "“Olası”ya düşürüldü." },
+  lowResNote: {
+    en: "Low resolution: this province is smaller than one grid cell (~50 km), so the value is a blend of neighbouring cells.",
+    tr: "Düşük çözünürlük: bu il bir ızgara hücresinden (~50 km) küçük, bu yüzden değer komşu hücrelerin karışımı.",
+  },
   mockTip: {
     en: "Demo data with a made-up pattern. Real NASA MERRA-2 numbers replace it without changing the app.",
     tr: "Uydurma desenli demo veri. Gerçek NASA MERRA-2 sayıları uygulama değişmeden yerine geçecek.",

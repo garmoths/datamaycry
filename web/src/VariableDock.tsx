@@ -49,7 +49,7 @@ export function VariableDock({ lang, variables, value, suggested, onChange }: Pr
                 magnify={!reduce}
                 active={id === value}
                 suggested={suggested.includes(id) && id !== value}
-                label={`${v.name[lang]} · ${unitLabel(v.unit, lang)}`}
+                label={`${v.name[lang]} · ${unitLabel(v.unit, lang)}${v.experimental ? (lang === "tr" ? " · deneysel" : " · experimental") : ""}`}
                 icon={VAR_ICONS[id]}
                 onClick={() => onChange(id)}
               />
