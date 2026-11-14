@@ -153,6 +153,7 @@ const S = {
   },
   animLegend: { en: "difference from the 1991–2020 normal", tr: "1991–2020 normalinden fark" },
   worldMean: { en: "World average", tr: "Dünya ortalaması" },
+  preparing: { en: "Preparing maps…", tr: "Haritalar hazırlanıyor…" },
   vsNormal: { en: "vs normal", tr: "normalden" },
   animNoData: { en: "No yearly maps for this variable yet.", tr: "Bu değişken için yıllık haritalar henüz yok." },
   animWait: {

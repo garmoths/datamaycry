@@ -245,7 +245,8 @@ export default function App() {
 
   const animTiles = animOn && frames && urlFor ? urlFor(tl.year - frames.years[0], smooth) : null;
   const smoothed = useMemo(() => (frames && smooth ? runningFrames(frames, 5) : frames), [frames, smooth]);
-  const animMean = smoothed ? frameMean(smoothed, tl.year - smoothed.years[0]) : NaN;
+  const animMeans = useMemo(() => (smoothed ? smoothed.years.map((_, k) => frameMean(smoothed, k)) : []), [smoothed]);
+  const animMean = smoothed ? (animMeans[tl.year - smoothed.years[0]] ?? NaN) : NaN;
 
   // playback: the next year is scheduled only after the current one is on screen
   const [shownUrl, setShownUrl] = useState<string | null>(null);
@@ -500,6 +501,17 @@ export default function App() {
             {t(lang, "mock")}
           </span>
         )}
+        <button
+          className={`tt-pill ${animOn ? "on" : ""}`}
+          onClick={() => (animOn ? closeAnim() : setAnimOn(true))}
+          aria-pressed={animOn}
+          data-tip={t(lang, animOn ? "closeAnim" : "timeTravelTip")}
+        >
+          <span className="tt-dot" aria-hidden>
+            <Icon name={animOn ? "close" : "play"} size={12} />
+          </span>
+          {t(lang, "timeTravel")}
+        </button>
         <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
           <Icon name="link" size={16} />
         </button>
@@ -519,11 +531,11 @@ export default function App() {
         <div className="yearbadge" aria-live="polite">
           <b>{tl.year}</b>
           {smooth && <small>{tl.year - 2}–{tl.year + 2}</small>}
+          <span>{variable.name[lang]} · {t(lang, "animLegend")}</span>
           {Number.isFinite(animMean) && (
-            <span>
-              {t(lang, "worldMean")}: {(animMean > 0 ? "+" : "") + (lang === "tr" ? animMean.toFixed(2).replace(".", ",") : animMean.toFixed(2))} {variable.unit}{" "}
-              {t(lang, "vsNormal")}
-            </span>
+            <em className={animMean >= 0 ? "warm" : "cold"}>
+              {(animMean > 0 ? "+" : "") + (lang === "tr" ? animMean.toFixed(2).replace(".", ",") : animMean.toFixed(2))} {variable.unit}
+            </em>
           )}
         </div>
       )}
@@ -533,6 +545,7 @@ export default function App() {
           unit={variable.unit}
           decimals={variable.decimals}
           colorMax={frames?.colorMax ?? null}
+          means={animMeans}
           tl={tl}
           playing={playing}
           speed={speed}
@@ -559,9 +572,6 @@ export default function App() {
       )}
 
       <div className="legend" hidden={animOn}>
-        <button className="tt-btn" onClick={() => setAnimOn(true)} data-tip={t(lang, "timeTravelTip")}>
-          <Icon name="play" size={14} /> {t(lang, "timeTravel")}
-        </button>
         <label>
           <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
         </label>
