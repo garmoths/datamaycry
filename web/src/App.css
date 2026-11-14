@@ -155,7 +155,7 @@ kbd {
   padding: 0 12px;
   z-index: 6;
   display: grid;
-  grid-template-columns: 1fr minmax(260px, 440px) 1fr;
+  grid-template-columns: minmax(max-content, 1fr) minmax(220px, 440px) minmax(max-content, 1fr);
   align-items: center;
   gap: 12px;
   background: rgba(10, 11, 13, 0.9);
@@ -1727,6 +1727,8 @@ dialog.method::backdrop {
   background: var(--surface-2);
   color: var(--text);
   font: 500 12px/1 var(--sans);
+  white-space: nowrap;
+  flex: none;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }

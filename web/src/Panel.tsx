@@ -29,7 +29,7 @@ import {
   type VariableInfo,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
-import { cardText, chanceText, decimalsFor, meaningHead, noTrendText, robustText, smartFixed, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
+import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartFixed, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
 import { emergence, robustness, SEASONS, type Season } from "./trend.ts";
 
 const SEASON_LABEL: Record<Season, StringKey> = {
@@ -299,11 +299,6 @@ export function Panel(p: Props) {
         </>
       )}
       <p className="card-text">{verdict!.body}</p>
-      {ok && (
-        <p className="fine">
-          {chanceText(lang, result!.pValue)} · {result!.nYears} {tr ? "yıl" : "years"} ({result!.startYear}–{result!.endYear})
-        </p>
-      )}
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
