@@ -9,7 +9,9 @@ One PR per change: `types.ts` + `schema/` + `worker/mock.py` + `web/src/data.ts`
   RUNOFF is experimental: in ~1,200 cells monthly runoff is far above precipitation,
   more often after 2016 (found by `worker/check_raw.py`).
 - `VariableInfo.source_field?: string` — the MERRA-2 field actually used when it differs
-  from `id` (planned: PRECTOT ← PRECTOTCORR, bias-corrected precipitation).
+  from `id`. Not used for now: PRECTOT stays model precipitation. Compared with NASA GPCP v3.3
+  (1983–2025, 10 regions), PRECTOT matched GPCP's trend sign in 9/10 regions vs 5/10 for
+  PRECTOTCORR, and its trends were 2.5× closer (`worker/compare_precip.py`).
 - `TrendResult.capped?: boolean` — true when "strong" was lowered because of `experimental`.
 - UI to do (Rumet): when `capped` or `experimental`, show the caveat under the card.
 

@@ -84,7 +84,7 @@ CAVEAT = {
 }
 # Contract 1.1: data-quality flags (see check_raw.py findings, 2026-11-14).
 EXPERIMENTAL = {"RUNOFF"}
-SOURCE_FIELD: dict[str, str] = {}  # e.g. {"PRECTOT": "PRECTOTCORR"} once chosen
+SOURCE_FIELD: dict[str, str] = {}  # PRECTOTCORR rejected after GPCP comparison (compare_precip.py)
 
 # Mock countries: a handful of provinces each (real ids from Natural Earth / ISO 3166-2).
 COUNTRIES = [

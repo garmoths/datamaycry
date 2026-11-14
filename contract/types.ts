@@ -95,7 +95,7 @@ export interface VariableInfo {
    * (RUNOFF: monthly runoff far above precipitation in ~1,200 cells, more often after 2016.)
    */
   experimental?: boolean;
-  /** 1.1: the MERRA-2 field actually used, when it differs from `id` (PRECTOT ← "PRECTOTCORR"). */
+  /** 1.1: the MERRA-2 field actually used, when it differs from `id` (e.g. "PRECTOTCORR"). */
   source_field?: string;
 }
 
