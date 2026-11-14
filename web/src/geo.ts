@@ -62,6 +62,21 @@ export function onAdmin1Change(fn: () => void): () => void {
 }
 
 /**
+ * Read a province file. Seven of them (AIA, ATA, COL, KIR, MEX, RUS, VEN) carry one province
+ * without a name, written as a bare `NaN` — which is not JSON, so the browser used to reject
+ * the whole file and the country showed no provinces at all. Those values are read as
+ * "no name" here and the province is labelled as an unnamed area.
+ */
+export function parseAdmin1(text: string): FeatureCollection<Polygon | MultiPolygon, Admin1Props> {
+  const fc = JSON.parse(text.replace(/:\s*NaN\b/g, ":null")) as FeatureCollection<Polygon | MultiPolygon, Admin1Props>;
+  for (const f of fc.features) {
+    if (typeof f.properties.name_en !== "string" || !f.properties.name_en) f.properties.name_en = "Unnamed area";
+    if (typeof f.properties.name_tr !== "string" || !f.properties.name_tr) f.properties.name_tr = "Adsız bölge";
+  }
+  return fc;
+}
+
+/**
  * Provinces of one country (ids identical to the data, see worker/boundaries.py).
  * Fetched once; a country without provinces resolves to [].
  */
@@ -72,7 +87,7 @@ export function loadAdmin1(country: string): Promise<Feature<Polygon | MultiPoly
       const b = await loadBoundaries();
       const res = await fetch(`${BOUNDARIES}admin1/${country}.geojson`);
       if (!res.ok) return [];
-      const fc = (await res.json()) as FeatureCollection<Polygon | MultiPolygon, Admin1Props>;
+      const fc = parseAdmin1(await res.text());
       // a new object, so map sources and React memos see the change
       b.admin1 = { type: "FeatureCollection", features: [...b.admin1.features, ...fc.features] };
       admin1Listeners.forEach((fn) => fn());
@@ -84,19 +99,27 @@ export function loadAdmin1(country: string): Promise<Feature<Polygon | MultiPoly
   return p;
 }
 
-/** Bounding box of any polygon feature(s). Handles the antimeridian crudely (Russia, Fiji…) by skipping far-east slivers. */
+/**
+ * Bounding box of any polygon feature(s), antimeridian-aware: the box is computed both in
+ * −180…180 and in 0…360 longitude and the narrower one wins, so Russia, Fiji or Chukotka
+ * frame their own area instead of the whole world. East may exceed 180 (MapLibre accepts it).
+ */
 export function bboxOf(features: Feature<Polygon | MultiPolygon>[]): Bounds {
-  let w = 180, s = 90, e = -180, n = -90;
+  let w = 180, e = -180, w2 = 360, e2 = 0, s = 90, n = -90;
   const walk = (c: unknown): void => {
     if (typeof (c as Position)[0] === "number") {
       const [x, y] = c as Position;
+      const x2 = x < 0 ? x + 360 : x;
       if (x < w) w = x;
       if (x > e) e = x;
+      if (x2 < w2) w2 = x2;
+      if (x2 > e2) e2 = x2;
       if (y < s) s = y;
       if (y > n) n = y;
     } else (c as unknown[]).forEach(walk);
   };
   for (const f of features) walk(f.geometry.coordinates);
+  if (e2 - w2 < e - w - 1e-9) return [w2 > 180 ? w2 - 360 : w2, s, w2 > 180 ? e2 - 360 : e2, n];
   return [w, s, e, n];
 }
 
@@ -269,4 +292,118 @@ export function pathToCell(i: number, j: number): Node[] {
     path.push(next);
   }
   return path;
+}
+
+// ─── Points and boxes inside polygons (province dots, camera) ───────────────
+
+type Ring = Position[];
+
+/** Planar ring area in degrees² (Natural Earth cuts shapes at ±180°, so no wrap handling). */
+function ringArea(r: Ring): number {
+  let a = 0;
+  for (let k = 0, n = r.length; k < n; k++) {
+    const [x1, y1] = r[k];
+    const [x2, y2] = r[(k + 1) % n];
+    a += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(a) / 2;
+}
+
+function inRing(x: number, y: number, r: Ring): boolean {
+  let inside = false;
+  for (let k = 0, j = r.length - 1; k < r.length; j = k++) {
+    const [xi, yi] = r[k];
+    const [xj, yj] = r[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Inside the outer ring and outside every hole. */
+function inPolygon(x: number, y: number, poly: Ring[]): boolean {
+  if (!inRing(x, y, poly[0])) return false;
+  for (let k = 1; k < poly.length; k++) if (inRing(x, y, poly[k])) return false;
+  return true;
+}
+
+export function polygonsOf(f: Feature<Polygon | MultiPolygon>): Ring[][] {
+  return f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+}
+
+/** Is (lon, lat) inside the feature? */
+export function pointInFeature(lon: number, lat: number, f: Feature<Polygon | MultiPolygon>): boolean {
+  return polygonsOf(f).some((p) => inPolygon(lon, lat, p));
+}
+
+/** Middle of the widest stretch of the polygon along latitude `y`, or null if the line misses it. */
+function widestSpan(poly: Ring[], y: number): { x: number; width: number } | null {
+  const xs: number[] = [];
+  for (const r of poly)
+    for (let k = 0, j = r.length - 1; k < r.length; j = k++) {
+      const [xi, yi] = r[k];
+      const [xj, yj] = r[j];
+      if (yi > y !== yj > y) xs.push(((xj - xi) * (y - yi)) / (yj - yi) + xi);
+    }
+  xs.sort((a, b) => a - b);
+  let best: { x: number; width: number } | null = null;
+  for (let k = 0; k + 1 < xs.length; k += 2) {
+    const width = xs[k + 1] - xs[k];
+    if (!best || width > best.width) best = { x: (xs[k] + xs[k + 1]) / 2, width };
+  }
+  return best;
+}
+
+/**
+ * Where to put a place's dot: a point that is always inside its largest polygon
+ * (the bounding-box centre lands in the sea for crescents and island groups).
+ * Area centroid first; if that falls outside, the middle of the widest stretch of land
+ * on a few latitudes through the shape.
+ */
+export function labelPoint(f: Feature<Polygon | MultiPolygon>): { lon: number; lat: number } {
+  const polys = polygonsOf(f);
+  let poly = polys[0];
+  let big = -1;
+  for (const p of polys) {
+    const a = ringArea(p[0]);
+    if (a > big) {
+      big = a;
+      poly = p;
+    }
+  }
+  const r = poly[0];
+  let cx = 0, cy = 0, a2 = 0, s = 90, n = -90;
+  for (let k = 0, m = r.length; k < m; k++) {
+    const [x1, y1] = r[k];
+    const [x2, y2] = r[(k + 1) % m];
+    const w = x1 * y2 - x2 * y1;
+    a2 += w;
+    cx += (x1 + x2) * w;
+    cy += (y1 + y2) * w;
+    if (y1 < s) s = y1;
+    if (y1 > n) n = y1;
+  }
+  if (a2 !== 0) {
+    const c = { lon: cx / (3 * a2), lat: cy / (3 * a2) };
+    if (inPolygon(c.lon, c.lat, poly)) return c;
+  }
+  let best: { x: number; width: number; y: number } | null = null;
+  for (const q of [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9]) {
+    const y = s + (n - s) * q;
+    const span = widestSpan(poly, y);
+    if (span && (!best || span.width > best.width)) best = { ...span, y };
+  }
+  return best ? { lon: best.x, lat: best.y } : { lon: r[0][0], lat: r[0][1] };
+}
+
+/**
+ * Camera box of a country without its far-away small parts: only polygons at least a
+ * fifth as large as the biggest one count (France without Guiana, the USA with Alaska
+ * but without the far Aleutians).
+ */
+export function mainBbox(f: Feature<Polygon | MultiPolygon>): Bounds {
+  const polys = polygonsOf(f);
+  const areas = polys.map((p) => ringArea(p[0]));
+  const big = Math.max(...areas);
+  const keep = polys.filter((_, k) => areas[k] >= big * 0.2);
+  return bboxOf([{ type: "Feature", properties: {}, geometry: { type: "MultiPolygon", coordinates: keep } }]);
 }

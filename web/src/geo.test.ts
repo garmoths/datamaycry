@@ -1,8 +1,8 @@
 /** The Point-mode scale ladder must line up with the data grid. Written with AI assistance (Claude). */
 import { describe, expect, it } from "vitest";
 import { cellOf, tileOf } from "./data.ts";
-import { CELL_LEVEL, children, dataTileOf, gridLines, nodeBounds, nodeCenter, pathToCell, WORLD_NODE, type Node } from "./geo.ts";
-import { bspline, buildField, cellAlpha, evidence, mercatorLat, polarFade, renderTile, trendColor } from "./trendImage.ts";
+import { bboxOf, CELL_LEVEL, children, dataTileOf, gridLines, nodeBounds, nodeCenter, pathToCell, WORLD_NODE, type Node } from "./geo.ts";
+import { bspline, buildField, cellAlpha, evidence, mercatorLat, polarBlend, renderTile, trendColor } from "./trendImage.ts";
 
 describe("trend field", () => {
   it("places Mercator rows at the right latitude", () => {
@@ -25,6 +25,23 @@ describe("trend field", () => {
     expect(px[(63 * 64) * 4]).toBeGreaterThan(px[(63 * 64) * 4 + 2]); // red > blue
     expect(at(40, 10)).toBe(0); // far away: no data
   });
+  it("colours the pole caps with one uniform colour (no bald disc, no streaks)", () => {
+    const N = 361 * 576;
+    const slope = new Float32Array(N);
+    const level = new Uint8Array(N).fill(2);
+    const pValue = new Float32Array(N).fill(1e-4);
+    // rising everywhere, and the polar rows vary along longitude
+    for (let k = 0; k < N; k++) slope[k] = 0.6 + 0.4 * Math.sin(((k % 576) / 576) * 2 * Math.PI * 5);
+    const grid = { nlat: 361, nlon: 576, lat0: -90, lon0: -180, dlat: 0.5, dlon: 0.625 } as const;
+    const field = buildField({ grid, slopePerDecade: slope, level, pValue });
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      const px = renderTile(field, 1, x, y, 64);
+      const edge = y === 0 ? 0 : 63; // the row the globe stretches over the pole
+      const row = Array.from({ length: 64 }, (_, c) => [...px.slice((edge * 64 + c) * 4, (edge * 64 + c) * 4 + 4)]);
+      expect(row[0][3]).toBeGreaterThan(100); // coloured, not transparent
+      for (const p of row) for (let q = 0; q < 4; q++) expect(Math.abs(p[q] - row[0][q])).toBeLessThanOrEqual(2);
+    }
+  });
   it("is neutral at zero and saturates at the ends", () => {
     expect(trendColor(0).map(Math.round)).toEqual([240, 240, 236]);
     expect(trendColor(5).map(Math.round)).toEqual([202, 72, 48]);
@@ -37,11 +54,11 @@ describe("trend field", () => {
       expect(Math.min(...w)).toBeGreaterThanOrEqual(0);
     }
   });
-  it("fades colour out towards the poles", () => {
-    expect(polarFade(60)).toBe(1);
-    expect(polarFade(-78)).toBeGreaterThan(0);
-    expect(polarFade(-78)).toBeLessThan(1);
-    expect(polarFade(84.5)).toBe(0);
+  it("blends into one cap colour towards the poles", () => {
+    expect(polarBlend(60)).toBe(0);
+    expect(polarBlend(-80)).toBeGreaterThan(0);
+    expect(polarBlend(-80)).toBeLessThan(1);
+    expect(polarBlend(84.6)).toBe(1);
   });
   it("fades small or unproven changes so the Earth shows through", () => {
     expect(cellAlpha(evidence(1e-4), 1)).toBeGreaterThan(cellAlpha(evidence(0.03), 1));
@@ -116,5 +133,22 @@ describe("scale ladder", () => {
       expect(e - w).toBeCloseTo(0.625);
       if (c.i0 > 0 && c.i0 < 360) expect(n - s).toBeCloseTo(0.5);
     }
+  });
+});
+
+describe("bboxOf across the antimeridian", () => {
+  it("frames Chukotka-like shapes around 180° instead of the whole world", () => {
+    const f = {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "MultiPolygon", coordinates: [[[[170, 60], [180, 60], [180, 70], [170, 70], [170, 60]]], [[[-180, 60], [-170, 60], [-170, 70], [-180, 70], [-180, 60]]]] },
+    } as const;
+    const [w, s, e, n] = bboxOf([f as never]);
+    expect(e - w).toBeCloseTo(20);
+    expect([s, n]).toEqual([60, 70]);
+  });
+  it("leaves ordinary countries alone", () => {
+    const f = { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[[26, 36], [45, 36], [45, 42], [26, 42], [26, 36]]] } } as const;
+    expect(bboxOf([f as never])).toEqual([26, 36, 45, 42]);
   });
 });

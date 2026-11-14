@@ -41,7 +41,7 @@ export function Chart(props: Props) {
           type: "scatter",
           mode: "lines",
           name: unit,
-          line: { color: "#8ec5ff", width: 1.4 },
+          line: { color: "#9aa4b2", width: 1.2 },
           hovertemplate: `%{x}<br>%{y:.${decimals}f} ${unit}<extra></extra>`,
         });
       } else {
@@ -51,7 +51,7 @@ export function Chart(props: Props) {
           type: "scatter",
           mode: "lines",
           name: "anomaly",
-          line: { color: "rgba(142,197,255,0.45)", width: 1 },
+          line: { color: "rgba(154,164,178,0.45)", width: 1 },
           hovertemplate: `%{x}<br>%{y:.${decimals}f} ${unit}<extra></extra>`,
         });
         if (result && result.status === "ok") {
@@ -84,7 +84,7 @@ export function Chart(props: Props) {
         margin: { l: 48, r: 10, t: 8, b: 32 },
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: "rgba(0,0,0,0)",
-        font: { color: "#c4cee3", size: 11.5, family: "Inter, system-ui, sans-serif" },
+        font: { color: "#a1a6ae", size: 11.5, family: "IBM Plex Mono, ui-monospace, monospace" },
         showlegend: false,
         xaxis: { gridcolor: "rgba(255,255,255,0.07)", range: [x[0], x[x.length - 1]] },
         yaxis: {
@@ -102,7 +102,7 @@ export function Chart(props: Props) {
             x1: `${endYear}-12`,
             y0: 0,
             y1: 1,
-            fillcolor: "rgba(255,209,102,0.07)",
+            fillcolor: "rgba(255,255,255,0.035)",
             line: { width: 0 },
             layer: "below",
           },

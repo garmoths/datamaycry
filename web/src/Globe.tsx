@@ -14,6 +14,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // The worker file is served untouched by the plugin in vite.config.ts.
 setWorkerUrl(`${new URL(`${import.meta.env.BASE_URL}maplibre-worker/maplibre-gl-worker.mjs`, location.href)}`);
 import { cellOf } from "./data.ts";
+import { moveSky } from "./sky.ts";
+import { polarCapsLayer } from "./polarCaps.ts";
 import { globeChecker, gridLines, loadAdmin1, loadBoundaries, nodeBounds, onAdmin1Change, WORLD, type Bounds, type Node } from "./geo.ts";
 
 /** A place with data, drawn as an orange dot in the region view. */
@@ -25,6 +27,8 @@ export interface Marker {
   label: string;
   lat: number;
   lon: number;
+  /** true when the place also has its own monthly series (drawn with a brighter core) */
+  series?: boolean;
 }
 
 export interface View {
@@ -130,26 +134,36 @@ export function Globe(props: Props) {
         layers: [{ id: "ocean", type: "background", paint: { "background-color": "#0a2240" } }],
       } as never,
       center: [30, 30],
-      zoom: 1.35,
+      zoom: 1.6,
       minZoom: 0.8,
       maxPitch: 60,
-      attributionControl: { compact: true, customAttribution: "Boundaries: Natural Earth · Data: NASA MERRA-2" },
+      // no on-map attribution button: the credits (NASA MERRA-2, Blue Marble/GIBS, Natural Earth)
+      // are listed in the Sources drawer and the "How it works" dialog
+      attributionControl: false,
     });
     mapRef.current = map;
     if (import.meta.env.DEV) (window as unknown as { __map: MapLibreMap }).__map = map; // for debugging in the console
-    map.addControl(new NavigationControl({ visualizePitch: true }), "bottom-left");
+    map.addControl(new NavigationControl({ visualizePitch: true }), "bottom-right"); // right: the variable rail owns the left edge
     // keep the globe centred in the space the side panel leaves free
     const pad = () => {
       const wide = window.innerWidth > 900;
-      // left: the variable rail (54 + 12 px); right: the inspector (380 + 24 px)
+      // right: the analysis column (≈ 400 px); bottom: the variable dock; on phones the
+      // column becomes a sheet over the lower half
       map.setPadding(
         wide
-          ? { top: 44, left: 66, right: 404, bottom: 0 }
-          : { top: 110, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.48) },
+          ? { top: 64, left: 16, right: 408, bottom: 92 }
+          : { top: 118, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.46) },
       );
     };
     pad();
     window.addEventListener("resize", pad);
+    // the container can change size without a window resize (side panes, emulation, zoom):
+    // without this the canvas keeps its old size and the edges stay black
+    const ro = new ResizeObserver(() => {
+      pad();
+      map.resize();
+    });
+    ro.observe(box.current);
 
     map.on("load", async () => {
       try {
@@ -196,14 +210,19 @@ export function Globe(props: Props) {
         source: "satellite",
         paint: { "raster-fade-duration": 250, "raster-saturation": -0.15, "raster-brightness-max": 0.92, "raster-contrast": 0.05 },
       });
-      add({ id: "continent-fill", type: "fill", source: "countries", filter: NONE, paint: { "fill-color": "#4a8dff", "fill-opacity": 0.28 } });
-      add({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": "#ffffff", "line-opacity": 0.35, "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.3, 5, 1] } });
+      add({ id: "continent-fill", type: "fill", source: "countries", filter: NONE, paint: { "fill-color": "#93c5fd", "fill-opacity": 0.1 } }); // light tint: never hide the imagery
+      // borders: round joins/caps and zoom-scaled widths read as smooth curves, not jagged steps
+      add({ id: "countries-line", type: "line", source: "countries", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-opacity": ["interpolate", ["linear"], ["zoom"], 1, 0.22, 5, 0.4], "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 1, 0.35, 5, 0.9, 9, 1.6], "line-blur": 0.3 } });
       add({ id: "country-hover", type: "fill", source: "countries", paint: { "fill-color": "#ffffff", "fill-opacity": HOVER(0.18) } });
-      add({ id: "country-selected", type: "line", source: "countries", filter: NONE, paint: { "line-color": "#ffd166", "line-width": 2.2 } });
-      add({ id: "admin1-fill", type: "fill", source: "admin1", filter: NONE, paint: { "fill-color": "#ffffff", "fill-opacity": 0.06 } });
-      add({ id: "admin1-line", type: "line", source: "admin1", filter: NONE, paint: { "line-color": "#c9d6f2", "line-width": 0.8 } });
-      add({ id: "admin1-hover", type: "fill", source: "admin1", paint: { "fill-color": "#ffffff", "fill-opacity": HOVER(0.22) } });
-      add({ id: "admin1-selected", type: "line", source: "admin1", filter: NONE, paint: { "line-color": "#ffd166", "line-width": 2.6 } });
+      add({ id: "country-selected-glow", type: "line", source: "countries", filter: NONE, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#6ef3ff", "line-opacity": 0.28, "line-width": ["interpolate", ["linear"], ["zoom"], 2, 5, 8, 10], "line-blur": 4 } });
+      add({ id: "country-selected", type: "line", source: "countries", filter: NONE, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#6ef3ff", "line-width": ["interpolate", ["linear"], ["zoom"], 2, 1.3, 8, 2.4] } });
+      // invisible: only there so clicks and hover can find provinces
+      add({ id: "admin1-fill", type: "fill", source: "admin1", filter: NONE, paint: { "fill-color": "#ffffff", "fill-opacity": 0 } });
+      add({ id: "admin1-line", type: "line", source: "admin1", filter: NONE, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#dbeafe", "line-opacity": 0.55, "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 9, 1.2], "line-blur": 0.3 } });
+      add({ id: "admin1-hover", type: "fill", source: "admin1", paint: { "fill-color": "#6ef3ff", "fill-opacity": HOVER(0.2) } });
+      add({ id: "admin1-selected-fill", type: "fill", source: "admin1", filter: NONE, paint: { "fill-color": "#6ef3ff", "fill-opacity": 0.14 } });
+      add({ id: "admin1-selected-glow", type: "line", source: "admin1", filter: NONE, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#6ef3ff", "line-opacity": 0.35, "line-width": 9, "line-blur": 5 } });
+      add({ id: "admin1-selected", type: "line", source: "admin1", filter: NONE, layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#6ef3ff", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.6, 9, 2.8] } });
       // Tile view: the whole globe as squared paper, all scales at once.
       // 10° data tiles shaded like a chessboard …
       const hidden = { visibility: "none" };
@@ -229,8 +248,10 @@ export function Globe(props: Props) {
       add({ id: "cell-fill", type: "fill", source: "point", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#ffd166", "fill-opacity": 0.5 } });
       add({ id: "cell-line", type: "line", source: "point", filter: ["==", ["geometry-type"], "Polygon"], paint: { "line-color": "#ffffff", "line-width": 2 } });
       add({ id: "point-dot", type: "circle", source: "point", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": "#ffd166", "circle-stroke-color": "#08060d", "circle-stroke-width": 2 } });
-      // Region view: orange dots where data exists (soft halo + core)
-      add({ id: "markers-halo", type: "circle", source: "markers", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 7, 6, 14], "circle-color": "#ff8c32", "circle-opacity": 0.22, "circle-blur": 0.6 } });
+      // Region view: one orange dot per province of the chosen country (soft halo + core).
+      // Opacities start at 0 and fade in each time the dots change (see the markers effect).
+      const fade = { duration: 550, delay: 0 };
+      add({ id: "markers-halo", type: "circle", source: "markers", paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 5, 4, 9, 8, 15], "circle-color": "#ff8c32", "circle-opacity": 0, "circle-opacity-transition": fade, "circle-blur": 0.75 } });
       add({
         id: "markers-dot",
         type: "circle",
@@ -239,15 +260,23 @@ export function Globe(props: Props) {
           // zoom must be the outermost input; hover enlarges the dot at every zoom
           "circle-radius": [
             "interpolate", ["linear"], ["zoom"],
-            1, ["case", ["boolean", ["feature-state", "hover"], false], 6, 3.5],
-            6, ["case", ["boolean", ["feature-state", "hover"], false], 9, 6],
+            1, ["case", ["boolean", ["feature-state", "hover"], false], 4.5, 2.4],
+            4, ["case", ["boolean", ["feature-state", "hover"], false], 6.5, 3.6],
+            8, ["case", ["boolean", ["feature-state", "hover"], false], 9, 5.5],
           ],
-          "circle-color": ["case", ["get", "selected"], "#ffd166", "#ff8c32"],
+          "circle-color": ["case", ["get", "selected"], "#6ef3ff", ["get", "series"], "#ffb347", "#ff8c32"],
+          "circle-opacity": 0,
+          "circle-opacity-transition": fade,
           // white rim keeps the dot readable on top of the orange "rising" trend colours
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
+          "circle-stroke-color": ["case", ["get", "selected"], "#04121a", "#ffffff"],
+          "circle-stroke-width": ["case", ["get", "selected"], 2, 1.2],
+          "circle-stroke-opacity": 0,
+          "circle-stroke-opacity-transition": fade,
         },
       });
+
+      // real NASA imagery on the two polar caps the tiles cannot reach (below the trend colours)
+      map.addLayer(polarCapsLayer(), "continent-fill");
 
       setReady(true);
     });
@@ -271,6 +300,12 @@ export function Globe(props: Props) {
       map.setCenter([c.lng + dt * 0.004, c.lat]);
     };
     raf = requestAnimationFrame(tick);
+
+    // the star field drifts with the camera
+    map.on("move", () => {
+      const c = map.getCenter();
+      moveSky(c.lng, c.lat);
+    });
 
     map.on("click", (e: MapMouseEvent) => {
       const p = latest.current;
@@ -355,6 +390,7 @@ export function Globe(props: Props) {
 
     return () => {
       window.removeEventListener("resize", pad);
+      ro.disconnect();
       cancelAnimationFrame(raf);
       map.remove();
       mapRef.current = null;
@@ -367,11 +403,15 @@ export function Globe(props: Props) {
     const map = mapRef.current;
     if (!map || !ready) return;
     const eq = (key: string, v: string | null) => (v ? ["==", ["get", key], v] : ["==", ["get", "id"], ""]) as never;
-    map.setFilter("continent-fill", mode === "region" ? eq("continent", continent) : NONE);
+    // tint the continent only while choosing a country in it; once a country is chosen, the imagery stays clean
+    map.setFilter("continent-fill", mode === "region" && !countryId ? eq("continent", continent) : NONE);
     map.setFilter("country-selected", mode === "region" ? eq("id", countryId) : NONE);
+    map.setFilter("country-selected-glow", mode === "region" && !admin1Id ? eq("id", countryId) : NONE);
     map.setFilter("admin1-line", mode === "region" && countryId ? (["==", ["get", "country"], countryId] as never) : NONE);
     map.setFilter("admin1-fill", mode === "region" && countryId ? (["==", ["get", "country"], countryId] as never) : NONE);
     map.setFilter("admin1-selected", mode === "region" ? eq("id", admin1Id) : NONE);
+    map.setFilter("admin1-selected-glow", mode === "region" ? eq("id", admin1Id) : NONE);
+    map.setFilter("admin1-selected-fill", mode === "region" ? eq("id", admin1Id) : NONE);
     if (mode === "region" && (continent || countryId)) spin.current = false;
   }, [ready, mode, continent, countryId, admin1Id]);
 
@@ -415,22 +455,40 @@ export function Globe(props: Props) {
     if (on && cell) spin.current = false;
   }, [ready, mode, cell]);
 
-  // ── region view: orange markers where data exists ──
+  // ── region view: orange dots for the chosen country's provinces ──
   const { markers } = props;
+  const markerSet = useRef("");
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     const on = mode === "region";
+    const list = on ? markers : [];
+    // a new set of dots (another country) fades in; a selection change inside the same set does not blink
+    const key = `${list.length}:${list[0]?.id ?? ""}:${list[list.length - 1]?.id ?? ""}`;
+    const fresh = key !== markerSet.current;
+    markerSet.current = key;
+    const show = (o: number) => {
+      map.setPaintProperty("markers-halo", "circle-opacity", o * 0.22);
+      map.setPaintProperty("markers-dot", "circle-opacity", o);
+      map.setPaintProperty("markers-dot", "circle-stroke-opacity", o);
+    };
+    if (fresh) show(0);
     (map.getSource("markers") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: on
-        ? markers.map((m) => ({
-            type: "Feature",
-            properties: { ...m, selected: m.admin1 ? m.admin1 === admin1Id : m.country === countryId && !admin1Id },
-            geometry: { type: "Point", coordinates: [m.lon, m.lat] },
-          }))
-        : [],
+      features: list.map((m) => ({
+        type: "Feature",
+        properties: { ...m, series: !!m.series, selected: m.admin1 ? m.admin1 === admin1Id : m.country === countryId && !admin1Id },
+        geometry: { type: "Point", coordinates: [m.lon, m.lat] },
+      })),
     } as never);
+    if (!fresh) {
+      // same dots again (a selection, or another country's file landing): make sure they are
+      // visible even if this run cancelled the fade-in timer of the run before
+      show(1);
+      return;
+    }
+    const id = window.setTimeout(() => show(1), 60);
+    return () => window.clearTimeout(id);
   }, [ready, mode, markers, countryId, admin1Id]);
 
   // ── trend raster ──
@@ -466,11 +524,11 @@ export function Globe(props: Props) {
     const map = mapRef.current;
     if (!map || !ready) return;
     if (view.bounds === WORLD) {
-      map.easeTo({ zoom: 1.35, pitch: 0, bearing: 0, center: [map.getCenter().lng, 25], duration: 900 });
+      map.easeTo({ zoom: 1.6, pitch: 0, bearing: 0, center: [map.getCenter().lng, 25], duration: 900 });
       return;
     }
     map.fitBounds(view.bounds, {
-      padding: 40, // the side panel is already excluded via map.setPadding
+      padding: 70, // room around the place; the side column is already excluded via map.setPadding
       duration: 1100, // snappy but still readable as a flight
       maxZoom: 9,
       pitch: 0,

@@ -1,7 +1,7 @@
 /**
- * Variable dock — the nine MERRA-2 variables as a vertical macOS-style dock (rail) on the left.
+ * Variable dock — the nine MERRA-2 variables as a macOS-style dock along the bottom of the globe.
  * Ported from Magic UI "Dock" (ui-lab: src/components/ui/dock.tsx, MIT) to plain CSS:
- * icons grow as the mouse approaches (motion springs), a label appears beside the hovered
+ * icons grow as the mouse approaches (motion springs), a label appears above the hovered
  * icon, a dot marks the active variable, and groups are split by thin separators.
  * Magnification is off for people who prefer reduced motion.
  * Written with AI assistance (Claude).
@@ -13,9 +13,9 @@ import { VAR_GROUPS, VAR_ICONS } from "./content.ts";
 import { Icon } from "./icons.tsx";
 import { unitLabel, type Lang } from "./i18n.ts";
 
-const SIZE = 36;
-const MAGNIFIED = 50;
-const DISTANCE = 110;
+const SIZE = 40;
+const MAGNIFIED = 58;
+const DISTANCE = 120;
 
 interface Props {
   lang: Lang;
@@ -27,15 +27,15 @@ interface Props {
 }
 
 export function VariableDock({ lang, variables, value, suggested, onChange }: Props) {
-  const mouseY = useMotionValue(Infinity);
+  const mouseX = useMotionValue(Infinity);
   const reduce = useReducedMotion();
   const byId = new Map(variables.map((v) => [v.id, v]));
   return (
     <motion.nav
       className="dock"
       aria-label={lang === "tr" ? "Değişkenler" : "Variables"}
-      onMouseMove={(e) => mouseY.set(e.pageY)}
-      onMouseLeave={() => mouseY.set(Infinity)}
+      onMouseMove={(e) => mouseX.set(e.pageX)}
+      onMouseLeave={() => mouseX.set(Infinity)}
     >
       {VAR_GROUPS.map((g, gi) => (
         <Fragment key={g.title.en}>
@@ -45,7 +45,7 @@ export function VariableDock({ lang, variables, value, suggested, onChange }: Pr
             return v ? (
               <DockItem
                 key={id}
-                mouse={mouseY}
+                mouse={mouseX}
                 magnify={!reduce}
                 active={id === value}
                 suggested={suggested.includes(id) && id !== value}
@@ -72,9 +72,9 @@ function DockItem(p: {
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [hover, setHover] = useState(false);
-  const distance = useTransform(p.mouse, (y) => {
-    const b = ref.current?.getBoundingClientRect() ?? { y: 0, height: 0 };
-    return y - b.y - b.height / 2;
+  const distance = useTransform(p.mouse, (x) => {
+    const b = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
+    return x - b.x - b.width / 2;
   });
   const target = useTransform(distance, [-DISTANCE, 0, DISTANCE], [SIZE, p.magnify ? MAGNIFIED : SIZE, SIZE]);
   const size = useSpring(target, { mass: 0.1, stiffness: 150, damping: 12 });
@@ -92,9 +92,9 @@ function DockItem(p: {
       aria-pressed={p.active}
       aria-label={p.label}
     >
-      <Icon name={p.icon} size={18} />
+      <Icon name={p.icon} size={19} />
       {hover && (
-        <motion.span className="dock-label" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.12 }}>
+        <motion.span className="dock-label" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.12 }}>
           {p.label}
         </motion.span>
       )}

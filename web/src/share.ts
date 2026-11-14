@@ -24,7 +24,8 @@ export function readLink(hash = location.hash): LinkState {
   const c = q.get("c");
   if (c && /^[A-Z]{3}$/.test(c)) out.c = c;
   const a = q.get("a");
-  if (a && /^[A-Z]{2}-[A-Z0-9]{1,3}$/.test(a)) out.a = a;
+  // province ids: "TR-21", "RU-AD", "ASM-5001" and Natural Earth leftovers like "BVT+00?"
+  if (a && /^[A-Za-z0-9+?_.~-]{2,16}$/.test(a)) out.a = a;
   const cell = q.get("cell")?.split(",").map(Number);
   if (cell?.length === 2 && cell.every((x) => Number.isInteger(x) && x >= 0) && cell[0] <= 360 && cell[1] < 576) out.cell = [cell[0], cell[1]];
   return out;

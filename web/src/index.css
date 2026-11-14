@@ -1,24 +1,32 @@
 :root {
-  /* neutral zinc surfaces (from Pin UI's dark theme): the colour is left to the data */
-  --bg: #09090b;
-  --card: #18181b;
-  --strip: #0f0f12;
-  --panel: rgba(24, 24, 27, 0.92);
-  --panel-2: rgba(255, 255, 255, 0.045);
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
-  --text: #fafafa;
-  --text-2: #d4d4d8;
-  --muted: #a1a1aa;
-  --link: #93c5fd;
-  --accent: #ffd166; /* selection on the map only */
-  --up: #ca4830;
-  --down: #2166ac;
-  --radius: 18px;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 28px rgba(0, 0, 0, 0.55);
-  --sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  /*
+   * "Instrument": a quiet, neutral graphite UI. No gradients, no glows: the only
+   * saturated colours on screen are the data (trend palette, orange place dots) and one
+   * restrained blue for focus, links and the active state.
+   */
+  --bg: #0a0b0d;
+  --surface: #111215;
+  --surface-2: #17191d;
+  --surface-3: #1e2025;
+  --line: #24262c;
+  --line-strong: #33363d;
+  --text: #ececee;
+  --text-2: #b3b6bd;
+  --muted: #7d818a;
+  --accent: #7aa7ff;
+  --hot: #ff8c32;
+  --link: #93b6ff;
+  --up: #d9694f;
+  --down: #4f8fd6;
+  --ok: #6fbf8b;
+  --warn: #d9a441;
+  --radius: 10px;
+  --radius-s: 6px;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --sans: "IBM Plex Sans", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
   font: 13px/1.5 var(--sans);
-  font-feature-settings: "cv11", "ss01";
   color: var(--text);
   background: var(--bg);
   color-scheme: dark;
@@ -56,4 +64,8 @@ button:disabled {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(122, 167, 255, 0.3);
 }
