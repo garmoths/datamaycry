@@ -90,6 +90,9 @@ interface Props {
   /** the side panel can be hidden; the drawer works either way */
   open: boolean;
   onClose: () => void;
+  /** analysed period, chosen on the period scale (top left) or in the chart drawer */
+  years: [number, number];
+  onYears: (y: [number, number]) => void;
   /** 1.4 time travel: while playing, the card and chart cover [from, year] (null = off) */
   anim?: { from: number; year: number; to: number } | null;
   mode: "region" | "point";
@@ -148,7 +151,7 @@ export function Panel(p: Props) {
   const [view, setView] = useState<ChartView>("anomaly");
   const reduce = useReducedMotion();
   const [season, setSeason] = useState<Season>("all");
-  const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
+  const { years, onYears: setYears } = p;
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
   const eff = useMemo<[number, number]>(
@@ -361,6 +364,13 @@ export function Panel(p: Props) {
             : t(lang, "countryNoteNoSeries")
           : t(lang, p.area.kind === "country" ? (country ? "countryNoteSeries" : "countryNoteNoSeries") : p.area.kind === "world" ? "worldNote" : "continentNote")}
       </p>
+      {(years[0] !== variables.test_years.start || years[1] !== variables.test_years.end) && (
+        <p className="fine">
+          {tr
+            ? `Bu özet ${variables.test_years.start}–${variables.test_years.end} için; seçilen dönem haritada gösteriliyor.`
+            : `This summary is for ${variables.test_years.start}–${variables.test_years.end}; the chosen period is shown on the map.`}
+        </p>
+      )}
     </Card>
   ) : (
     <Card className="verdict idle">

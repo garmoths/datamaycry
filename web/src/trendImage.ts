@@ -19,12 +19,19 @@ const sources = new Map<VarId, TrendMap>();
 let worker: Worker | null | undefined;
 let nextId = 1;
 const waiting = new Map<number, (png: ArrayBuffer | null) => void>();
+const rangeWaiting = new Map<number, (ok: boolean) => void>();
 
 function tileWorker(): Worker | null {
   if (worker !== undefined) return worker;
   try {
     worker = new Worker(new URL("./trendTileWorker.ts", import.meta.url), { type: "module" });
-    worker.onmessage = (e: MessageEvent<{ id: number; png: ArrayBuffer | null }>) => {
+    worker.onmessage = (e: MessageEvent<{ id: number; png: ArrayBuffer | null; ok?: boolean }>) => {
+      const r = rangeWaiting.get(e.data.id);
+      if (r) {
+        r(!!e.data.ok);
+        rangeWaiting.delete(e.data.id);
+        return;
+      }
       waiting.get(e.data.id)?.(e.data.png);
       waiting.delete(e.data.id);
     };
@@ -32,6 +39,8 @@ function tileWorker(): Worker | null {
       worker = null; // fall back to the main thread from now on
       for (const done of waiting.values()) done(null);
       waiting.clear();
+      for (const done of rangeWaiting.values()) done(false);
+      rangeWaiting.clear();
     };
   } catch {
     worker = null;
@@ -136,6 +145,21 @@ export function anomalyTileUrl(f: AnomalyFrames): (frame: number, smooth: boolea
     });
   }
   return (frame, smooth) => `anom://${f.var}/${frame}${smooth ? "s" : ""}/{z}/{x}/{y}`;
+}
+
+/** Trend map of a chosen period, computed in the worker from the yearly maps (1° × 1.25°).
+ *  Resolves to a trend:// URL, or null when it could not be computed. */
+export async function rangeTrendUrl(f: AnomalyFrames, from: number, to: number): Promise<string | null> {
+  anomalyTileUrl(f); // the worker needs this variable's yearly maps
+  const w = tileWorker();
+  if (!w) return null;
+  const key = `${f.var}@${from}-${to}`;
+  const id = nextId++;
+  const ok = await new Promise<boolean>((done) => {
+    rangeWaiting.set(id, done);
+    w.postMessage({ kind: "rangetrend", id, varId: f.var, key, i0: from - f.years[0], i1: to - f.years[0] });
+  });
+  return ok ? `trend://${key}/{z}/{x}/{y}` : null;
 }
 
 /** Paint (and cache) the given tiles for every frame ahead of playback. Reports progress 0…1. */
