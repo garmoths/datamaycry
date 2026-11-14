@@ -134,10 +134,29 @@ export function Globe(props: Props) {
       map.addSource("cells", { type: "geojson", data: gridLines() as never, maxzoom: 6 });
       map.addSource("markers", { type: "geojson", data: EMPTY as never, promoteId: "id" });
 
+      // Real-world basemap: NASA Blue Marble (shaded relief + bathymetry) from NASA GIBS,
+      // public, no key, CORS-enabled; native up to z8 and stretched beyond.
+      map.addSource("satellite", {
+        type: "raster",
+        tiles: [
+          "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+        ],
+        tileSize: 256,
+        maxzoom: 8,
+        attribution: "Imagery: NASA Blue Marble · GIBS",
+      });
+
       const add = (l: object) => map.addLayer(l as never);
+      // plain land stays underneath as the offline fallback; the photo covers it when it loads
       add({ id: "countries-fill", type: "fill", source: "countries", paint: { "fill-color": "#22324f", "fill-opacity": 1 } });
+      add({
+        id: "satellite",
+        type: "raster",
+        source: "satellite",
+        paint: { "raster-fade-duration": 250, "raster-saturation": -0.15, "raster-brightness-max": 0.92, "raster-contrast": 0.05 },
+      });
       add({ id: "continent-fill", type: "fill", source: "countries", filter: NONE, paint: { "fill-color": "#4a8dff", "fill-opacity": 0.28 } });
-      add({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": "#6b7da3", "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.3, 5, 1] } });
+      add({ id: "countries-line", type: "line", source: "countries", paint: { "line-color": "#ffffff", "line-opacity": 0.35, "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.3, 5, 1] } });
       add({ id: "country-hover", type: "fill", source: "countries", paint: { "fill-color": "#ffffff", "fill-opacity": HOVER(0.18) } });
       add({ id: "country-selected", type: "line", source: "countries", filter: NONE, paint: { "line-color": "#ffd166", "line-width": 2.2 } });
       add({ id: "admin1-fill", type: "fill", source: "admin1", filter: NONE, paint: { "fill-color": "#ffffff", "fill-opacity": 0.06 } });
@@ -370,7 +389,8 @@ export function Globe(props: Props) {
     else {
       map.addSource("trend", { type: "image", url: trendImage, coordinates: IMAGE_COORDS });
       map.addLayer(
-        { id: "trend", type: "raster", source: "trend", paint: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.9, 4, 0.75, 7, 0.3], "raster-fade-duration": 300, "raster-resampling": "nearest" } } as never,
+        { id: "trend", type: "raster", source: "trend", // linear resampling + the smooth field from trendImage.ts = no visible blocks at any zoom
+          paint: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.7, 7, 0.4], "raster-fade-duration": 400, "raster-resampling": "linear" } } as never,
         "continent-fill",
       );
     }

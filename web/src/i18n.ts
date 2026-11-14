@@ -54,7 +54,7 @@ const S = {
   trendMap: { en: "World trend map", tr: "Dünya trend haritası" },
   legendUp: { en: "rising", tr: "artış" },
   legendDown: { en: "falling", tr: "azalış" },
-  legendFaint: { en: "faded = weak evidence", tr: "soluk = zayıf kanıt" },
+  legendFaint: { en: "clear colour = strong evidence · see-through = weak or small", tr: "net renk = güçlü kanıt · saydam = zayıf ya da küçük" },
   source: { en: "Source: NASA MERRA-2 reanalysis", tr: "Kaynak: NASA MERRA-2 reanaliz verisi" },
   statNote: {
     en: "“Statistically significant” means the change is unlikely to be pure chance.",

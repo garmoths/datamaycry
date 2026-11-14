@@ -2,17 +2,22 @@
 import { describe, expect, it } from "vitest";
 import { cellOf, tileOf } from "./data.ts";
 import { CELL_LEVEL, children, dataTileOf, gridLines, nodeBounds, nodeCenter, pathToCell, WORLD_NODE, type Node } from "./geo.ts";
-import { IMAGE_COORDS, rowForMercatorY } from "./trendImage.ts";
+import { cellAlpha, IMAGE_COORDS, latForMercatorY, trendColor } from "./trendImage.ts";
 
-describe("trend raster placement", () => {
-  it("maps Mercator rows to the right grid rows", () => {
-    expect(rowForMercatorY(511.5, 1024)).toBe(180); // equator
-    expect(rowForMercatorY(0, 1024)).toBe(350); // ≈ 85°N
-    expect(rowForMercatorY(1023, 1024)).toBe(10); // ≈ 85°S
+describe("trend field", () => {
+  it("places Mercator rows at the right latitude", () => {
+    expect(latForMercatorY(1023.5, 2048)).toBeCloseTo(0, 5); // equator
+    expect(latForMercatorY(-0.5, 2048)).toBeCloseTo(IMAGE_COORDS[0][1], 5); // top edge = 85.05°N
   });
-  it("column edges match the grid-cell edges used by the scale ladder", () => {
-    const [west] = nodeBounds(WORLD_NODE);
-    expect(IMAGE_COORDS[0][0]).toBeCloseTo(west);
+  it("is neutral at zero and saturates at the ends", () => {
+    expect(trendColor(0).map(Math.round)).toEqual([240, 240, 236]);
+    expect(trendColor(5).map(Math.round)).toEqual([202, 72, 48]);
+    expect(trendColor(-5).map(Math.round)).toEqual([33, 102, 172]);
+  });
+  it("fades small or unproven changes so the Earth shows through", () => {
+    expect(cellAlpha(2, 1)).toBeGreaterThan(cellAlpha(1, 1));
+    expect(cellAlpha(1, 1)).toBeGreaterThan(cellAlpha(0, 1));
+    expect(cellAlpha(2, 0.05)).toBeLessThan(cellAlpha(2, 1) / 2);
   });
 });
 

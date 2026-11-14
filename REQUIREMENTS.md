@@ -170,5 +170,6 @@ Frontend'e sadece **okuma** adresi girer: `VITE_TILES_URL` (R2'nin public `r2.de
 | NOAA GHCN-M v4 | İstasyon doğrulaması | Kamuya açık |
 | Copernicus ERA5 | İkinci reanaliz (doğrulama) | CC-BY |
 | Natural Earth | Ülke ve il sınırları | Public domain |
+| NASA Blue Marble (GIBS, `BlueMarble_ShadedRelief_Bathymetry`) | Globe altlığı (uydu görünümü), çalışma anında GIBS'ten karo olarak gelir, repoya girmez | NASA açık veri |
 
 Teslimde hepsi References bölümünde listelenecek. Kendi kodumuz Apache-2.0 lisanslı olacak.

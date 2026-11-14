@@ -14,7 +14,7 @@ import {
 } from "./data.ts";
 import { Globe, type Marker, type View } from "./Globe.tsx";
 import { Panel, type CountryRow, type Target } from "./Panel.tsx";
-import { renderTrendImage, COLD, WARM } from "./trendImage.ts";
+import { renderTrendImage, PALETTE_CSS } from "./trendImage.ts";
 import {
   bboxOf,
   CELL_LEVEL,
@@ -33,8 +33,7 @@ import { t, type Lang } from "./i18n.ts";
 import { rasterizeContinents, summarize } from "./continentStats.ts";
 import "./App.css";
 
-const rgb = (c: readonly number[]) => `rgb(${c[0]},${c[1]},${c[2]})`;
-const trendImages = new Map<VarId, string | null>();
+const trendImages = new Map<VarId, Promise<string | null>>();
 
 /** Run `fn` when the browser has nothing better to do (falls back to a timeout). */
 function whenIdle(fn: () => void): void {
@@ -98,13 +97,14 @@ export default function App() {
   useEffect(() => {
     let dead = false;
     getTrendMap(varId)
-      .then((m) => {
+      .then(async (m) => {
         if (dead) return;
         setTrendMap(m);
-        // painting + PNG-encoding costs ~70 ms; switching back to a variable is instant
+        // painting the smooth field costs a few hundred ms once; switching back is instant
         let img = trendImages.get(varId);
-        if (img === undefined) trendImages.set(varId, (img = renderTrendImage(m)));
-        setTrendImage(img);
+        if (!img) trendImages.set(varId, (img = renderTrendImage(m)));
+        const url = await img;
+        if (!dead) setTrendImage(url);
       })
       .catch(() => {
         if (dead) return;
@@ -343,7 +343,7 @@ export default function App() {
         <label>
           <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
         </label>
-        <div className="bar" style={{ background: `linear-gradient(90deg, ${rgb(COLD)}, #ececec, ${rgb(WARM)})` }} />
+        <div className="bar" style={{ background: PALETTE_CSS }} />
         <div className="ends">
           <span>{t(lang, "legendDown")}</span>
           <span>{t(lang, "legendUp")}</span>
