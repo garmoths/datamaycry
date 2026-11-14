@@ -7,7 +7,7 @@
 }
 .fp-row {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1.25fr) minmax(0, 1fr) auto 44px;
+  grid-template-columns: 16px minmax(0, 1.25fr) minmax(0, 1fr) 108px 44px;
   align-items: center;
   gap: 8px;
   width: 100%;

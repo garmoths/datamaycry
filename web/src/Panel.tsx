@@ -53,6 +53,7 @@ import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
 import { MonthStrip } from "./MonthStrip.tsx";
+import { Report } from "./Report.tsx";
 import { RankBadge, RankingPane } from "./Ranking.tsx";
 import { RANK_TAB_LABEL, type RankInputs, type RankScope } from "./useRankRows.ts";
 
@@ -160,6 +161,7 @@ export function Panel(p: Props) {
   const [view, setView] = useState<ChartView>("anomaly");
   const reduce = useReducedMotion();
   const [season, setSeason] = useState<Season>("all");
+  const [printing, setPrinting] = useState(false);
   const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
@@ -307,6 +309,60 @@ export function Panel(p: Props) {
   const sceneKey = `${p.mode}|${targetKey}|${p.area?.kind ?? ""}|${p.continent ?? ""}|${p.countryId ?? ""}|${p.admin1Id ?? ""}|${v.id}|${hasAnswer}`;
   const scene = { hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : 0.07, delayChildren: reduce ? 0 : 0.04 } } };
 
+  // ── PDF report (Report.tsx) ────────────────────────────────────────────────
+  const fingerprintEl = p.place ? (
+    <Fingerprint
+      lang={lang}
+      variables={variables.variables}
+      current={v.id}
+      target={p.target}
+      opts={{ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }}
+      place={p.place}
+      countryGrid={p.countryGrid}
+      countries={p.countryRows}
+      countryId={p.countryId}
+      provinceFeatures={p.provinceFeatures}
+      onVariable={p.onVariable}
+      onCountry={p.onCountry}
+      onAdmin1={p.onAdmin1}
+    />
+  ) : null;
+  const reportBtn =
+    hasAnswer || p.area ? (
+      <button className="link-btn report-btn" onClick={() => setPrinting(true)}>
+        <Icon name="download" size={14} /> {tr ? "Rapor (PDF)" : "Report (PDF)"}
+      </button>
+    ) : null;
+  const areaFinding =
+    p.area && !hasAnswer
+      ? tr
+        ? `${areaName}: dünya trend haritasında sınırlar içindeki alan ortalaması 10 yılda ${smartSigned(p.area.summary.meanSlope, v.decimals + 1).replace(".", ",")} ${unit}.`
+        : `${areaName}: the world trend map's area mean inside the borders is ${smartSigned(p.area.summary.meanSlope, v.decimals + 1)} ${unit} per decade.`
+      : "";
+  const report = printing ? (
+    <Report
+      lang={lang}
+      variables={variables}
+      variable={v}
+      title={title}
+      trail={p.trail.map((x) => x.label)}
+      periodLabel={`${eff[0]}–${eff[1]} · ${t(lang, SEASON_LABEL[season])}`}
+      finding={hasAnswer ? verdict!.body : areaFinding}
+      result={hasAnswer && ok ? result : null}
+      area={hasAnswer ? null : (p.area?.summary ?? null)}
+      bend={bend}
+      extras={
+        <>
+          {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
+          {rankBadge}
+          {fingerprintEl}
+          {hasAnswer && ok && <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />}
+        </>
+      }
+      onDone={() => setPrinting(false)}
+    />
+  ) : null;
+
   // ── the answer ─────────────────────────────────────────────────────────────
   const answer = hasAnswer ? (
     <Card className={`verdict ${verdict!.cls}`}>
@@ -332,6 +388,7 @@ export function Panel(p: Props) {
       <p className="card-text">{verdict!.body}</p>
       {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
       {rankBadge}
+      {reportBtn}
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
@@ -383,6 +440,7 @@ export function Panel(p: Props) {
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
       {rankBadge}
+      {reportBtn}
       <p className="card-text">
         {p.area.kind === "province"
           ? p.area.nearest
@@ -676,6 +734,7 @@ export function Panel(p: Props) {
 
   return (
     <>
+      {report}
       <motion.aside className="side" aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
         <header className="side-head">
           <nav className="trail" aria-label="breadcrumb">
@@ -699,25 +758,7 @@ export function Panel(p: Props) {
         </header>
         <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
           {answer}
-          {p.place && (
-            <Card className="fingerprint">
-              <Fingerprint
-                lang={lang}
-                variables={variables.variables}
-                current={v.id}
-                target={p.target}
-                opts={{ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }}
-                place={p.place}
-                countryGrid={p.countryGrid}
-                countries={p.countryRows}
-                countryId={p.countryId}
-                provinceFeatures={p.provinceFeatures}
-                onVariable={p.onVariable}
-                onCountry={p.onCountry}
-                onAdmin1={p.onAdmin1}
-              />
-            </Card>
-          )}
+          {fingerprintEl && <Card className="fingerprint">{fingerprintEl}</Card>}
           {math}
           {shape}
           {monthCard}
