@@ -1,0 +1,254 @@
+{
+  "schema_version": "1.0",
+  "kind": "variables",
+  "dataset": "MOCK DATA (not real) — MERRA-2 v5.12.4 layout",
+  "processed_at": "mock",
+  "is_mock": true,
+  "grid": {
+    "nlat": 361,
+    "nlon": 576,
+    "lat0": -90,
+    "lon0": -180,
+    "dlat": 0.5,
+    "dlon": 0.625
+  },
+  "period": {
+    "start": "1980-01",
+    "end": "2026-09",
+    "months": 561
+  },
+  "test_years": {
+    "start": 1980,
+    "end": 2025
+  },
+  "baseline_years": {
+    "start": 1991,
+    "end": 2020
+  },
+  "variables": [
+    {
+      "id": "T2M",
+      "collection": "M2TMNXSLV",
+      "name": {
+        "en": "Air temperature",
+        "tr": "Hava sıcaklığı"
+      },
+      "description": {
+        "en": "Air temperature 2 meters above the ground.",
+        "tr": "Yerden 2 metre yükseklikteki hava sıcaklığı."
+      },
+      "unit": "°C",
+      "unit_raw": "K",
+      "convert": {
+        "mul": 1,
+        "add": -273.15
+      },
+      "packing": {
+        "scale": 0.01,
+        "offset": 0
+      },
+      "decimals": 1,
+      "land_only": false
+    },
+    {
+      "id": "QV2M",
+      "collection": "M2TMNXSLV",
+      "name": {
+        "en": "Humidity",
+        "tr": "Nem"
+      },
+      "description": {
+        "en": "How much water vapour the air holds (grams of water per kg of air).",
+        "tr": "Havanın taşıdığı su buharı miktarı (1 kg havadaki gram su)."
+      },
+      "unit": "g/kg",
+      "unit_raw": "kg/kg",
+      "convert": {
+        "mul": 1000,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.001,
+        "offset": 0
+      },
+      "decimals": 2,
+      "land_only": false
+    },
+    {
+      "id": "SPEED",
+      "collection": "M2TMNXFLX",
+      "name": {
+        "en": "Wind speed",
+        "tr": "Rüzgâr hızı"
+      },
+      "description": {
+        "en": "Average wind speed near the surface.",
+        "tr": "Yüzeye yakın ortalama rüzgâr hızı."
+      },
+      "unit": "m/s",
+      "unit_raw": "m/s",
+      "convert": {
+        "mul": 1,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.001,
+        "offset": 0
+      },
+      "decimals": 2,
+      "land_only": false
+    },
+    {
+      "id": "PRECTOT",
+      "collection": "M2TMNXFLX",
+      "name": {
+        "en": "Precipitation",
+        "tr": "Yağış"
+      },
+      "description": {
+        "en": "Rain and snow that falls, as millimetres of water per day.",
+        "tr": "Yağmur ve kar olarak düşen su, günde milimetre olarak."
+      },
+      "unit": "mm/day",
+      "unit_raw": "kg m-2 s-1",
+      "convert": {
+        "mul": 86400,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.01,
+        "offset": 0
+      },
+      "decimals": 2,
+      "land_only": false,
+      "caveat": {
+        "en": "Reanalysis precipitation can jump when satellite observations change.",
+        "tr": "Reanaliz yağış verisi, uydu gözlemleri değiştiğinde sıçrama yapabilir."
+      }
+    },
+    {
+      "id": "EVAP",
+      "collection": "M2TMNXFLX",
+      "name": {
+        "en": "Evaporation",
+        "tr": "Buharlaşma"
+      },
+      "description": {
+        "en": "Water that goes from the surface into the air, mm per day.",
+        "tr": "Yüzeyden havaya geçen su, günde milimetre."
+      },
+      "unit": "mm/day",
+      "unit_raw": "kg m-2 s-1",
+      "convert": {
+        "mul": 86400,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.001,
+        "offset": 0
+      },
+      "decimals": 2,
+      "land_only": false
+    },
+    {
+      "id": "GWETROOT",
+      "collection": "M2TMNXLND",
+      "name": {
+        "en": "Soil moisture",
+        "tr": "Toprak nemi"
+      },
+      "description": {
+        "en": "How wet the soil is where plant roots are (0% dry, 100% saturated).",
+        "tr": "Bitki köklerinin olduğu topraktaki ıslaklık (%0 kuru, %100 doygun)."
+      },
+      "unit": "%",
+      "unit_raw": "1",
+      "convert": {
+        "mul": 100,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.01,
+        "offset": 0
+      },
+      "decimals": 1,
+      "land_only": true
+    },
+    {
+      "id": "RUNOFF",
+      "collection": "M2TMNXLND",
+      "name": {
+        "en": "Surface runoff",
+        "tr": "Yüzey akışı"
+      },
+      "description": {
+        "en": "Water that flows over the ground instead of soaking in, mm per day.",
+        "tr": "Toprağa sızmadan yüzeyden akıp giden su, günde milimetre."
+      },
+      "unit": "mm/day",
+      "unit_raw": "kg m-2 s-1",
+      "convert": {
+        "mul": 86400,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.01,
+        "offset": 0
+      },
+      "decimals": 2,
+      "land_only": true
+    },
+    {
+      "id": "SNOMAS",
+      "collection": "M2TMNXLND",
+      "name": {
+        "en": "Snow amount",
+        "tr": "Kar miktarı"
+      },
+      "description": {
+        "en": "Snow on the ground, as the millimetres of water it would make if melted.",
+        "tr": "Yerdeki kar; eriseydi kaç milimetre su olacağı olarak."
+      },
+      "unit": "mm",
+      "unit_raw": "kg m-2",
+      "convert": {
+        "mul": 1,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.5,
+        "offset": 0
+      },
+      "decimals": 0,
+      "land_only": true
+    },
+    {
+      "id": "TOTEXTTAU",
+      "collection": "M2TMNXAER",
+      "name": {
+        "en": "Aerosols (haze)",
+        "tr": "Aerosol (pus)"
+      },
+      "description": {
+        "en": "How much dust, smoke and haze block sunlight (aerosol optical depth, no unit).",
+        "tr": "Toz, duman ve pusun güneş ışığını ne kadar engellediği (aerosol optik derinliği, birimsiz)."
+      },
+      "unit": "AOD",
+      "unit_raw": "1",
+      "convert": {
+        "mul": 1,
+        "add": 0
+      },
+      "packing": {
+        "scale": 0.0002,
+        "offset": 0
+      },
+      "decimals": 3,
+      "land_only": false,
+      "caveat": {
+        "en": "Aerosol data can jump in years when new satellite observations were added.",
+        "tr": "Aerosol verisi yeni uydu gözlemlerinin eklendiği yıllarda sıçrama yapabilir."
+      }
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trend_map_header.schema.json",
+  "title": "trend_map/{VAR}.bin header",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "var",
+    "grid",
+    "years",
+    "fields",
+    "packing"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$"
+    },
+    "kind": {
+      "const": "trend_map"
+    },
+    "var": {
+      "enum": [
+        "T2M",
+        "QV2M",
+        "SPEED",
+        "PRECTOT",
+        "EVAP",
+        "GWETROOT",
+        "RUNOFF",
+        "SNOMAS",
+        "TOTEXTTAU"
+      ]
+    },
+    "grid": {
+      "type": "object",
+      "required": [
+        "nlat",
+        "nlon",
+        "lat0",
+        "lon0",
+        "dlat",
+        "dlon"
+      ],
+      "properties": {
+        "nlat": {
+          "const": 361
+        },
+        "nlon": {
+          "const": 576
+        },
+        "lat0": {
+          "const": -90
+        },
+        "lon0": {
+          "const": -180
+        },
+        "dlat": {
+          "const": 0.5
+        },
+        "dlon": {
+          "const": 0.625
+        }
+      },
+      "additionalProperties": false
+    },
+    "years": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "integer"
+        },
+        "end": {
+          "type": "integer"
+        }
+      }
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "slope_per_decade",
+          "p_value",
+          "level",
+          "fdr"
+        ]
+      },
+      "minItems": 1
+    },
+    "packing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scale",
+          "offset"
+        ],
+        "properties": {
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "offset": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
