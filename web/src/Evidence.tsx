@@ -68,7 +68,7 @@ export function Sparkline({ result, unit, lang }: { result: TrendResult; unit: s
       </svg>
       <figcaption>
         <span>{first}</span>
-        <span>{lang === "tr" ? "yıllık anomali + Sen eğimi" : "annual anomaly + Sen slope"}</span>
+        <span>{lang === "tr" ? "normalden fark · eğilim" : "difference from normal · trend"}</span>
         <span>{last}</span>
       </figcaption>
     </figure>
@@ -196,6 +196,8 @@ export function ProvinceSelect({
   onAdmin1: (country: string, id: string) => void;
 }) {
   const [q, setQ] = useState("");
+  // a dot only helps when some rows have a monthly series and some do not
+  const allSeries = rows.every((r) => r.hasSeries);
   const list = useMemo(() => {
     const f = fold(q.trim());
     return [...rows]
@@ -221,7 +223,7 @@ export function ProvinceSelect({
           <li key={a.id}>
             <button role="option" aria-selected={a.id === value} className={a.id === value ? "on" : ""} onClick={() => onAdmin1(countryId, a.id)}>
               <span>{a.name[lang]}</span>
-              {a.hasSeries && <i className="data-dot" title={tr ? "Aylık serisi var" : "Has a monthly series"} />}
+              {a.hasSeries && !allSeries && <i className="data-dot" title={tr ? "Aylık serisi var" : "Has a monthly series"} />}
               {a.lowRes && <small title={tr ? "Bir hücreden küçük" : "Smaller than one grid cell"}>{tr ? "düşük çöz." : "low res."}</small>}
             </button>
           </li>

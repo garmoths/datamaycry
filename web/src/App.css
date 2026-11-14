@@ -1977,3 +1977,5 @@ dialog.method::backdrop {
 .disclosure-inner { padding: 0 12px 14px; }
 .card.disclosure { padding: 2px 0; }
 .checks-fold { margin: -14px -12px 6px; }
+.card-head.end { justify-content: flex-end; margin-bottom: 6px; }
+.trail:empty { display: none; }

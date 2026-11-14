@@ -270,7 +270,9 @@ export function Panel(p: Props) {
 
   const period = `${monthLabel(variables.period.start, lang)} – ${monthLabel(variables.period.end, lang)}`;
   const hasAnswer = !!(shown && result && !shownError && verdict);
-  const title = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
+  const fullTitle = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
+  // "Diyarbakır, Türkiye" → "Diyarbakır" when the trail above already says Türkiye
+  const title = p.trail.length > 1 ? fullTitle.split(",")[0].trim() : fullTitle;
   const f1 = (x: number) => fmtSigned(x, v.decimals + 1);
 
   // one entrance per selection: place, variable, and whether the answer is a series or a summary
@@ -291,13 +293,10 @@ export function Panel(p: Props) {
       )}
       {ok && verdict!.meaning && <p className="meaning">{verdict!.meaning}</p>}
       {ok && result!.level !== "none" && (
-        <>
-          <p className="label">{t(lang, "slopeLabel")}</p>
-          <div className="headline">
-            <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
-            <span className="unit">{per}</span>
-          </div>
-        </>
+        <div className="headline">
+          <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
+          <span className="unit">{per}</span>
+        </div>
       )}
       <p className="card-text">{verdict!.body}</p>
       {result!.cappedReason === "badge_disagree" && (
@@ -343,7 +342,7 @@ export function Panel(p: Props) {
   ) : p.area ? (
     <Card className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
       <p className="label">
-        {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")} · {t(lang, "slopeLabel").toLowerCase()}
+        {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")}
       </p>
       <div className="headline">
         <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
@@ -354,11 +353,9 @@ export function Panel(p: Props) {
         {p.area.kind === "province"
           ? p.area.nearest
             ? tr
-              ? "Bu bölge bir ızgara hücresinden küçük; sayı, merkezine en yakın tek hücrenin trendi."
-              : "This region is smaller than one grid cell; the number is the trend of the single cell nearest its centre."
-            : tr
-              ? `Sınırları içindeki ${p.area.summary.cells} ızgara hücresinin dünya trend haritasındaki değerlerinden. Bu bölgenin aylık serisi henüz veride yok.`
-              : `From the world trend map values of the ${p.area.summary.cells} grid cells inside its borders. A monthly series for this region is not in the data yet.`
+              ? "Bölge bir hücreden küçük; sayı en yakın hücrenin trendi."
+              : "Smaller than one grid cell; the number is the nearest cell's trend."
+            : t(lang, "countryNoteNoSeries")
           : t(lang, p.area.kind === "country" ? (country ? "countryNoteSeries" : "countryNoteNoSeries") : p.area.kind === "world" ? "worldNote" : "continentNote")}
       </p>
     </Card>
@@ -441,10 +438,7 @@ export function Panel(p: Props) {
   const shape =
     hasAnswer && ok ? (
       <Card className="shape">
-        <header className="card-head">
-          <h3>
-            {result!.startYear}–{result!.endYear}
-          </h3>
+        <header className="card-head end">
           <button className="link-btn" onClick={() => p.onDrawer("chart")}>
             <Icon name="expand" size={14} /> {tr ? "Grafiği aç" : "Open chart"}
           </button>
@@ -522,7 +516,6 @@ export function Panel(p: Props) {
   // ── drawer contents ───────────────────────────────────────────────────────
   const chartPane = hasAnswer ? (
     <>
-      <p className="eyebrow">{v.name[lang]}</p>
       <h2>{place}</h2>
       <div className="seg" role="group">
         {(["anomaly", "raw", "seasons"] as const).map((k) => (
@@ -552,7 +545,6 @@ export function Panel(p: Props) {
           <p className="fine">{t(lang, "seasonHint")}</p>
         </div>
       </div>
-      {v.caveat && <p className="note">{v.caveat[lang]}</p>}
       <button className="link-btn" onClick={downloadCsv}>
         <Icon name="download" size={15} /> {t(lang, "downloadCsv")}
       </button>
@@ -630,8 +622,8 @@ export function Panel(p: Props) {
       <motion.aside className="side" aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
         <header className="side-head">
           <nav className="trail" aria-label="breadcrumb">
-            {p.trail.map((s, i) => (
-              <button key={i} className="crumb" onClick={s.go} disabled={i === p.trail.length - 1}>
+            {p.trail.slice(0, -1).map((s, i) => (
+              <button key={i} className="crumb" onClick={s.go}>
                 {s.label}
               </button>
             ))}
@@ -640,13 +632,11 @@ export function Panel(p: Props) {
           <h1 key={title}>
             <BlurText text={title} animateBy="words" trigger="load" direction="bottom" delay={50} blur={6} distance={6} stepDuration={0.22} />
           </h1>
-          <p className="eyebrow">
-            <Icon name={VAR_ICONS[v.id]} size={14} /> {v.name[lang]}
-            <span className="unit">{unit}</span>
-            {v.experimental && <span className="tag exp">{t(lang, "experimentalTag")}</span>}
-            {hasAnswer && province && <span className="tag">{tr ? "aylık seri" : "monthly series"}</span>}
-            {!hasAnswer && p.area && <span className="tag">{tr ? "trend haritası" : "trend map"}</span>}
-          </p>
+          {v.experimental && (
+            <p className="eyebrow">
+              <span className="tag exp">{t(lang, "experimentalTag")}</span>
+            </p>
+          )}
         </header>
         <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
           {answer}
