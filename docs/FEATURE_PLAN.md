@@ -179,6 +179,14 @@ istatistiği ortadaki yılda doruğa çıkar ve küçük bir p verir. Yani güç
 | 1998'de eğimi 3 katına çıkan trend | kırılma ~1998 | yakalama ≥ %70, yıl ±4 içinde |
 Sonuçlar bu dosyaya yazılır. Hedefler tutmazsa özellik çıkarılır.
 
+**Sonuç (2026-11-14, `changepoint.test.ts`, testte 150 bootstrap serisi, uygulamada 500):**
+| Senaryo | Sonuç | Hedef |
+|---|---|---|
+| Trend yok, AR(1) φ = 0,6 (300 tekrar) | 10/300 = **%3,3** yanlış alarm | ≤ %5 ✅ |
+| Düz trend (+0,4/10 yıl) + AR(1) φ = 0,6 (300 tekrar) | 15/300 = **%5,0** yanlış alarm | ≤ %5 ✅ |
+| 1998'de eğim 6 katına çıkıyor, AR(1) φ = 0,3 (150 tekrar) | **%95** yakalandı, bunların **%86**'sında yıl ±4 içinde | ≥ %70 ✅ |
+Uygulamada yer başına ~40 ms. Zaman yolculuğu oynarken hesaplanmaz.
+
 ### 3.5 Enes'in `emergence()` fonksiyonundan farkı
 - `emergence`: "test hangi yıldan itibaren anlamlı çıkıyor" (kanıtın ortaya çıkışı).
 - Bu özellik: "değişimin hızı hangi yıl değişti". Kartta ikisi ayrı cümle; karıştırılmaz.

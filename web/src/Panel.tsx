@@ -49,6 +49,8 @@ import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
 import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
+import { changePoint } from "./changepoint.ts";
+import { BendNote } from "./Bend.tsx";
 
 /** Signed number with the variable's decimals; Turkish uses a decimal comma. */
 const fmtSignedIn = (lang: Lang) => (x: number, d: number) => {
@@ -185,6 +187,9 @@ export function Panel(p: Props) {
   }, [targetKey, v.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = p.target ? series : null;
+  // change of pace (changepoint.ts); skipped while time travel replays the years
+  const bendFor = (r: { status: string; annual: { years: number[]; anomalies: number[] } } | null) =>
+    !p.anim && r && r.status === "ok" ? changePoint(r.annual.years, r.annual.anomalies) : null;
   const shownError = p.target ? error : null;
   const result = useMemo(
     () =>
@@ -210,6 +215,7 @@ export function Panel(p: Props) {
         : null,
     [shown, result, season, variables.test_years],
   );
+  const bend = useMemo(() => bendFor(result), [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
   const diag = useMemo(() => (result ? diagnose(result) : null), [result]);
   const ok = result?.status === "ok";
   const unit = unitLabel(v.unit, lang);
@@ -306,6 +312,7 @@ export function Panel(p: Props) {
         </>
       )}
       <p className="card-text">{verdict!.body}</p>
+      {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
@@ -458,7 +465,7 @@ export function Panel(p: Props) {
             <Icon name="expand" size={14} /> {tr ? "Grafiği aç" : "Open chart"}
           </button>
         </header>
-        <Sparkline result={result!} unit={unit} lang={lang} />
+        <Sparkline result={result!} unit={unit} lang={lang} bendYear={bend?.year} />
       </Card>
     ) : null;
 
@@ -541,7 +548,7 @@ export function Panel(p: Props) {
           </button>
         ))}
       </div>
-      <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} />
+      <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
       <div className="controls">
         <label>
           {t(lang, "period")} <b>{years[0]}–{years[1]}</b>
