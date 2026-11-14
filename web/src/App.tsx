@@ -48,6 +48,7 @@ import {
 import { t, type Lang } from "./i18n.ts";
 import { cellsInside, countryCode, rasterizeContinents, rasterizeCountries, summarize, summarizeCells } from "./continentStats.ts";
 import { cellsOfGrid } from "./areaStats.ts";
+import { RANK_TAB_LABEL } from "./useRankRows.ts";
 import type { PlaceCells } from "./Fingerprint.tsx";
 import "./reactbits/reactbits.css";
 import "./App.css";
@@ -612,6 +613,9 @@ export default function App() {
           <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
             <Icon name="link" size={16} />
           </button>
+          <button className={`icon-btn ${drawer === "rank" ? "on" : ""}`} onClick={() => setDrawer(drawer === "rank" ? null : "rank")} aria-label={RANK_TAB_LABEL[lang]} data-tip={RANK_TAB_LABEL[lang]}>
+            <Icon name="flag" size={16} />
+          </button>
           <button className={`icon-btn ${drawer === "explore" ? "on" : ""}`} onClick={() => setDrawer(drawer === "explore" ? null : "explore")} aria-label={t(lang, "tabExplore")} data-tip={t(lang, "tabExplore")}>
             <Icon name="sun" size={16} />
           </button>
@@ -742,6 +746,7 @@ export default function App() {
         countryGrid={countryGrid}
         provinceFeatures={provinceFeatures}
         onVariable={(id) => startTransition(() => setVarId(id))}
+        trendMap={trendMap}
       />
     </div>
   );

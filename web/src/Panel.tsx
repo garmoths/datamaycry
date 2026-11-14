@@ -28,6 +28,7 @@ import {
   type VariablesFile,
   type VariableInfo,
   type VarId,
+  type TrendMap,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
 import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartFixed, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
@@ -51,6 +52,8 @@ import { TextShimmer } from "./amicro/TextShimmer.tsx";
 import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
+import { RankBadge, RankingPane } from "./Ranking.tsx";
+import { RANK_TAB_LABEL, type RankInputs, type RankScope } from "./useRankRows.ts";
 
 /** Signed number with the variable's decimals; Turkish uses a decimal comma. */
 const fmtSignedIn = (lang: Lang) => (x: number, d: number) => {
@@ -86,7 +89,7 @@ export interface ProvinceRow extends ProvinceItem {
   lon: number;
 }
 
-export type DrawerTab = "chart" | "explore" | "sources";
+export type DrawerTab = "chart" | "explore" | "sources" | "rank";
 
 interface Props {
   lang: Lang;
@@ -119,10 +122,13 @@ interface Props {
   countryGrid: Uint16Array | null;
   provinceFeatures: ComponentProps<typeof Fingerprint>["provinceFeatures"];
   onVariable: (id: VarId) => void;
+  /** rankings (Ranking.tsx): the current variable's world trend map */
+  trendMap: TrendMap | null;
 }
 
-const DRAWER_TABS: { id: DrawerTab; icon: IconName; key: "tabChart" | "tabExplore" | "sources" }[] = [
+const DRAWER_TABS: { id: DrawerTab; icon: IconName; key?: "tabChart" | "tabExplore" | "sources"; label?: Record<Lang, string> }[] = [
   { id: "chart", icon: "chart", key: "tabChart" },
+  { id: "rank", icon: "flag", label: RANK_TAB_LABEL },
   { id: "explore", icon: "search", key: "tabExplore" },
   { id: "sources", icon: "book", key: "sources" },
 ];
@@ -216,6 +222,17 @@ export function Panel(p: Props) {
     [shown, result, season, variables.test_years],
   );
   const bend = useMemo(() => bendFor(result), [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
+  // rankings (Ranking.tsx): same period and season as the card
+  const cardOpts = useMemo(
+    () => ({ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }),
+    [eff, season],
+  );
+  const rankInputs: RankInputs = { lang, variable: v, opts: cardOpts, trendMap: p.trendMap, countryGrid: p.countryGrid, countryRows: p.countryRows, index: p.index, provinceFeatures: p.provinceFeatures };
+  const rankScope: RankScope | null =
+    p.mode !== "region" || !p.countryId ? null : p.admin1Id ? { kind: "provinces", country: p.countryId } : { kind: "countries", continent: null };
+  const rankBadge = rankScope && (
+    <RankBadge scope={rankScope} id={(p.admin1Id ?? p.countryId)!} inputs={rankInputs} onOpen={() => p.onDrawer("rank")} cardFromSeries={!!p.target} />
+  );
   const diag = useMemo(() => (result ? diagnose(result) : null), [result]);
   const ok = result?.status === "ok";
   const unit = unitLabel(v.unit, lang);
@@ -313,6 +330,7 @@ export function Panel(p: Props) {
       )}
       <p className="card-text">{verdict!.body}</p>
       {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
+      {rankBadge}
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
@@ -363,6 +381,7 @@ export function Panel(p: Props) {
         <span className="unit">{per}</span>
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
+      {rankBadge}
       <p className="card-text">
         {p.area.kind === "province"
           ? p.area.nearest
@@ -629,6 +648,10 @@ export function Panel(p: Props) {
     </>
   );
 
+  const rankPane = (
+    <RankingPane {...rankInputs} countryId={p.countryId} continent={p.continent} selected={p.admin1Id ?? p.countryId} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
+  );
+
   const sourcesPane = (
     <>
       <section>
@@ -709,7 +732,7 @@ export function Panel(p: Props) {
               <div className="seg" role="tablist">
                 {DRAWER_TABS.map((x) => (
                   <button key={x.id} role="tab" aria-selected={p.drawer === x.id} className={p.drawer === x.id ? "on" : ""} onClick={() => p.onDrawer(x.id)}>
-                    <Icon name={x.icon} size={14} /> {t(lang, x.key)}
+                    <Icon name={x.icon} size={14} /> {x.label ? x.label[lang] : t(lang, x.key!)}
                   </button>
                 ))}
               </div>
@@ -717,7 +740,7 @@ export function Panel(p: Props) {
                 <Icon name="close" size={16} />
               </button>
             </div>
-            <div className="drawer-body">{{ chart: chartPane, explore: explorePane, sources: sourcesPane }[p.drawer]}</div>
+            <div className="drawer-body">{{ chart: chartPane, explore: explorePane, sources: sourcesPane, rank: rankPane }[p.drawer]}</div>
           </motion.aside>
         )}
       </AnimatePresence>
