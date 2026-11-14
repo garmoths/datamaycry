@@ -37,3 +37,6 @@ dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Local real-data test link (ln -s ../../data/package web/public/pkg)
+web/public/pkg

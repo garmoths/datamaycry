@@ -14,7 +14,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // The worker file is served untouched by the plugin in vite.config.ts.
 setWorkerUrl(`${new URL(`${import.meta.env.BASE_URL}maplibre-worker/maplibre-gl-worker.mjs`, location.href)}`);
 import { cellOf } from "./data.ts";
-import { globeChecker, gridLines, loadBoundaries, nodeBounds, WORLD, type Bounds, type Node } from "./geo.ts";
+import { globeChecker, gridLines, loadAdmin1, loadBoundaries, nodeBounds, onAdmin1Change, WORLD, type Bounds, type Node } from "./geo.ts";
 
 /** A place with data, drawn as an orange dot in the region view. */
 export interface Marker {
@@ -374,6 +374,19 @@ export function Globe(props: Props) {
     map.setFilter("admin1-selected", mode === "region" ? eq("id", admin1Id) : NONE);
     if (mode === "region" && (continent || countryId)) spin.current = false;
   }, [ready, mode, continent, countryId, admin1Id]);
+
+  // ── provinces are fetched per country (geo.ts loadAdmin1); redraw when a file arrives ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const redraw = () =>
+      void loadBoundaries().then((b) => (map.getSource("admin1") as GeoJSONSource | undefined)?.setData(b.admin1 as never));
+    redraw();
+    return onAdmin1Change(redraw);
+  }, [ready]);
+  useEffect(() => {
+    if (mode === "region" && countryId) void loadAdmin1(countryId);
+  }, [mode, countryId]);
 
   // ── tile view: whole-globe grid + selected cell ──
   const { cell } = props;

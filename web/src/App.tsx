@@ -25,8 +25,10 @@ import {
   CELL_LEVEL,
   pathToCell,
   CONTINENTS,
+  loadAdmin1,
   loadBoundaries,
   nodeBounds,
+  onAdmin1Change,
   nodeCenter,
   WORLD,
   WORLD_NODE,
@@ -88,7 +90,10 @@ export default function App() {
     // warm the caches the first click will need: the chart library and the demo countries
     whenIdle(() => {
       void preloadPlotly();
-      for (const c of ["TUR", "EGY", "BRA"]) void getRegionSeries(c, null, "T2M").catch(() => {});
+      for (const c of ["TUR", "EGY", "BRA"]) {
+        void getRegionSeries(c, null, "T2M").catch(() => {});
+        void loadAdmin1(c).catch(() => {}); // demo countries' provinces, so their markers show early
+      }
     });
   }, []);
 
@@ -189,8 +194,11 @@ export default function App() {
       if (row) setContinent(row.properties.continent);
       setCountryId(country);
       setAdmin1Id(id);
-      const f = bounds.admin1.features.find((x) => x.properties.id === id);
-      if (f) flyTo(bboxOf([f]), `admin1:${id}`);
+      // provinces are fetched per country: the file may still be on its way
+      void loadAdmin1(country).then((fs) => {
+        const f = fs.find((x) => x.properties.id === id);
+        if (f) flyTo(bboxOf([f]), `admin1:${id}`);
+      });
     },
     [bounds, flyTo],
   );
@@ -227,6 +235,10 @@ export default function App() {
     [path, flyTo],
   );
 
+  // provinces arrive per country (geo.ts loadAdmin1): re-run the markers when one lands
+  const [admin1Version, setAdmin1Version] = useState(0);
+  useEffect(() => onAdmin1Change(() => setAdmin1Version((v) => v + 1)), []);
+
   // Region view: an orange dot on every country and province that has data
   const markers: Marker[] = useMemo(() => {
     if (!bounds) return [];
@@ -240,7 +252,9 @@ export default function App() {
       }
     }
     return out;
-  }, [bounds, index, lang]);
+    // admin1Version: bounds.admin1 grows in place as country files arrive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bounds, index, lang, admin1Version]);
 
   // ── shareable link: restore once when the data is ready, then keep the URL in sync ──
   const linkApplied = useRef(false);

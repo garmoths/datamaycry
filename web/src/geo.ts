@@ -22,25 +22,66 @@ export interface CountryProps {
   continent: string;
 }
 
+export interface Admin1Props {
+  id: string;
+  country: string;
+  name_en: string;
+  name_tr: string;
+}
+
 export interface Boundaries {
   countries: FeatureCollection<Polygon | MultiPolygon, CountryProps>;
-  admin1: FeatureCollection<Polygon | MultiPolygon, { id: string; country: string; name_en: string; name_tr: string }>;
+  /**
+   * Provinces of the countries opened so far. Starts empty and grows as
+   * loadAdmin1(country) fetches boundaries/admin1/{COUNTRY}.geojson
+   * (one file per country; all 4,596 provinces at once would be ~6 MB).
+   * Listen with onAdmin1Change to redraw.
+   */
+  admin1: FeatureCollection<Polygon | MultiPolygon, Admin1Props>;
 }
 
 let boundaries: Promise<Boundaries> | undefined;
 export function loadBoundaries(): Promise<Boundaries> {
   boundaries ??= (async () => {
-    const [countries, admin1] = await Promise.all(
-      ["countries", "admin1"].map(async (n) => {
-        const res = await fetch(`${BOUNDARIES}${n}.geojson`);
-        if (!res.ok) throw new Error(`${res.status} while loading boundaries/${n}.geojson`);
-        return res.json();
-      }),
-    );
-    return { countries, admin1 } as Boundaries;
+    const res = await fetch(`${BOUNDARIES}countries.geojson`);
+    if (!res.ok) throw new Error(`${res.status} while loading boundaries/countries.geojson`);
+    const countries = await res.json();
+    return { countries, admin1: { type: "FeatureCollection", features: [] } } as Boundaries;
   })();
   boundaries.catch(() => (boundaries = undefined));
   return boundaries;
+}
+
+const admin1Loads = new Map<string, Promise<Feature<Polygon | MultiPolygon, Admin1Props>[]>>();
+const admin1Listeners = new Set<() => void>();
+
+/** Called after a country's provinces were added to Boundaries.admin1. Returns an unsubscribe. */
+export function onAdmin1Change(fn: () => void): () => void {
+  admin1Listeners.add(fn);
+  return () => admin1Listeners.delete(fn);
+}
+
+/**
+ * Provinces of one country (ids identical to the data, see worker/boundaries.py).
+ * Fetched once; a country without provinces resolves to [].
+ */
+export function loadAdmin1(country: string): Promise<Feature<Polygon | MultiPolygon, Admin1Props>[]> {
+  let p = admin1Loads.get(country);
+  if (!p) {
+    p = (async () => {
+      const b = await loadBoundaries();
+      const res = await fetch(`${BOUNDARIES}admin1/${country}.geojson`);
+      if (!res.ok) return [];
+      const fc = (await res.json()) as FeatureCollection<Polygon | MultiPolygon, Admin1Props>;
+      // a new object, so map sources and React memos see the change
+      b.admin1 = { type: "FeatureCollection", features: [...b.admin1.features, ...fc.features] };
+      admin1Listeners.forEach((fn) => fn());
+      return fc.features;
+    })();
+    p.catch(() => admin1Loads.delete(country));
+    admin1Loads.set(country, p);
+  }
+  return p;
 }
 
 /** Bounding box of any polygon feature(s). Handles the antimeridian crudely (Russia, Fiji…) by skipping far-east slivers. */
