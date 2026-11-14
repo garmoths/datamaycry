@@ -671,6 +671,16 @@
 .verdict.strong { border-color: rgba(63, 174, 106, 0.45); }
 .verdict.possible { border-color: rgba(217, 168, 43, 0.45); }
 
+.meaning {
+  margin: 8px 0 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.verdict.strong .meaning { color: #7fd9a0; }
+.verdict.possible .meaning { color: #f0c75e; }
+
 .headline {
   display: flex;
   align-items: baseline;

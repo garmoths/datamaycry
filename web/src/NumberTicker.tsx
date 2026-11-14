@@ -11,17 +11,22 @@ interface Props {
   decimals: number;
   /** "+" in front of positive numbers */
   signed?: boolean;
+  /** decimal separator ("," for Turkish) */
+  comma?: boolean;
   className?: string;
 }
 
-export function NumberTicker({ value, decimals, signed = false, className }: Props) {
+export function NumberTicker({ value, decimals, signed = false, comma = false, className }: Props) {
   const el = useRef<HTMLSpanElement>(null);
   const reduce = useReducedMotion();
   const mv = useMotionValue(0);
   // the default restDelta (0.01) would stop a 0.004 change at ~0; settle on the exact value instead
   const spring = useSpring(mv, { damping: 40, stiffness: 140, restDelta: 1e-7, restSpeed: 1e-6 });
 
-  const fmt = (x: number) => (signed && x > 0 ? "+" : "") + x.toFixed(decimals);
+  const fmt = (x: number) => {
+    const s = (signed && x > 0 ? "+" : "") + x.toFixed(decimals);
+    return comma ? s.replace(".", ",") : s;
+  };
 
   useEffect(() => {
     if (reduce) {

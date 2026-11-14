@@ -1,6 +1,6 @@
 /** Number formatting on the result card. Written with AI assistance (Claude). */
 import { describe, expect, it } from "vitest";
-import { noTrendText, smartFixed, smartSigned } from "./i18n.ts";
+import { cardText, chanceText, meaningHead, noTrendText, smartFixed, smartSigned } from "./i18n.ts";
 
 describe("smartFixed", () => {
   it("keeps the variable's decimals for ordinary numbers", () => {
@@ -15,6 +15,38 @@ describe("smartFixed", () => {
     expect(smartFixed(0, 2)).toBe("0.00");
   });
   it("no-trend sentence shows the real size of a tiny slope", () => {
-    expect(noTrendText("en", 0.004, "mm/day", 2)).toContain("+0.0040 mm/day");
+    expect(noTrendText("en", 0.004, "mm/day", 2)).toContain("0.0040 mm/day");
+  });
+});
+
+describe("plain-language card", () => {
+  const base = { level: "strong" as const, place: "Diyarbakır", unit: "°C", ci: [0.24, 0.61] as [number, number],
+    p: 0.0001, total: 1.9, startYear: 1980, endYear: 2025, decimals: 1 };
+  it("says what the change means, with a Turkish decimal comma and no p-value jargon", () => {
+    const s = cardText("tr", { ...base, varId: "T2M", variable: "Hava sıcaklığı", dir: "up", slope: 0.42 });
+    expect(s).toBe("Diyarbakır: 1980–2025 arasında her 10 yılda ortalama 0,42 °C ısınmış; toplamda yaklaşık 1,9 °C. " +
+      "Gerçek değer büyük ihtimalle her 10 yılda 0,24 ile 0,61 °C arasında. Bunun şans eseri olma ihtimali binde birden az.");
+    expect(meaningHead("tr", "T2M", "up")).toBe("Isınıyor");
+    expect(meaningHead("en", "GWETROOT", "down")).toBe("The soil is drying out");
+  });
+  it("a fall reads as a positive-sized change with the right verb and range", () => {
+    const s = cardText("en", { ...base, varId: "SNOMAS", variable: "Snow", unit: "mm", dir: "down", slope: -16.1,
+      ci: [-25.8, -6.9], total: -72.4, decimals: 0 });
+    expect(s).toContain("has decreased by about 16 mm per decade");
+    expect(s).toContain("between 7 and 26 mm");
+    expect(s).not.toContain("-");
+  });
+  it("a likely change admits uncertainty", () => {
+    const s = cardText("tr", { ...base, level: "possible", varId: "PRECTOT", variable: "Yağış", unit: "mm/gün",
+      dir: "down", slope: -0.05, ci: [-0.09, -0.01], p: 0.03, total: -0.2, decimals: 2 });
+    expect(s).toContain("yüzde beşten az");
+    expect(s).toContain("kanıt henüz yeterince güçlü değil");
+  });
+  it("Turkish puts the percent sign first", () => {
+    expect(noTrendText("tr", -0.21, "%", 1)).toContain("her 10 yılda %0,21");
+  });
+  it("chance in words", () => {
+    expect(chanceText("en", 0.0004)).toBe("less than 1 in 1,000");
+    expect(chanceText("tr", 0.2)).toBe("yaklaşık yüzde 20");
   });
 });

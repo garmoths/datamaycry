@@ -22,7 +22,7 @@ import {
   type VariableInfo,
 } from "./data.ts";
 import { Chart } from "./Chart.tsx";
-import { cardText, decimalsFor, noTrendText, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
+import { cardText, chanceText, decimalsFor, meaningHead, noTrendText, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
 import { CONTINENTS, type Node } from "./geo.ts";
 import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
@@ -31,7 +31,11 @@ import { PlaceSearch } from "./PlaceSearch.tsx";
 import { Icon, type IconName } from "./icons.tsx";
 import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
 
-const fmtSigned = smartSigned;
+/** Signed number with the variable's decimals; Turkish uses a decimal comma. */
+const fmtSignedIn = (lang: Lang) => (x: number, d: number) => {
+  const s = smartSigned(x, d);
+  return lang === "tr" ? s.replace(".", ",") : s;
+};
 
 /** Summary of the world / a continent / a country, from the per-cell trend map. */
 export interface AreaInfo {
@@ -98,6 +102,7 @@ const TAB_H = 40;
 
 export function Panel(p: Props) {
   const { lang, variable: v, variables } = p;
+  const fmtSigned = fmtSignedIn(lang);
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -178,12 +183,20 @@ export function Panel(p: Props) {
     if (result.status === "too_short") return { cls: "none", head: null, body: t(lang, "tooShort") };
     if (result.status === "insufficient_data") return { cls: "none", head: null, body: t(lang, "insufficient") };
     if (result.status === "constant") return { cls: "none", head: null, body: t(lang, "constant") };
-    if (result.level === "none") return { cls: "none", head: t(lang, "none"), body: noTrendText(lang, result.slopePerDecade, unit, v.decimals) };
+    if (result.level === "none")
+      return {
+        cls: "none",
+        head: t(lang, "none"),
+        body: noTrendText(lang, result.slopePerDecade, unit, v.decimals, { start: result.startYear, end: result.endYear }),
+      };
+    const dir = result.slopePerDecade >= 0 ? "up" : "down";
     return {
       cls: result.level,
       head: t(lang, result.level),
+      meaning: meaningHead(lang, v.id, dir),
       body: cardText(lang, {
-        dir: result.slopePerDecade >= 0 ? "up" : "down",
+        varId: v.id,
+        dir,
         level: result.level,
         place,
         variable: v.name[lang],
@@ -193,6 +206,7 @@ export function Panel(p: Props) {
         p: result.pValue,
         total: result.totalChange,
         startYear: result.startYear,
+        endYear: result.endYear,
         decimals: v.decimals,
       }),
     };
@@ -282,11 +296,12 @@ export function Panel(p: Props) {
                 ))}
               </div>
             )}
+            {ok && "meaning" in card && card.meaning && <p className="meaning">{card.meaning}</p>}
             {ok && (
               <p className="headline">
-                <NumberTicker className="big" value={result.slopePerDecade} decimals={decimalsFor(result.slopePerDecade, v.decimals + 1)} signed />
+                <NumberTicker className="big" value={result.slopePerDecade} decimals={decimalsFor(result.slopePerDecade, v.decimals + 1)} signed comma={lang === "tr"} />
                 <span className="unit">
-                  {unit} / {t(lang, "decade")}
+                  {unit} {t(lang, "perDecade")}
                 </span>
               </p>
             )}
@@ -311,7 +326,9 @@ export function Panel(p: Props) {
               </div>
               <div className="stat" title={t(lang, "statNote")}>
                 <dt>{t(lang, "pLabel")}</dt>
-                <dd>{result.pValue < 0.001 ? "p < 0.001" : `p = ${result.pValue.toFixed(3)}`}</dd>
+                <dd>
+                  {chanceText(lang, result.pValue)} <small>(p {result.pValue < 0.001 ? "< 0.001" : `= ${result.pValue.toFixed(3)}`})</small>
+                </dd>
               </div>
               <div className="stat">
                 <dt>{t(lang, "totalLabel")}</dt>
@@ -574,9 +591,9 @@ function AreaCard({ lang, area, v, name, hasSeries, compact = false }: { lang: L
       <div className="verdict">
         <p className="fine">{t(lang, area.kind === "world" ? "meanTrendAll" : "meanTrend")}</p>
         <p className="headline">
-          <NumberTicker className="big" value={s.meanSlope} decimals={decimalsFor(s.meanSlope, v.decimals + 1)} signed />
+          <NumberTicker className="big" value={s.meanSlope} decimals={decimalsFor(s.meanSlope, v.decimals + 1)} signed comma={lang === "tr"} />
           <span className="unit">
-            {unit} / {t(lang, "decade")}
+            {unit} {t(lang, "perDecade")}
           </span>
         </p>
         <div className="sharebar" role="img" aria-label={parts.map((x) => `${t(lang, x.key)} ${pct(x.share)}`).join(", ")}>
