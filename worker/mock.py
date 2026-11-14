@@ -275,9 +275,12 @@ def write_tiles() -> None:
 
 
 if __name__ == "__main__":
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir(parents=True)
+    # Remove only what this script writes: web/public/data/boundaries (map borders) lives here too.
+    OUT.mkdir(parents=True, exist_ok=True)
+    for sub in ("regions", "trend_map", "tiles"):
+        if (OUT / sub).exists():
+            shutil.rmtree(OUT / sub)
+    (OUT / "variables.json").unlink(missing_ok=True)
     write_variables()
     write_regions()
     write_badges()
