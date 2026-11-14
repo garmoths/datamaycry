@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { cellOf, tileOf } from "./data.ts";
 import { CELL_LEVEL, children, dataTileOf, gridLines, nodeBounds, nodeCenter, pathToCell, WORLD_NODE, type Node } from "./geo.ts";
-import { cellAlpha, IMAGE_COORDS, latForMercatorY, trendColor } from "./trendImage.ts";
+import { bspline, cellAlpha, IMAGE_COORDS, latForMercatorY, polarFade, trendColor } from "./trendImage.ts";
 
 describe("trend field", () => {
   it("places Mercator rows at the right latitude", () => {
@@ -13,6 +13,19 @@ describe("trend field", () => {
     expect(trendColor(0).map(Math.round)).toEqual([240, 240, 236]);
     expect(trendColor(5).map(Math.round)).toEqual([202, 72, 48]);
     expect(trendColor(-5).map(Math.round)).toEqual([33, 102, 172]);
+  });
+  it("B-spline weights sum to 1 and never go negative (no colour overshoot)", () => {
+    for (const t of [0, 0.25, 0.5, 0.99]) {
+      const w = bspline(t);
+      expect(w.reduce((a, b) => a + b)).toBeCloseTo(1, 10);
+      expect(Math.min(...w)).toBeGreaterThanOrEqual(0);
+    }
+  });
+  it("fades colour out towards the poles", () => {
+    expect(polarFade(60)).toBe(1);
+    expect(polarFade(-78)).toBeGreaterThan(0);
+    expect(polarFade(-78)).toBeLessThan(1);
+    expect(polarFade(84.5)).toBe(0);
   });
   it("fades small or unproven changes so the Earth shows through", () => {
     expect(cellAlpha(2, 1)).toBeGreaterThan(cellAlpha(1, 1));

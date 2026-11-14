@@ -84,7 +84,7 @@ export function Chart(props: Props) {
         margin: { l: 48, r: 10, t: 8, b: 32 },
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: "rgba(0,0,0,0)",
-        font: { color: "#c9d6f2", size: 11 },
+        font: { color: "#c4cee3", size: 11.5, family: "Inter, system-ui, sans-serif" },
         showlegend: false,
         xaxis: { gridcolor: "rgba(255,255,255,0.07)", range: [x[0], x[x.length - 1]] },
         yaxis: {

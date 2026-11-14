@@ -5,9 +5,10 @@
  * - Colour-blind-safe diverging blue ↔ orange-red, 5 stops (no red/green, §10.4-5).
  * - Each grid cell gets a colour and an opacity; opacity = evidence level × size of the
  *   change, so small or unproven changes fade into the satellite picture underneath.
- * - The cell values are lightly smoothed (1-2-1 kernel) and then sampled bilinearly
- *   (premultiplied alpha) at 2048×2048 directly in Web-Mercator, so the result reads as
- *   a flowing field rather than 0.5° blocks. Missing data stays transparent.
+ * - The cell values are resampled with a cubic B-spline (premultiplied alpha) at 2048×2048
+ *   directly in Web-Mercator and stored losslessly (PNG), so the result reads as a flowing
+ *   field rather than 0.5° blocks. Colour fades out towards the poles. Missing data stays
+ *   transparent.
  *
  * Written with AI assistance (Claude).
  */
@@ -87,72 +88,86 @@ export function paintTrendPixels(map: TrendInput): Uint8ClampedArray {
     field.set([r * a, g * a, b * a, a], k * 4);
   }
 
-  // 2) light 1-2-1 smoothing in both directions (longitude wraps around)
-  const tmp = new Float32Array(n * 4);
-  for (let i = 0; i < nlat; i++)
-    for (let j = 0; j < nlon; j++) {
-      const l = (i * nlon + ((j + nlon - 1) % nlon)) * 4;
-      const c = (i * nlon + j) * 4;
-      const r = (i * nlon + ((j + 1) % nlon)) * 4;
-      for (let q = 0; q < 4; q++) tmp[c + q] = (field[l + q] + 2 * field[c + q] + field[r + q]) / 4;
-    }
-  for (let i = 0; i < nlat; i++)
-    for (let j = 0; j < nlon; j++) {
-      const d = (Math.max(0, i - 1) * nlon + j) * 4;
-      const c = (i * nlon + j) * 4;
-      const u = (Math.min(nlat - 1, i + 1) * nlon + j) * 4;
-      for (let q = 0; q < 4; q++) field[c + q] = (tmp[d + q] + 2 * tmp[c + q] + tmp[u + q]) / 4;
-    }
-
-  // 3) bilinear sampling straight into Web-Mercator pixels
-  const px = new Uint8ClampedArray(SIZE * SIZE * 4);
-  const fj = new Float32Array(SIZE);
-  const j0s = new Int32Array(SIZE);
+  // 2) cubic B-spline resampling straight into Web-Mercator pixels. B-splines are C²-smooth
+  //    (no kinks, no diamond artefacts like bilinear) and never overshoot, so colours stay in
+  //    the palette. Separable: first along longitude for every grid row, then along latitude.
+  const H = new Float32Array(nlat * SIZE * 4);
   for (let x = 0; x < SIZE; x++) {
     const lon = -180 + ((x + 0.5) / SIZE) * 360;
     const f = (lon + 180) / 0.625; // cell j is centred on lon −180 + j·0.625
-    j0s[x] = Math.floor(f);
-    fj[x] = f - Math.floor(f);
+    const j0 = Math.floor(f);
+    const w = bspline(f - j0);
+    for (let m = 0; m < 4; m++) {
+      const j = (((j0 - 1 + m) % nlon) + nlon) % nlon; // longitude wraps around
+      const wm = w[m];
+      for (let i = 0; i < nlat; i++) {
+        const src = (i * nlon + j) * 4;
+        const dst = (i * SIZE + x) * 4;
+        H[dst] += wm * field[src];
+        H[dst + 1] += wm * field[src + 1];
+        H[dst + 2] += wm * field[src + 2];
+        H[dst + 3] += wm * field[src + 3];
+      }
+    }
   }
+
+  const px = new Uint8ClampedArray(SIZE * SIZE * 4);
   for (let y = 0; y < SIZE; y++) {
-    const fi = (latForMercatorY(y) + 90) / 0.5;
-    const i0 = Math.min(nlat - 2, Math.floor(fi));
-    const ti = fi - i0;
+    const lat = latForMercatorY(y);
+    const fade = polarFade(lat);
+    if (fade <= 0) continue;
+    const fi = (lat + 90) / 0.5;
+    const i0 = Math.floor(fi);
+    const w = bspline(fi - i0);
+    const rows = [0, 1, 2, 3].map((m) => Math.min(nlat - 1, Math.max(0, i0 - 1 + m)) * SIZE * 4);
     for (let x = 0; x < SIZE; x++) {
-      const ja = ((j0s[x] % nlon) + nlon) % nlon;
-      const jb = (ja + 1) % nlon;
-      const tj = fj[x];
-      const w00 = (1 - ti) * (1 - tj), w01 = (1 - ti) * tj, w10 = ti * (1 - tj), w11 = ti * tj;
-      const a00 = (i0 * nlon + ja) * 4, a01 = (i0 * nlon + jb) * 4;
-      const a10 = ((i0 + 1) * nlon + ja) * 4, a11 = ((i0 + 1) * nlon + jb) * 4;
-      const a = w00 * field[a00 + 3] + w01 * field[a01 + 3] + w10 * field[a10 + 3] + w11 * field[a11 + 3];
-      if (a < 0.004) continue;
+      const c = x * 4;
+      const a = w[0] * H[rows[0] + c + 3] + w[1] * H[rows[1] + c + 3] + w[2] * H[rows[2] + c + 3] + w[3] * H[rows[3] + c + 3];
+      if (a < 0.004) continue; // fully transparent: no data here
       const o = (y * SIZE + x) * 4;
       for (let q = 0; q < 3; q++)
-        px[o + q] = (w00 * field[a00 + q] + w01 * field[a01 + q] + w10 * field[a10 + q] + w11 * field[a11 + q]) / a;
-      px[o + 3] = a * 255;
+        px[o + q] = (w[0] * H[rows[0] + c + q] + w[1] * H[rows[1] + c + q] + w[2] * H[rows[2] + c + q] + w[3] * H[rows[3] + c + q]) / a;
+      px[o + 3] = a * fade * 255;
     }
   }
   return px;
 }
 
+/** Uniform cubic B-spline weights for neighbours −1, 0, +1, +2 at fraction t. */
+export function bspline(t: number): [number, number, number, number] {
+  const t2 = t * t, t3 = t2 * t, u = 1 - t;
+  return [(u * u * u) / 6, (3 * t3 - 6 * t2 + 4) / 6, (-3 * t3 + 3 * t2 + 3 * t + 1) / 6, t3 / 6];
+}
+
+/**
+ * Colour fades out between 72° and 84° latitude. The globe stretches the image's last row
+ * into a fan over the poles; fading avoids that artefact (and Web-Mercator ends at 85°).
+ */
+export function polarFade(lat: number): number {
+  const x = Math.min(1, Math.max(0, (84 - Math.abs(lat)) / 12));
+  return x * x * (3 - 2 * x);
+}
+
 export const TREND_IMAGE_SIZE = SIZE;
 
-/** Encode pixels as WebP (smaller and faster than PNG) on whatever canvas is available. */
+/**
+ * Encode pixels as PNG on whatever canvas is available. Lossless on purpose: lossy WebP
+ * compresses in 4×4/16×16 blocks, which showed up as pixelation on the smooth field.
+ */
 export async function encodePixels(px: Uint8ClampedArray): Promise<Blob | null> {
   if (typeof OffscreenCanvas !== "undefined") {
     const c = new OffscreenCanvas(SIZE, SIZE);
     const ctx = c.getContext("2d");
     if (!ctx) return null;
     ctx.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, SIZE, SIZE), 0, 0);
-    return c.convertToBlob({ type: "image/webp", quality: 0.92 });
+    return c.convertToBlob({ type: "image/png" });
   }
   const c = document.createElement("canvas");
   c.width = c.height = SIZE;
   const ctx = c.getContext("2d");
   if (!ctx) return null;
   ctx.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, SIZE, SIZE), 0, 0);
-  return new Promise((res) => c.toBlob(res, "image/webp", 0.92));
+  return new Promise((res) => c.toBlob(res, "image/png"));
 }
 
 /**

@@ -23,7 +23,23 @@ const S = {
   modePoint: { en: "Tile view", tr: "Karo görünümü" },
   modePointSub: { en: "Meridians × parallels, down to one cell", tr: "Meridyen × paralel, tek hücreye kadar" },
   continentSummary: { en: "Continent summary", tr: "Kıta özeti" },
+  countrySummary: { en: "Country summary", tr: "Ülke özeti" },
+  worldSummary: { en: "World summary", tr: "Dünya özeti" },
   meanTrend: { en: "Average trend over land", tr: "Karada ortalama trend" },
+  meanTrendAll: { en: "Average trend, land and sea", tr: "Ortalama trend, kara ve deniz" },
+  decade: { en: "decade", tr: "10 yıl" },
+  worldNote: {
+    en: "Area-weighted over every grid cell with data. Pick a continent, then a country and a city to dig deeper.",
+    tr: "Verisi olan tüm ızgara hücrelerinde alan ağırlıklı. Daha derine inmek için bir kıta, sonra ülke ve şehir seç.",
+  },
+  countryNoteSeries: {
+    en: "From the world trend map inside the borders. The chart below uses the country's own monthly series.",
+    tr: "Sınırlar içindeki dünya trend haritasından. Aşağıdaki grafik ülkenin kendi aylık serisini kullanıyor.",
+  },
+  countryNoteNoSeries: {
+    en: "From the world trend map inside the borders. A monthly series for this country is not in the demo data yet.",
+    tr: "Sınırlar içindeki dünya trend haritasından. Bu ülkenin aylık serisi henüz demo veride yok.",
+  },
   strongUp: { en: "strong rise", tr: "güçlü artış" },
   strongDown: { en: "strong fall", tr: "güçlü azalış" },
   possibleShare: { en: "possible", tr: "olası" },
@@ -88,6 +104,12 @@ const S = {
 } satisfies Record<string, Record<Lang, string>>;
 
 export type StringKey = keyof typeof S;
+
+/** Units come from variables.json in English; show them in the UI language. */
+export function unitLabel(unit: string, lang: Lang): string {
+  if (lang !== "tr") return unit;
+  return unit.replace("/day", "/gün");
+}
 export const t = (lang: Lang, key: StringKey): string => S[key][lang];
 
 /**

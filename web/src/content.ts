@@ -7,20 +7,23 @@
  */
 import type { VarId } from "./data.ts";
 import type { Lang } from "./i18n.ts";
+import type { IconName } from "./icons.tsx";
+
+/** Line icon per variable (icons.tsx). */
+export const VAR_ICONS: Record<VarId, IconName> = {
+  T2M: "thermometer",
+  QV2M: "droplet",
+  SPEED: "wind",
+  PRECTOT: "rain",
+  EVAP: "evaporation",
+  RUNOFF: "runoff",
+  GWETROOT: "sprout",
+  SNOMAS: "snow",
+  TOTEXTTAU: "haze",
+};
+
 
 type T = Record<Lang, string>;
-
-export const VAR_ICON: Record<VarId, string> = {
-  T2M: "🌡️",
-  QV2M: "💧",
-  SPEED: "🌬️",
-  PRECTOT: "🌧️",
-  EVAP: "☁️", // water rising into the air (♨️ rendered as a hot-spring sign on Windows)
-  RUNOFF: "🌊",
-  GWETROOT: "🌱",
-  SNOMAS: "❄️",
-  TOTEXTTAU: "🌫️",
-};
 
 export const VAR_GROUPS: { title: T; ids: VarId[] }[] = [
   { title: { en: "Air", tr: "Hava" }, ids: ["T2M", "QV2M", "SPEED"] },
@@ -31,7 +34,7 @@ export const VAR_GROUPS: { title: T; ids: VarId[] }[] = [
 
 export interface Question {
   id: string;
-  icon: string;
+  icon: IconName;
   q: T;
   vars: VarId[];
   tip: T;
@@ -41,42 +44,42 @@ export interface Question {
 export const QUESTIONS: Question[] = [
   {
     id: "warming",
-    icon: "🔥",
+    icon: "flame",
     q: { en: "Is it getting hotter?", tr: "Daha mı ısınıyor?" },
     vars: ["T2M"],
     tip: { en: "Try “Summer” in the season box to see if summers warm faster.", tr: "Yazların daha hızlı ısınıp ısınmadığını görmek için mevsimde “Yaz”ı seç." },
   },
   {
     id: "drought",
-    icon: "🏜️",
+    icon: "drought",
     q: { en: "Is it drying out?", tr: "Kuraklaşıyor mu?" },
     vars: ["GWETROOT", "PRECTOT", "EVAP"],
     tip: { en: "Drought shows up as less soil moisture — compare with rainfall and evaporation.", tr: "Kuraklık toprak neminin azalmasıyla görünür — yağış ve buharlaşmayla karşılaştır." },
   },
   {
     id: "rain",
-    icon: "☔",
+    icon: "rain",
     q: { en: "Does it rain more or less?", tr: "Yağış artıyor mu, azalıyor mu?" },
     vars: ["PRECTOT", "RUNOFF"],
     tip: { en: "Rain trends are noisy; a longer period helps.", tr: "Yağış trendleri gürültülüdür; daha uzun dönem seçmek yardımcı olur." },
   },
   {
     id: "snow",
-    icon: "⛄",
+    icon: "snow",
     q: { en: "Is the snow disappearing?", tr: "Kar azalıyor mu?" },
     vars: ["SNOMAS", "T2M"],
     tip: { en: "Pick a mountain or northern area — deserts have no snow to lose.", tr: "Bir dağ ya da kuzey bölgesi seç — çölde kaybedilecek kar yok." },
   },
   {
     id: "air",
-    icon: "😷",
+    icon: "haze",
     q: { en: "Is the air getting hazier?", tr: "Hava daha mı puslu?" },
     vars: ["TOTEXTTAU"],
     tip: { en: "Aerosols include dust and pollution. Read the data note below the card.", tr: "Aerosol toz ve kirliliği kapsar. Kartın altındaki veri notunu oku." },
   },
   {
     id: "wind",
-    icon: "🪁",
+    icon: "kite",
     q: { en: "Is it windier?", tr: "Rüzgâr artıyor mu?" },
     vars: ["SPEED"],
     tip: { en: "Wind changes are usually small — look at the confidence interval.", tr: "Rüzgâr değişimleri genelde küçüktür — güven aralığına bak." },

@@ -7,8 +7,9 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { VarId, VariableInfo } from "./data.ts";
-import { QUESTIONS, VAR_GROUPS, VAR_ICON, type Question } from "./content.ts";
-import { t, type Lang } from "./i18n.ts";
+import { QUESTIONS, VAR_GROUPS, VAR_ICONS, type Question } from "./content.ts";
+import { Icon } from "./icons.tsx";
+import { t, unitLabel, type Lang } from "./i18n.ts";
 
 interface Props {
   lang: Lang;
@@ -34,15 +35,15 @@ export function VariablePicker({ lang, variables, value, onChange }: Props) {
     <section className="vars" aria-label={t(lang, "variable")}>
       <button className="vars-head" onClick={() => setOpen(!open)} aria-expanded={open}>
         <span className="vars-icon" aria-hidden>
-          {VAR_ICON[value]}
+          <Icon name={VAR_ICONS[value]} size={22} />
         </span>
         <span className="vars-title">
           <small>{t(lang, "variable")}</small>
           <strong>
-            {cur?.name[lang]} <em>{cur?.unit}</em>
+            {cur?.name[lang]} <em>{cur && unitLabel(cur.unit, lang)}</em>
           </strong>
         </span>
-        <span className={`chev ${open ? "up" : ""}`} aria-hidden />
+        <Icon name="chevron" size={18} className={`chev ${open ? "up" : ""}`} />
       </button>
 
       {open && (
@@ -87,10 +88,10 @@ export function VariablePicker({ lang, variables, value, onChange }: Props) {
                         />
                       )}
                       <span className="vtile-icon" aria-hidden>
-                        {VAR_ICON[id]}
+                        <Icon name={VAR_ICONS[id]} size={22} />
                       </span>
                       <span className="vtile-name">{v.name[lang]}</span>
-                      <span className="vtile-unit">{v.unit}</span>
+                      <span className="vtile-unit">{unitLabel(v.unit, lang)}</span>
                     </button>
                   );
                 })}
@@ -102,7 +103,7 @@ export function VariablePicker({ lang, variables, value, onChange }: Props) {
           <div className="questions">
             {QUESTIONS.map((q) => (
               <button key={q.id} className={`qchip ${question?.id === q.id ? "on" : ""}`} onClick={() => ask(q)}>
-                <span aria-hidden>{q.icon}</span> {q.q[lang]}
+                <Icon name={q.icon} size={15} /> {q.q[lang]}
               </button>
             ))}
           </div>

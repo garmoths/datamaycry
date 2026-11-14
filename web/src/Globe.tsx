@@ -9,7 +9,7 @@
  * Written with AI assistance (Claude).
  */
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, NavigationControl, Popup, setWorkerUrl, type GeoJSONSource, type ImageSource, type MapMouseEvent } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl, Popup, addProtocol, setWorkerUrl, type GeoJSONSource, type ImageSource, type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 // The worker file is served untouched by the plugin in vite.config.ts.
 setWorkerUrl(`${new URL(`${import.meta.env.BASE_URL}maplibre-worker/maplibre-gl-worker.mjs`, location.href)}`);
@@ -58,6 +58,43 @@ const NONE = ["==", ["get", "id"], ""] as never;
 const HOVER = (on: number) => ["case", ["boolean", ["feature-state", "hover"], false], on, 0];
 const REGION_LAYERS = ["admin1-fill", "countries-fill"];
 const EMPTY = { type: "FeatureCollection", features: [] } as const;
+
+/**
+ * Web-Mercator tiles end at ±85°, and the globe fills the pole caps by stretching the last
+ * pixel row of the top/bottom tiles into a fan — which shows as streaks over Antarctica.
+ * The "bm" protocol loads the NASA tile and, for those edge tiles only, blends the last
+ * rows into one uniform colour measured from Blue Marble (ice south, ocean north), so the
+ * fan is a smooth plain colour. All other tiles pass through untouched.
+ */
+const GIBS = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08-01/GoogleMapsCompatible_Level8";
+const POLE_RGB = { north: [13, 36, 76], south: [233, 234, 234] } as const;
+let protocolAdded = false;
+function addBlueMarbleProtocol() {
+  if (protocolAdded) return;
+  protocolAdded = true;
+  addProtocol("bm", async (params, abort) => {
+    const [z, x, y] = params.url.replace("bm://", "").split("/").map(Number);
+    const res = await fetch(`${GIBS}/${z}/${y}/${x}.jpeg`, { signal: abort.signal });
+    if (!res.ok) throw new Error(`Blue Marble tile ${res.status}`);
+    const last = 2 ** z - 1;
+    if (y !== 0 && y !== last) return { data: await res.arrayBuffer() };
+    const img = await createImageBitmap(await res.blob());
+    const c = new OffscreenCanvas(img.width, img.height);
+    const ctx = c.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const north = y === 0;
+    const [r, g, b] = north ? POLE_RGB.north : POLE_RGB.south;
+    const band = Math.round(img.height * 0.12); // ~ the last degree before ±85°
+    const grad = ctx.createLinearGradient(0, north ? 0 : img.height, 0, north ? band : img.height - band);
+    grad.addColorStop(0, `rgba(${r},${g},${b},1)`);
+    grad.addColorStop(0.15, `rgba(${r},${g},${b},1)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, north ? 0 : img.height - band, img.width, band);
+    const out = await c.convertToBlob({ type: "image/png" });
+    return { data: await out.arrayBuffer() };
+  });
+}
 
 function hasWebGL2(): boolean {
   try {
@@ -134,13 +171,12 @@ export function Globe(props: Props) {
       map.addSource("cells", { type: "geojson", data: gridLines() as never, maxzoom: 6 });
       map.addSource("markers", { type: "geojson", data: EMPTY as never, promoteId: "id" });
 
+      addBlueMarbleProtocol();
       // Real-world basemap: NASA Blue Marble (shaded relief + bathymetry) from NASA GIBS,
       // public, no key, CORS-enabled; native up to z8 and stretched beyond.
       map.addSource("satellite", {
         type: "raster",
-        tiles: [
-          "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
-        ],
+        tiles: ["bm://{z}/{x}/{y}"], // NASA GIBS via addBlueMarbleProtocol (pole seam fix)
         tileSize: 256,
         maxzoom: 8,
         attribution: "Imagery: NASA Blue Marble · GIBS",

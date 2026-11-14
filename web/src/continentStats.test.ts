@@ -19,7 +19,7 @@ function fakeMap(): TrendMap {
 describe("summarize", () => {
   it("area-weights by cos(latitude) and splits shares by evidence level", () => {
     const map = fakeMap();
-    const grid = new Uint8Array(N);
+    const grid = new Uint16Array(N);
     const equator = 180 * 576; // row i = 180 → 0°
     const sixty = 300 * 576; // row i = 300 → 60°N, weight cos 60° = 0.5
     grid[equator] = grid[sixty] = 1;
@@ -27,7 +27,7 @@ describe("summarize", () => {
     map.level[equator] = 2;
     map.slopePerDecade[sixty] = -0.3;
     map.level[sixty] = 0;
-    const s = summarize(map, grid, 0)!;
+    const s = summarize(map, grid, 1)!;
     expect(s.cells).toBe(2);
     expect(s.meanSlope).toBeCloseTo((0.3 * 1 - 0.3 * 0.5) / 1.5);
     expect(s.strongUp).toBeCloseTo(1 / 1.5);
@@ -37,8 +37,8 @@ describe("summarize", () => {
 
   it("ignores no-data cells and returns null when nothing is left", () => {
     const map = fakeMap();
-    const grid = new Uint8Array(N);
+    const grid = new Uint16Array(N);
     grid[1000] = 3;
-    expect(summarize(map, grid, 2)).toBeNull();
+    expect(summarize(map, grid, 3)).toBeNull();
   });
 });

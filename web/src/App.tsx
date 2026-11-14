@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { preloadPlotly } from "./plotlyLoader.ts";
 import { VariablePicker } from "./VariablePicker.tsx";
+import { Icon, Logo } from "./icons.tsx";
 import { MethodDialog } from "./MethodDialog.tsx";
 import {
   getRegionSeries,
@@ -13,7 +14,7 @@ import {
   type VariablesFile,
 } from "./data.ts";
 import { Globe, type Marker, type View } from "./Globe.tsx";
-import { Panel, type CountryRow, type Target } from "./Panel.tsx";
+import { Panel, type AreaInfo, type CountryRow, type Target } from "./Panel.tsx";
 import { renderTrendImage, PALETTE_CSS } from "./trendImage.ts";
 import {
   bboxOf,
@@ -30,7 +31,7 @@ import {
   type Node,
 } from "./geo.ts";
 import { t, type Lang } from "./i18n.ts";
-import { rasterizeContinents, summarize } from "./continentStats.ts";
+import { countryCode, rasterizeContinents, rasterizeCountries, summarize } from "./continentStats.ts";
 import "./App.css";
 
 const trendImages = new Map<VarId, Promise<string | null>>();
@@ -120,12 +121,25 @@ export default function App() {
     () => bounds?.countries.features.map((f) => f.properties).filter((c) => c.id && c.id !== "-99") ?? [],
     [bounds],
   );
-  // which continent each grid cell is on (computed once from the borders)
+  // which continent / country each grid cell is in (computed once from the borders)
   const continentGrid = useMemo(() => (bounds ? rasterizeContinents(bounds) : null), [bounds]);
-  const continentSummary = useMemo(() => {
-    const idx = CONTINENTS.findIndex((c) => c.id === continent);
-    return trendMap && continentGrid && idx >= 0 ? summarize(trendMap, continentGrid, idx) : null;
-  }, [trendMap, continentGrid, continent]);
+  const countryGrid = useMemo(() => (bounds ? rasterizeCountries(bounds) : null), [bounds]);
+  // Summary card for the place at the current level: world → continent → country
+  const area: AreaInfo | null = useMemo(() => {
+    if (!trendMap || !bounds || mode !== "region" || admin1Id) return null;
+    if (countryId) {
+      const code = countryCode(bounds, countryId);
+      const s = countryGrid && code ? summarize(trendMap, countryGrid, code) : null;
+      return s && { kind: "country", summary: s };
+    }
+    if (continent) {
+      const idx = CONTINENTS.findIndex((c) => c.id === continent);
+      const s = continentGrid && idx >= 0 ? summarize(trendMap, continentGrid, idx + 1) : null;
+      return s && { kind: "continent", summary: s };
+    }
+    const s = summarize(trendMap, null);
+    return s && { kind: "world", summary: s };
+  }, [trendMap, bounds, mode, continent, countryId, admin1Id, continentGrid, countryGrid]);
 
   const flyTo = useCallback((b: Bounds, key: string) => setView({ bounds: b, key }), []);
 
@@ -306,16 +320,15 @@ export default function App() {
       {noGl && <div className="globe fallback">{t(lang, "webgl")}</div>}
 
       <div className="topleft">
-        <div className="brand">
-          <strong>{t(lang, "title")}</strong>
-          <span>{t(lang, "tagline")}</span>
-        </div>
-        <fieldset className="views">
-          <legend>{t(lang, "view")}</legend>
+        <div className="views" role="group" aria-label={t(lang, "view")}>
+          <div className="views-head">
+            <Logo size={30} />
+            <span className="views-title">{t(lang, "view")}</span>
+          </div>
           {(["region", "point"] as const).map((m) => (
             <button key={m} className={`view ${mode === m ? "on" : ""}`} aria-pressed={mode === m} onClick={() => switchMode(m)}>
-              <span className="view-icon" aria-hidden>
-                {m === "region" ? "🌍" : "▦"}
+              <span className="view-icon">
+                <Icon name={m === "region" ? "globe" : "grid"} size={20} />
               </span>
               <span className="view-text">
                 <strong>{t(lang, m === "region" ? "modeRegion" : "modePoint")}</strong>
@@ -323,16 +336,16 @@ export default function App() {
               </span>
             </button>
           ))}
-        </fieldset>
+        </div>
         <VariablePicker lang={lang} variables={variables.variables} value={varId} onChange={setVarId} />
       </div>
 
       <header className="top">
-        <button className="seg-btn" onClick={() => setMethodOpen(true)}>
-          ⓘ {t(lang, "howItWorks")}
+        <button className="seg-btn icon-btn" onClick={() => setMethodOpen(true)}>
+          <Icon name="info" size={17} /> {t(lang, "howItWorks")}
         </button>
-        <button className="seg-btn" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language">
-          {lang === "en" ? "TR" : "EN"}
+        <button className="seg-btn icon-btn" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language">
+          <Icon name="language" size={17} /> {lang === "en" ? "TR" : "EN"}
         </button>
         {variables.is_mock && <span className="mockbadge">{t(lang, "mock")}</span>}
       </header>
@@ -363,7 +376,7 @@ export default function App() {
         admin1Id={admin1Id}
         path={path}
         onScale={goToScale}
-        continentSummary={continentSummary}
+        area={area}
         target={target}
         trail={trail}
         onContinent={pickContinent}

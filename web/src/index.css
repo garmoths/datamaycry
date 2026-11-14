@@ -1,14 +1,21 @@
 :root {
-  --bg: #05070f;
-  --panel: rgba(12, 18, 36, 0.88);
-  --line: rgba(255, 255, 255, 0.12);
-  --text: #dbe5ff;
-  --muted: #8d9bbd;
+  --bg: #060a16;
+  /* panels sit over a bright satellite picture: nearly opaque so text stays readable */
+  --panel: rgba(10, 15, 30, 0.94);
+  --panel-2: rgba(255, 255, 255, 0.045);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #eef2fb;
+  --text-2: #c4cee3;
+  --muted: #9aa8c4;
   --accent: #ffd166;
-  --up: #e4572e;
-  --down: #2b7bba;
-  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  font: 15px/1.45 var(--sans);
+  --up: #ca4830;
+  --down: #2166ac;
+  --radius: 14px;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  font: 14.5px/1.5 var(--sans);
+  font-feature-settings: "cv11", "ss01";
   color: var(--text);
   background: var(--bg);
   color-scheme: dark;

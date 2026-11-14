@@ -10,33 +10,43 @@ import {
   type VariableInfo,
 } from "./data.ts";
 import { Chart } from "./Chart.tsx";
-import { cardText, decimalsFor, noTrendText, smartSigned, t, type Lang } from "./i18n.ts";
+import { cardText, decimalsFor, noTrendText, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
 import { CONTINENTS, type Node } from "./geo.ts";
 import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
-import type { ContinentSummary } from "./continentStats.ts";
+import type { AreaSummary } from "./continentStats.ts";
 import { motion, useReducedMotion } from "motion/react";
 
 const fmtSigned = smartSigned;
 
-function ContinentCard({ lang, s, v, name }: { lang: Lang; s: ContinentSummary; v: VariableInfo; name: string }) {
+/** Summary of the world / a continent / a country, from the per-cell trend map. */
+export interface AreaInfo {
+  kind: "world" | "continent" | "country";
+  summary: AreaSummary;
+}
+
+function AreaCard({ lang, area, v, name, hasSeries }: { lang: Lang; area: AreaInfo; v: VariableInfo; name: string; hasSeries: boolean }) {
+  const s = area.summary;
   const parts = [
-    { key: "strongUp", share: s.strongUp, cls: "up" },
-    { key: "possibleShare", share: s.possible, cls: "maybe" },
-    { key: "noneShare", share: s.none, cls: "flat" },
-    { key: "strongDown", share: s.strongDown, cls: "down" },
+    { key: "strongUp", share: s.strongUp, cls: "share-up" },
+    { key: "possibleShare", share: s.possible, cls: "share-maybe" },
+    { key: "noneShare", share: s.none, cls: "share-flat" },
+    { key: "strongDown", share: s.strongDown, cls: "share-down" },
   ] as const;
   const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const title = area.kind === "world" ? "worldSummary" : area.kind === "continent" ? "continentSummary" : "countrySummary";
+  const note = area.kind === "country" ? (hasSeries ? "countryNoteSeries" : "countryNoteNoSeries") : area.kind === "world" ? "worldNote" : "continentNote";
   return (
     <section className="result">
-      <h3>{t(lang, "continentSummary")}</h3>
+      <h3>{t(lang, title)}</h3>
       <h2>
         {name} · {v.name[lang]}
       </h2>
       <div className="card">
-        <p className="fine">{t(lang, "meanTrend")}</p>
+        <p className="fine">{t(lang, area.kind === "world" ? "meanTrendAll" : "meanTrend")}</p>
         <p className="nums">
-          <NumberTicker className="big" value={s.meanSlope} decimals={decimalsFor(s.meanSlope, v.decimals + 1)} signed /> {v.unit}/10y
+          <NumberTicker className="big" value={s.meanSlope} decimals={decimalsFor(s.meanSlope, v.decimals + 1)} signed />{" "}
+          <span className="unit">{unitLabel(v.unit, lang)} / {t(lang, "decade")}</span>
         </p>
         <div className="sharebar" role="img" aria-label={parts.map((p) => `${t(lang, p.key)} ${pct(p.share)}`).join(", ")}>
           {parts.map((p) => (
@@ -50,7 +60,7 @@ function ContinentCard({ lang, s, v, name }: { lang: Lang; s: ContinentSummary; 
             </li>
           ))}
         </ul>
-        <p className="fine">{t(lang, "continentNote")}</p>
+        <p className="fine">{t(lang, note)}</p>
       </div>
     </section>
   );
@@ -80,7 +90,7 @@ interface Props {
   admin1Id: string | null;
   path: Node[];
   onScale: (level: number) => void;
-  continentSummary: ContinentSummary | null;
+  area: AreaInfo | null;
   target: Target;
   trail: { label: string; go: () => void }[];
   onContinent: (id: string) => void;
@@ -148,7 +158,7 @@ export function Panel(p: Props) {
     if (result.status === "insufficient_data") return { cls: "none", head: null, body: t(lang, "insufficient") };
     if (result.status === "constant") return { cls: "none", head: null, body: t(lang, "constant") };
     if (result.level === "none") {
-      return { cls: "none", head: t(lang, "none"), body: noTrendText(lang, result.slopePerDecade, v.unit, v.decimals) };
+      return { cls: "none", head: t(lang, "none"), body: noTrendText(lang, result.slopePerDecade, unitLabel(v.unit, lang), v.decimals) };
     }
     return {
       cls: result.level,
@@ -158,7 +168,7 @@ export function Panel(p: Props) {
         level: result.level,
         place,
         variable: v.name[lang],
-        unit: v.unit,
+        unit: unitLabel(v.unit, lang),
         slope: result.slopePerDecade,
         ci: result.ci95,
         p: result.pValue,
@@ -179,6 +189,23 @@ export function Panel(p: Props) {
         ))}
       </nav>
 
+      {/* world → continent → country: always something to read, even without a series */}
+      {p.area && (
+        <AreaCard
+          lang={lang}
+          area={p.area}
+          v={v}
+          hasSeries={!!country}
+          name={
+            p.area.kind === "world"
+              ? t(lang, "world")
+              : p.area.kind === "continent"
+                ? (CONTINENTS.find((c) => c.id === p.continent)?.[lang] ?? "")
+                : (country?.name[lang] ?? p.countryRows.find((c) => c.id === p.countryId)?.[`name_${lang}`] ?? "")
+          }
+        />
+      )}
+
       {/* ── pickers ── */}
       {p.mode === "region" && !p.continent && (
         <section>
@@ -192,15 +219,6 @@ export function Panel(p: Props) {
             ))}
           </div>
         </section>
-      )}
-
-      {p.mode === "region" && p.continent && !p.countryId && p.continentSummary && (
-        <ContinentCard
-          lang={lang}
-          s={p.continentSummary}
-          v={v}
-          name={CONTINENTS.find((c) => c.id === p.continent)?.[lang] ?? p.continent}
-        />
       )}
 
       {p.mode === "region" && p.continent && !p.countryId && (
@@ -233,9 +251,7 @@ export function Panel(p: Props) {
                 ))}
               </div>
             </>
-          ) : (
-            <p className="hint">{t(lang, "noData")}</p>
-          )}
+          ) : null /* the summary card above explains there is no series yet */}
         </section>
       )}
 
@@ -284,7 +300,7 @@ export function Panel(p: Props) {
                   <div className="stat wide">
                     <dt>{t(lang, "slopeLabel")}</dt>
                     <dd>
-                      <NumberTicker className="big" value={result.slopePerDecade} decimals={decimalsFor(result.slopePerDecade, v.decimals + 1)} signed /> <small>{v.unit}</small>
+                      <NumberTicker className="big" value={result.slopePerDecade} decimals={decimalsFor(result.slopePerDecade, v.decimals + 1)} signed /> <small>{unitLabel(v.unit, lang)} / {t(lang, "decade")}</small>
                     </dd>
                   </div>
                   <div className="stat">
@@ -300,7 +316,7 @@ export function Panel(p: Props) {
                   <div className="stat">
                     <dt>{t(lang, "totalLabel")}</dt>
                     <dd>
-                      {fmtSigned(result.totalChange, v.decimals)} <small>{v.unit}</small>
+                      {fmtSigned(result.totalChange, v.decimals)} <small>{unitLabel(v.unit, lang)}</small>
                     </dd>
                   </div>
                   <div className="stat">
@@ -323,7 +339,7 @@ export function Panel(p: Props) {
             ))}
           </div>
 
-          <Chart series={shown} result={result} view={view} unit={v.unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} />
+          <Chart series={shown} result={result} view={view} unit={unitLabel(v.unit, lang)} decimals={v.decimals} startYear={years[0]} endYear={years[1]} />
 
           <div className="controls">
             <label>
