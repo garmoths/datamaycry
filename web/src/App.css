@@ -2083,3 +2083,7 @@ dialog.method::backdrop {
 @media (max-width: 900px) {
   .period { width: auto; right: var(--edge); }
 }
+/* the panel is as tall as its content (never past the bottom edge) */
+@media (min-width: 901px) {
+  .side { bottom: auto; max-height: calc(100% - var(--top-h) - var(--edge)); }
+}
