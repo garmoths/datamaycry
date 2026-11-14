@@ -192,7 +192,7 @@
         "add": 0
       },
       "packing": {
-        "scale": 0.01,
+        "scale": 0.02,
         "offset": 0
       },
       "decimals": 2,
@@ -240,7 +240,7 @@
         "add": 0
       },
       "packing": {
-        "scale": 0.0002,
+        "scale": 0.0005,
         "offset": 0
       },
       "decimals": 3,
