@@ -67,6 +67,10 @@ interface Props {
   onUnsupported: () => void;
 }
 
+/** room for the variable rail (left) and the side panel (right); App.css .deck uses the same */
+const GLOBE_PAD_LEFT = 84;
+const GLOBE_PAD_RIGHT = 408;
+
 const NONE = ["==", ["get", "id"], ""] as never;
 /** opacity `on` while the feature has feature-state hover = true, else invisible */
 const HOVER = (on: number) => ["case", ["boolean", ["feature-state", "hover"], false], on, 0];
@@ -196,7 +200,7 @@ export function Globe(props: Props) {
       // column becomes a sheet over the lower half
       map.setPadding(
         wide
-          ? { top: 64, left: 16, right: 408, bottom: 92 }
+          ? { top: 64, left: GLOBE_PAD_LEFT, right: GLOBE_PAD_RIGHT, bottom: 92 }
           : { top: 118, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.46) },
       );
     };

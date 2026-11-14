@@ -685,7 +685,7 @@ export default function App() {
         }}
       />
 
-      {/* bottom: the map legend and the variable dock */}
+      {/* bottom: the map legend and the time travel bar */}
       <motion.div className="deck" initial={reduce ? false : { y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
         <div className="legend" hidden={animOn}>
           <label>
@@ -729,8 +729,12 @@ export default function App() {
               onClose={closeAnim}
             />
           )}
-          <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
         </div>
+      </motion.div>
+
+      {/* the variables: a vertical rail on the left edge (a bar above the sheet on phones) */}
+      <motion.div className="rail" initial={reduce ? false : { x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
+        <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
       </motion.div>
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />

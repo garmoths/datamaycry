@@ -2259,3 +2259,61 @@ dialog.method::backdrop {
 .yearbadge em { font-family: var(--display); }
 .yearbadge em { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
 .tb-ticks i { font-family: var(--display); }
+
+/* ── variable rail: vertical, centred on the left edge ──────────────────── */
+.rail {
+  position: absolute;
+  left: var(--edge);
+  top: 50%;
+  z-index: 5;
+  translate: 0 -50%;
+}
+.rail .dock {
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 18px;
+}
+.rail .dock-item { justify-content: flex-start; padding: 0 11px; }
+.rail .dock-sep {
+  align-self: center;
+  width: 22px;
+  height: 1px;
+  margin: 4px 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+}
+/* hover labels open to the right of the rail */
+.rail .dock-label {
+  left: calc(100% + 14px);
+  bottom: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+/* the bottom deck now only holds the legend and the time travel bar, centred under the globe
+   (same side room as the globe's padding in Globe.tsx: 84 px left, 408 px right) */
+@media (min-width: 901px) {
+  .deck { left: 84px; right: 408px; }
+  .app.side-closed .deck { right: 84px; }
+  .legend { left: calc(var(--edge) - 84px); }
+}
+@media (min-width: 901px) and (max-height: 760px) {
+  .rail .dock-item { height: 34px; }
+}
+@media (max-width: 900px) {
+  .rail {
+    top: auto;
+    left: var(--edge);
+    right: var(--edge);
+    bottom: calc(var(--sheet) + var(--edge));
+    translate: none;
+    display: flex;
+    justify-content: center;
+  }
+  .rail .dock { flex-direction: row; align-items: center; height: 52px; border-radius: var(--radius-m); }
+  .rail .dock-item { justify-content: center; padding: 0 10px; }
+  .rail .dock-sep { width: 1px; height: 20px; margin: 0 4px; background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.22), transparent); }
+  .rail .dock-label { left: 50%; top: auto; bottom: calc(100% + 12px); translate: -50% 0; }
+  .deck { bottom: calc(var(--sheet) + var(--edge) + 62px); }
+}
