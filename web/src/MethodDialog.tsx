@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { METHOD_LIMITS, METHOD_STEPS } from "./content.ts";
 import { t, type Lang } from "./i18n.ts";
+import { References } from "./Evidence.tsx";
 
 export function MethodDialog({ lang, open, onClose }: { lang: Lang; open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -39,9 +40,8 @@ export function MethodDialog({ lang, open, onClose }: { lang: Lang; open: boolea
         </ol>
         <h3>{t(lang, "limits")}</h3>
         <p className="fine">{METHOD_LIMITS[lang]}</p>
-        <p className="fine">
-          Mann (1945) · Kendall (1975) · Sen (1968) · Benjamini & Hochberg (1995) · NASA MERRA-2 · Natural Earth
-        </p>
+        <h3>{t(lang, "sources")}</h3>
+        <References lang={lang} />
       </div>
     </dialog>
   );

@@ -10,7 +10,9 @@
  * - Opacity = evidence (continuous in the p-value) × size of the change: small or unproven changes fade into the
  *   satellite picture underneath. Missing data stays transparent, never 0.
  * - Cell values are interpolated with a cubic B-spline (C²-smooth, never overshoots the
- *   palette), premultiplied alpha, lossless PNG. Colour fades out towards the poles.
+ *   palette), premultiplied alpha, lossless PNG.
+ * - Near the poles the colour runs smoothly into one cap colour per pole (the area-mean of
+ *   the polar rows), so the globe's pole caps are coloured too instead of a bald disc.
  *
  * Written with AI assistance (Claude).
  */
@@ -65,11 +67,19 @@ export function bspline(t: number): [number, number, number, number] {
   return [(u * u * u) / 6, (3 * t3 - 6 * t2 + 4) / 6, (-3 * t3 + 3 * t2 + 3 * t + 1) / 6, t3 / 6];
 }
 
-/** Colour fades out between 72° and 84° latitude (the globe fans the last row over the poles). */
-export function polarFade(lat: number): number {
-  const x = Math.min(1, Math.max(0, (84 - Math.abs(lat)) / 12));
+/**
+ * How far a latitude is blended into its pole's cap colour: 0 below 76°, 1 from 84.5°.
+ * The globe has no tiles beyond ±85° and fills the pole caps by stretching the last pixel
+ * row of the edge tiles. That row is one uniform colour here, so the caps are coloured
+ * smoothly (no fan of streaks, and no colourless "bald" disc at the poles).
+ */
+export function polarBlend(lat: number): number {
+  const x = Math.min(1, Math.max(0, (Math.abs(lat) - 76) / 8.5));
   return x * x * (3 - 2 * x);
 }
+
+/** Polar rows that make up a cap colour (|lat| ≥ this). */
+const CAP_FROM = 78;
 
 /** Latitude of Web-Mercator y in 0…1 (0 = north edge). */
 export function mercatorLat(yNorm: number): number {
@@ -81,6 +91,9 @@ export interface TrendField {
   nlon: number;
   /** premultiplied RGBA (0…255 colour × alpha 0…1) per grid cell */
   rgba: Float32Array;
+  /** premultiplied RGBA of the north / south pole caps (area-mean of the polar rows) */
+  capN: [number, number, number, number];
+  capS: [number, number, number, number];
 }
 
 /** Colour + opacity for every grid cell; built once per variable (~10 ms). */
@@ -108,7 +121,25 @@ export function buildField(map: Pick<TrendMap, "grid" | "slopePerDecade" | "leve
   // one 1-2-1 pass in each direction before the B-spline: soft, natural transitions
   // (the map is a regional overview; exact cell values are in the panel)
   rgba = smooth121(rgba, nlat, nlon);
-  return { nlat, nlon, rgba };
+  return { nlat, nlon, rgba, capN: capColor(rgba, nlat, nlon, 1), capS: capColor(rgba, nlat, nlon, -1) };
+}
+
+/** Area-weighted (cos latitude) mean premultiplied colour of the rows poleward of CAP_FROM. */
+function capColor(rgba: Float32Array, nlat: number, nlon: number, side: 1 | -1): [number, number, number, number] {
+  const out: [number, number, number, number] = [0, 0, 0, 0];
+  let w = 0;
+  for (let i = 0; i < nlat; i++) {
+    const lat = -90 + i * 0.5;
+    if (lat * side < CAP_FROM) continue;
+    const a = Math.max(Math.cos((lat * Math.PI) / 180), 0.004); // the pole row still counts a little
+    for (let j = 0; j < nlon; j++) {
+      const k = (i * nlon + j) * 4;
+      for (let q = 0; q < 4; q++) out[q] += a * rgba[k + q];
+      w += a;
+    }
+  }
+  if (w > 0) for (let q = 0; q < 4; q++) out[q] /= w;
+  return out;
 }
 
 function smooth121(src: Float32Array, nlat: number, nlon: number): Float32Array {
@@ -129,7 +160,7 @@ function smooth121(src: Float32Array, nlat: number, nlon: number): Float32Array 
 
 /** RGBA pixels of map tile z/x/y (size × size), sampled from the field with a 2-D B-spline. */
 export function renderTile(field: TrendField, z: number, x: number, y: number, size = 256): Uint8ClampedArray {
-  const { nlat, nlon, rgba } = field;
+  const { nlat, nlon, rgba, capN, capS } = field;
   const px = new Uint8ClampedArray(size * size * 4);
   const n = 2 ** z;
   // column weights are the same for every row of the tile
@@ -147,8 +178,8 @@ export function renderTile(field: TrendField, z: number, x: number, y: number, s
   }
   for (let r = 0; r < size; r++) {
     const lat = mercatorLat((y + (r + 0.5) / size) / n);
-    const fade = polarFade(lat);
-    if (fade <= 0) continue;
+    const blend = polarBlend(lat);
+    const cap = lat > 0 ? capN : capS;
     const fi = (lat + 90) / 0.5;
     const i0 = Math.floor(fi);
     const wi = bspline(fi - i0);
@@ -168,12 +199,18 @@ export function renderTile(field: TrendField, z: number, x: number, y: number, s
           A += w * rgba[k + 3];
         }
       }
+      if (blend > 0) {
+        R += (cap[0] - R) * blend;
+        G += (cap[1] - G) * blend;
+        B += (cap[2] - B) * blend;
+        A += (cap[3] - A) * blend;
+      }
       if (A < 0.004) continue; // no data here
       const o = (r * size + c) * 4;
       px[o] = R / A;
       px[o + 1] = G / A;
       px[o + 2] = B / A;
-      px[o + 3] = A * fade * 255;
+      px[o + 3] = A * 255;
     }
   }
   return px;

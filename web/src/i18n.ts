@@ -7,12 +7,21 @@ const S = {
   mock: { en: "MOCK DATA", tr: "SAHTE VERİ" },
   view: { en: "View", tr: "Görünüm" },
   share: { en: "Share", tr: "Paylaş" },
+  searchAll: { en: "Search a place, variable or question", tr: "Yer, değişken ya da soru ara" },
   experimentalTag: { en: "experimental", tr: "deneysel" },
+  checksTitle: { en: "Checked against independent sources", tr: "Bağımsız kaynaklarla karşılaştırma" },
+  cappedBadge: {
+    en: "An independent source points the other way for this place, so the label is kept at “possible”.",
+    tr: "Bağımsız bir kaynak bu yer için farklı bir sonuç veriyor, bu yüzden etiket “olası”da tutuldu.",
+  },
+  aboutData: { en: "About these numbers", tr: "Bu sayılar hakkında" },
+  allSources: { en: "All sources and references", tr: "Tüm kaynaklar ve kaynakça" },
+  sources: { en: "Sources", tr: "Kaynakça" },
   areaShares: { en: "Across the continent's grid cells", tr: "Kıtanın ızgara hücrelerinde" },
   cappedTitle: { en: "Lowered to “possible”.", tr: "“Olası”ya düşürüldü." },
   lowResNote: {
-    en: "Low resolution: this province is smaller than one grid cell (~50 km), so the value is a blend of neighbouring cells.",
-    tr: "Düşük çözünürlük: bu il bir ızgara hücresinden (~50 km) küçük, bu yüzden değer komşu hücrelerin karışımı.",
+    en: "Low resolution: this province is smaller than one grid cell (0.5° × 0.625°), so the value is a blend of neighbouring cells.",
+    tr: "Düşük çözünürlük: bu il bir ızgara hücresinden (0,5° × 0,625°) küçük, bu yüzden değer komşu hücrelerin karışımı.",
   },
   mockTip: {
     en: "Demo data with a made-up pattern. Real NASA MERRA-2 numbers replace it without changing the app.",

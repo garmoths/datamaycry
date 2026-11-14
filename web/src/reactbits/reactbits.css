@@ -1,0 +1,30 @@
+/* Plain-CSS stand-ins for the Tailwind classes the React Bits components used. */
+.rb-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  user-select: none;
+}
+
+/* BlurText */
+.rb-blur {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.26em;
+}
+.rb-blur.rb-click {
+  cursor: pointer;
+}
+.rb-blur-word {
+  display: inline-flex;
+}
+.rb-blur-piece {
+  display: inline-block;
+  will-change: transform, filter, opacity;
+}

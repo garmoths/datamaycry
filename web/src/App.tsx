@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { readLink, writeLink } from "./share.ts";
 import { preloadPlotly } from "./plotlyLoader.ts";
 import { VariableDock } from "./VariableDock.tsx";
@@ -17,14 +18,17 @@ import {
   type VariablesFile,
 } from "./data.ts";
 import { Globe, type Marker, type View } from "./Globe.tsx";
-import { Panel, type AreaInfo, type CountryRow, type PanelTab, type Status, type Target } from "./Panel.tsx";
-import { StatusIsland } from "./StatusIsland.tsx";
+import { Panel, type AreaInfo, type CountryRow, type DrawerTab, type ProvinceRow, type Target } from "./Panel.tsx";
+import { Starfield } from "./Starfield.tsx";
+import { CommandPalette } from "./CommandPalette.tsx";
 import { trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
 import {
   bboxOf,
   CELL_LEVEL,
   pathToCell,
   CONTINENTS,
+  labelPoint,
+  mainBbox,
   loadAdmin1,
   loadBoundaries,
   nodeBounds,
@@ -37,8 +41,10 @@ import {
   type Node,
 } from "./geo.ts";
 import { t, type Lang } from "./i18n.ts";
-import { countryCode, rasterizeContinents, rasterizeCountries, summarize } from "./continentStats.ts";
+import { cellsInside, countryCode, rasterizeContinents, rasterizeCountries, summarize, summarizeCells } from "./continentStats.ts";
+import "./reactbits/reactbits.css";
 import "./App.css";
+
 
 
 /** Run `fn` when the browser has nothing better to do (falls back to a timeout). */
@@ -69,8 +75,9 @@ export default function App() {
   const [noGl, setNoGl] = useState(false);
   const [methodOpen, setMethodOpen] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
-  const [tab, setTab] = useState<PanelTab>("explore");
-  const [status, setStatus] = useState<Status>({ place: "", value: null, level: null, loading: false });
+  const [drawer, setDrawer] = useState<DrawerTab | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const reduce = useReducedMotion();
 
   const [continent, setContinent] = useState<string | null>(null);
   const [countryId, setCountryId] = useState<string | null>(null);
@@ -132,9 +139,46 @@ export default function App() {
   // which continent / country each grid cell is in (computed once from the borders)
   const continentGrid = useMemo(() => (bounds ? rasterizeContinents(bounds) : null), [bounds]);
   const countryGrid = useMemo(() => (bounds ? rasterizeCountries(bounds) : null), [bounds]);
-  // Summary card for the place at the current level: world → continent → country
+  // provinces arrive per country (geo.ts loadAdmin1): re-run lists and dots when one lands
+  const [admin1Version, setAdmin1Version] = useState(0);
+  useEffect(() => onAdmin1Change(() => setAdmin1Version((v) => v + 1)), []);
+
+  // Every province of the chosen country, from its border file — all 242 countries have one.
+  // `hasSeries` marks the few that also have a monthly series in the data (regions/index.json).
+  const provinces: ProvinceRow[] = useMemo(() => {
+    if (!bounds || !countryId) return [];
+    const withSeries = new Map(index.find((c) => c.id === countryId)?.admin1.map((a) => [a.id, a]) ?? []);
+    return bounds.admin1.features
+      .filter((f) => f.properties.country === countryId)
+      .map((f) => {
+        const dot = labelPoint(f);
+        return {
+          id: f.properties.id,
+          name: { en: f.properties.name_en, tr: f.properties.name_tr },
+          hasSeries: withSeries.has(f.properties.id),
+          lowRes: !!withSeries.get(f.properties.id)?.low_resolution,
+          lat: dot.lat,
+          lon: dot.lon,
+        };
+      });
+    // admin1Version: bounds.admin1 is replaced as country files arrive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bounds, index, countryId, admin1Version]);
+  const province = provinces.find((x) => x.id === admin1Id) ?? null;
+
+  // Summary for the place at the current level, from the world trend map:
+  // world → continent → country → province (the provinces without a monthly series)
   const area: AreaInfo | null = useMemo(() => {
-    if (!trendMap || !bounds || mode !== "region" || admin1Id) return null;
+    if (!trendMap || !bounds || mode !== "region") return null;
+    if (admin1Id) {
+      if (!province || province.hasSeries) return null; // its own monthly series is shown instead
+      const f = bounds.admin1.features.find((x) => x.properties.id === admin1Id);
+      // no cell centre inside a very small province → the one cell nearest to its dot
+      const inside = f ? cellsInside(f) : [];
+      const cells = f && !inside.length ? cellsInside(f, province) : inside;
+      const s = summarizeCells(trendMap, cells);
+      return s && { kind: "province", summary: s, nearest: inside.length === 0 };
+    }
     if (countryId) {
       const code = countryCode(bounds, countryId);
       const s = countryGrid && code ? summarize(trendMap, countryGrid, code) : null;
@@ -147,12 +191,11 @@ export default function App() {
     }
     const s = summarize(trendMap, null);
     return s && { kind: "world", summary: s };
-  }, [trendMap, bounds, mode, continent, countryId, admin1Id, continentGrid, countryGrid]);
+  }, [trendMap, bounds, mode, continent, countryId, admin1Id, province, continentGrid, countryGrid]);
 
   const flyTo = useCallback((b: Bounds, key: string) => setView({ bounds: b, key }), []);
 
   const reset = useCallback(() => {
-      setTab("explore");
     setContinent(null);
     setCountryId(null);
     setAdmin1Id(null);
@@ -162,7 +205,6 @@ export default function App() {
 
   const pickContinent = useCallback(
     (id: string) => {
-      setTab("summary");
       setContinent(id);
       setCountryId(null);
       setAdmin1Id(null);
@@ -173,13 +215,12 @@ export default function App() {
 
   const pickCountry = useCallback(
     (id: string) => {
-      setTab("summary");
       if (!bounds) return;
       const row = bounds.countries.features.find((f) => f.properties.id === id);
       if (row) setContinent(row.properties.continent);
       setCountryId(id);
       setAdmin1Id(null);
-      const box = index.find((c) => c.id === id)?.bbox ?? (row ? bboxOf([row]) : WORLD);
+      const box = index.find((c) => c.id === id)?.bbox ?? (row ? mainBbox(row) : WORLD);
       flyTo(box, `country:${id}`);
     },
     [bounds, index, flyTo],
@@ -187,7 +228,6 @@ export default function App() {
 
   const pickAdmin1 = useCallback(
     (country: string, id: string) => {
-      setTab("summary");
       if (!bounds) return;
       // a province can be reached straight from search or a link: keep the trail complete
       const row = bounds.countries.features.find((x) => x.properties.id === country);
@@ -217,7 +257,6 @@ export default function App() {
   // block / data tile / sub-tile. The camera only moves when the click lands in a new 10° tile.
   const pickCell = useCallback(
     (i: number, j: number) => {
-      setTab("summary");
       const next = pathToCell(i, j);
       const tile = next[2];
       const sameTile = path[2] && path[2].i0 === tile.i0 && path[2].j0 === tile.j0;
@@ -235,26 +274,19 @@ export default function App() {
     [path, flyTo],
   );
 
-  // provinces arrive per country (geo.ts loadAdmin1): re-run the markers when one lands
-  const [admin1Version, setAdmin1Version] = useState(0);
-  useEffect(() => onAdmin1Change(() => setAdmin1Version((v) => v + 1)), []);
-
-  // Region view: an orange dot on every country and province that has data
+  // Orange dots appear only after a country is clicked: one per province of THAT country.
   const markers: Marker[] = useMemo(() => {
-    if (!bounds) return [];
-    const out: Marker[] = [];
-    for (const c of index) {
-      for (const a of c.admin1) {
-        const f = bounds.admin1.features.find((x) => x.properties.id === a.id);
-        if (!f) continue;
-        const [w, s, e, n] = bboxOf([f]);
-        out.push({ id: a.id, country: c.id, admin1: a.id, label: `${a.name[lang]}, ${c.name[lang]}`, lat: (s + n) / 2, lon: (w + e) / 2 });
-      }
-    }
-    return out;
-    // admin1Version: bounds.admin1 grows in place as country files arrive
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bounds, index, lang, admin1Version]);
+    const cname = countryRows.find((c) => c.id === countryId)?.[`name_${lang}`] ?? "";
+    return provinces.map((a) => ({
+      id: a.id,
+      country: countryId!,
+      admin1: a.id,
+      label: cname ? `${a.name[lang]}, ${cname}` : a.name[lang],
+      lat: a.lat,
+      lon: a.lon,
+      series: a.hasSeries,
+    }));
+  }, [provinces, countryRows, countryId, lang]);
 
   // ── shareable link: restore once when the data is ready, then keep the URL in sync ──
   const linkApplied = useRef(false);
@@ -302,7 +334,10 @@ export default function App() {
       const c = CONTINENTS.find((x) => x.id === continent);
       return c && variables?.variables && index.length ? { type: "continent", id: c.code } : null;
     }
-    if (!index.some((c) => c.id === countryId)) return null;
+    // a monthly series exists only for the places in regions/index.json; every other place
+    // is answered from the world trend map (`area` above)
+    const c = index.find((x) => x.id === countryId);
+    if (!c || (admin1Id && !c.admin1.some((a) => a.id === admin1Id))) return null;
     return { type: "region", country: countryId, admin1: admin1Id };
   }, [mode, point, continent, countryId, admin1Id, index, variables]);
 
@@ -314,13 +349,12 @@ export default function App() {
       const co = index.find((x) => x.id === countryId);
       const row = countryRows.find((x) => x.id === countryId);
       if (countryId) out.push({ label: co?.name[lang] ?? row?.[`name_${lang}`] ?? countryId, go: () => pickCountry(countryId) });
-      const a = co?.admin1.find((x) => x.id === admin1Id);
-      if (a && countryId) out.push({ label: a.name[lang], go: () => pickAdmin1(countryId, a.id) });
+      if (province && countryId) out.push({ label: province.name[lang], go: () => pickAdmin1(countryId, province.id) });
     } else if (point) {
       out.push({ label: `${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}°`, go: () => {} });
     }
     return out;
-  }, [lang, mode, continent, countryId, admin1Id, point, index, countryRows, reset, pickContinent, pickCountry, pickAdmin1]);
+  }, [lang, mode, continent, countryId, province, point, index, countryRows, reset, pickContinent, pickCountry, pickAdmin1]);
 
   const demos = useMemo(() => {
     const regionDemo = (label: string, country: string, admin1: string, v: VarId) => ({
@@ -368,6 +402,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <Starfield />
       {!noGl && (
         <Globe
           mode={mode}
@@ -388,53 +423,85 @@ export default function App() {
       )}
       {noGl && <div className="globe fallback">{t(lang, "webgl")}</div>}
 
-      <div className="brandbar">
-        <Logo size={28} />
-        <ViewTabs
-          label={t(lang, "view")}
-          value={mode}
-          onChange={switchMode}
-          tabs={[
-            { id: "region", label: t(lang, "modeRegion"), icon: "globe", title: t(lang, "modeRegionSub") },
-            { id: "point", label: t(lang, "modePoint"), icon: "grid", title: t(lang, "modePointSub") },
-          ]}
-        />
-      </div>
-
-      <StatusIsland lang={lang} status={status} variable={variable.name[lang]} onOpen={() => setTab("summary")} />
-
-      <header className="top">
-        {variables.is_mock && (
-          <span className="mockbadge" data-tip={t(lang, "mockTip")}>
-            {t(lang, "mock")}
-          </span>
-        )}
-        <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
-          <Icon name="link" size={16} />
+      {/* top bar: logo + view switch · search · actions */}
+      <motion.header className="topbar" initial={reduce ? false : { y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+        <div className="brand">
+          <Logo size={30} />
+          <ViewTabs
+            label={t(lang, "view")}
+            value={mode}
+            onChange={switchMode}
+            tabs={[
+              { id: "region", label: t(lang, "modeRegion"), icon: "globe", title: t(lang, "modeRegionSub") },
+              { id: "point", label: t(lang, "modePoint"), icon: "grid", title: t(lang, "modePointSub") },
+            ]}
+          />
+        </div>
+        <button className="cmdbar" onClick={() => setPaletteOpen(true)} aria-label={t(lang, "searchAll")}>
+          <Icon name="search" size={16} />
+          <span className="cmdbar-label">{t(lang, "searchAll")}</span>
+          <kbd>Ctrl K</kbd>
         </button>
-        <button className="icon-btn" onClick={() => setMethodOpen(true)} aria-label={t(lang, "howItWorks")} data-tip={t(lang, "howItWorks")}>
-          <Icon name="info" size={16} />
-        </button>
-        <button className="icon-btn lang" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language" data-tip={lang === "en" ? "Türkçe" : "English"}>
-          {lang === "en" ? "TR" : "EN"}
-        </button>
-      </header>
+        <div className="actions">
+          {variables.is_mock && (
+            <span className="mockbadge" data-tip={t(lang, "mockTip")}>
+              {t(lang, "mock")}
+            </span>
+          )}
+          <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
+            <Icon name="link" size={16} />
+          </button>
+          <button className={`icon-btn ${drawer === "explore" ? "on" : ""}`} onClick={() => setDrawer(drawer === "explore" ? null : "explore")} aria-label={t(lang, "tabExplore")} data-tip={t(lang, "tabExplore")}>
+            <Icon name="sun" size={16} />
+          </button>
+          <button className={`icon-btn ${drawer === "sources" ? "on" : ""}`} onClick={() => setDrawer(drawer === "sources" ? null : "sources")} aria-label={t(lang, "sources")} data-tip={t(lang, "sources")}>
+            <Icon name="book" size={16} />
+          </button>
+          <button className="icon-btn" onClick={() => setMethodOpen(true)} aria-label={t(lang, "howItWorks")} data-tip={t(lang, "howItWorks")}>
+            <Icon name="info" size={16} />
+          </button>
+          <button className="icon-btn lang" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language" data-tip={lang === "en" ? "Türkçe" : "English"}>
+            {lang === "en" ? "TR" : "EN"}
+          </button>
+        </div>
+      </motion.header>
 
-      <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={setVarId} />
+      <CommandPalette
+        lang={lang}
+        open={paletteOpen}
+        onOpen={setPaletteOpen}
+        countries={countryRows}
+        index={index}
+        provinces={provinces}
+        countryId={countryId}
+        variables={variables.variables}
+        onCountry={pickCountry}
+        onAdmin1={pickAdmin1}
+        onContinent={pickContinent}
+        onVariable={setVarId}
+        onQuestion={(q) => {
+          setQuestion(q);
+          setVarId(q.vars[0]);
+          setDrawer("explore");
+        }}
+      />
+
+      {/* bottom: the map legend and the variable dock */}
+      <motion.div className="deck" initial={reduce ? false : { y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
+        <div className="legend">
+          <label>
+            <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
+          </label>
+          <div className="bar" style={{ background: PALETTE_CSS }} />
+          <div className="ends">
+            <span>{t(lang, "legendDown")}</span>
+            <span>{t(lang, "legendUp")}</span>
+          </div>
+        </div>
+        <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={setVarId} />
+      </motion.div>
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />
-
-      <div className="legend">
-        <label>
-          <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
-        </label>
-        <div className="bar" style={{ background: PALETTE_CSS }} />
-        <div className="ends">
-          <span>{t(lang, "legendDown")}</span>
-          <span>{t(lang, "legendUp")}</span>
-        </div>
-        <small>{t(lang, "legendFaint")}</small>
-      </div>
 
       <Panel
         lang={lang}
@@ -443,6 +510,7 @@ export default function App() {
         variable={variable}
         index={index}
         countryRows={countryRows}
+        provinces={provinces}
         continent={continent}
         countryId={countryId}
         admin1Id={admin1Id}
@@ -460,9 +528,8 @@ export default function App() {
           setQuestion(q);
           if (q) setVarId(q.vars[0]);
         }}
-        tab={tab}
-        onTab={setTab}
-        onStatus={setStatus}
+        drawer={drawer}
+        onDrawer={setDrawer}
       />
     </div>
   );

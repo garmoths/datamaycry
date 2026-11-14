@@ -1,50 +1,54 @@
 /**
- * Right-hand inspector: one card with three tabs — Summary · Chart · Explore.
- * The tab bar is a port of Pin UI "LiquidTabs" (ui-lab: src/components/pinui/LiquidTabs.tsx):
- * the card body and the active tab are drawn as two shapes merged by an SVG goo filter, so
- * the active tab reads as a folder tab that flows along the bar when you switch.
+ * The analysis column on the right of the globe, read top to bottom:
+ *   where am I → the answer → the calculation behind it → its shape over time →
+ *   the provinces of this country → how it was checked.
+ * Every selection replays a short staggered entrance, so a change of place is felt.
+ * The drawer (full chart / explore / sources) slides in from the left only when asked.
+ *
+ * Two kinds of answers:
+ *  - a monthly series (the places in regions/index.json, continents, grid cells): the full
+ *    Mann-Kendall + Sen calculation is run here and shown step by step (diagnostics.ts);
+ *  - every other place (world, any country, any province): a summary of the world trend
+ *    map inside its borders, with the spread of the cell slopes (continentStats.ts).
+ *
  * Written with AI assistance (Claude).
  */
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   analyzeTrend,
+  anomalies,
+  getContinentSeries,
   getPointSeries,
   getRegionSeries,
-  getContinentSeries,
-  type ContinentId,
   monthLabels,
-  anomalies,
+  type ContinentId,
   type CountryInfo,
   type Series,
-  type TrendLevel,
   type VariablesFile,
   type VariableInfo,
 } from "./data.ts";
 import { Chart } from "./Chart.tsx";
-import { cardText, decimalsFor, noTrendText, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
+import { cardText, decimalsFor, noTrendText, smartFixed, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
 import { CONTINENTS, type Node } from "./geo.ts";
 import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
 import type { AreaSummary } from "./continentStats.ts";
-import { PlaceSearch } from "./PlaceSearch.tsx";
+import { diagnose } from "./diagnostics.ts";
 import { Icon, type IconName } from "./icons.tsx";
-import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
+import { QUESTIONS, VAR_ICONS, monthLabel, type Question } from "./content.ts";
+import { BadgeList, Provenance, ProvinceSelect, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
+import { CiBar, Gates, Histogram, StatGrid, ZCurve } from "./MathViz.tsx";
+import { Spotlight } from "./Spotlight.tsx";
+import BlurText from "./reactbits/BlurText.tsx";
+import { TextShimmer } from "./amicro/TextShimmer.tsx";
 
-const fmtSigned = smartSigned;
-
-/** Summary of the world / a continent / a country, from the per-cell trend map. */
+/** Summary of the world / a continent / a country / a province, from the per-cell trend map. */
 export interface AreaInfo {
-  kind: "world" | "continent" | "country";
+  kind: "world" | "continent" | "country" | "province";
   summary: AreaSummary;
-}
-
-/** What the status island at the top shows. */
-export interface Status {
-  place: string;
-  value: string | null;
-  level: TrendLevel | null;
-  loading: boolean;
+  /** province smaller than one grid cell: the summary is the single cell nearest to it */
+  nearest?: boolean;
 }
 
 export type Target =
@@ -61,7 +65,13 @@ export interface CountryRow {
   continent: string;
 }
 
-export type PanelTab = "summary" | "chart" | "explore";
+/** A province of the chosen country, with the place of its dot on the globe. */
+export interface ProvinceRow extends ProvinceItem {
+  lat: number;
+  lon: number;
+}
+
+export type DrawerTab = "chart" | "explore" | "sources";
 
 interface Props {
   lang: Lang;
@@ -70,6 +80,7 @@ interface Props {
   variable: VariableInfo;
   index: CountryInfo[];
   countryRows: CountryRow[];
+  provinces: ProvinceRow[];
   continent: string | null;
   countryId: string | null;
   admin1Id: string | null;
@@ -84,20 +95,35 @@ interface Props {
   demos: { label: string; go: () => void }[];
   question: Question | null;
   onQuestion: (q: Question | null) => void;
-  tab: PanelTab;
-  onTab: (t: PanelTab) => void;
-  onStatus: (s: Status) => void;
+  drawer: DrawerTab | null;
+  onDrawer: (t: DrawerTab | null) => void;
 }
 
-const TABS: { id: PanelTab; icon: IconName; key: "tabSummary" | "tabChart" | "tabExplore" }[] = [
-  { id: "summary", icon: "info", key: "tabSummary" },
+const DRAWER_TABS: { id: DrawerTab; icon: IconName; key: "tabChart" | "tabExplore" | "sources" }[] = [
   { id: "chart", icon: "chart", key: "tabChart" },
   { id: "explore", icon: "search", key: "tabExplore" },
+  { id: "sources", icon: "book", key: "sources" },
 ];
-const TAB_H = 40;
+
+const EASE = [0.22, 1, 0.36, 1] as const;
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/** One card of the column; it rises in as part of the column's staggered entrance. */
+function Card({ className = "", children }: { className?: string; children: ReactNode }) {
+  const reduce = useReducedMotion();
+  const rise = reduce
+    ? { hidden: { opacity: 1 }, show: { opacity: 1 } }
+    : { hidden: { opacity: 0, y: 18, filter: "blur(6px)" }, show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.55, ease: EASE } } };
+  return (
+    <motion.section variants={rise} className="card-slot">
+      <Spotlight className={`card ${className}`}>{children}</Spotlight>
+    </motion.section>
+  );
+}
 
 export function Panel(p: Props) {
   const { lang, variable: v, variables } = p;
+  const tr = lang === "tr";
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -132,56 +158,41 @@ export function Panel(p: Props) {
   }, [targetKey, v.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = p.target ? series : null;
-  // an error belongs to the selection that caused it; going back to the world clears it
   const shownError = p.target ? error : null;
   const result = useMemo(
-    () =>
-      shown
-        ? analyzeTrend(shown, { startYear: years[0], endYear: years[1], months: season === "summer" ? [6, 7, 8] : undefined })
-        : null,
+    () => (shown ? analyzeTrend(shown, { startYear: years[0], endYear: years[1], months: season === "summer" ? [6, 7, 8] : undefined }) : null),
     [shown, years, season],
   );
-
+  const diag = useMemo(() => (result ? diagnose(result) : null), [result]);
+  const ok = result?.status === "ok";
+  const unit = unitLabel(v.unit, lang);
+  const per = `${unit} / ${t(lang, "decade")}`;
   const place = shown?.label[lang] ?? "";
   const country = p.index.find((c) => c.id === p.countryId);
-  const lowRes = !!country?.admin1.find((a) => a.id === p.admin1Id)?.low_resolution;
+  const province = p.provinces.find((a) => a.id === p.admin1Id) ?? null;
+  const countryName = country?.name[lang] ?? p.countryRows.find((c) => c.id === p.countryId)?.[`name_${lang}`] ?? "";
   const countriesHere = p.countryRows
     .filter((c) => c.continent === p.continent)
     .sort((a, b) => a[`name_${lang}`].localeCompare(b[`name_${lang}`], lang));
   const dataIds = new Set(p.index.map((c) => c.id));
-  const unit = unitLabel(v.unit, lang);
   const areaName = !p.area
     ? ""
     : p.area.kind === "world"
       ? t(lang, "world")
       : p.area.kind === "continent"
         ? (CONTINENTS.find((c) => c.id === p.continent)?.[lang] ?? "")
-        : (country?.name[lang] ?? p.countryRows.find((c) => c.id === p.countryId)?.[`name_${lang}`] ?? "");
+        : p.area.kind === "province"
+          ? `${province?.name[lang] ?? ""}${countryName ? `, ${countryName}` : ""}`
+          : countryName;
 
-  // ── tell the status island what we show ──
-  const ok = result?.status === "ok";
-  const statusPlace = shown && result ? place : areaName || p.trail[p.trail.length - 1]?.label || "";
-  const statusValue =
-    shown && result && ok
-      ? `${fmtSigned(result.slopePerDecade, decimalsFor(result.slopePerDecade, v.decimals + 1))} ${unit}/${t(lang, "decade")}`
-      : p.area && !shown
-        ? `${fmtSigned(p.area.summary.meanSlope, decimalsFor(p.area.summary.meanSlope, v.decimals + 1))} ${unit}/${t(lang, "decade")}`
-        : null;
-  const statusLevel = shown && result && ok ? result.level : null;
-  const { onStatus } = p;
-  useEffect(() => {
-    onStatus({ place: statusPlace, value: statusValue, level: statusLevel, loading: loading && !!p.target });
-  }, [onStatus, statusPlace, statusValue, statusLevel, loading, p.target]);
-
-  const card = (() => {
+  const verdict = (() => {
     if (!result) return null;
-    if (result.status === "too_short") return { cls: "none", head: null, body: t(lang, "tooShort") };
-    if (result.status === "insufficient_data") return { cls: "none", head: null, body: t(lang, "insufficient") };
-    if (result.status === "constant") return { cls: "none", head: null, body: t(lang, "constant") };
-    if (result.level === "none") return { cls: "none", head: t(lang, "none"), body: noTrendText(lang, result.slopePerDecade, unit, v.decimals) };
+    if (result.status === "too_short") return { cls: "none", body: t(lang, "tooShort") };
+    if (result.status === "insufficient_data") return { cls: "none", body: t(lang, "insufficient") };
+    if (result.status === "constant") return { cls: "none", body: t(lang, "constant") };
+    if (result.level === "none") return { cls: "none", body: noTrendText(lang, result.slopePerDecade, unit, v.decimals) };
     return {
       cls: result.level,
-      head: t(lang, result.level),
       body: cardText(lang, {
         dir: result.slopePerDecade >= 0 ? "up" : "down",
         level: result.level,
@@ -211,155 +222,232 @@ export function Panel(p: Props) {
     URL.revokeObjectURL(a.href);
   };
 
-  // ── LiquidTabs: measure the active tab so the liquid blob slides under it ──
-  const gooId = `goo-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const barRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
-  const [blob, setBlob] = useState<{ x: number; w: number } | null>(null);
-  useLayoutEffect(() => {
-    const measure = () => {
-      const bar = barRef.current?.getBoundingClientRect();
-      const el = tabRefs.current[p.tab]?.getBoundingClientRect();
-      if (bar && el) setBlob({ x: el.left - bar.left, w: el.width });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (barRef.current) ro.observe(barRef.current);
-    document.fonts?.ready.then(measure).catch(() => {});
-    return () => ro.disconnect();
-  }, [p.tab, lang]);
-  // slide direction of the tab content: remember the previous tab in state (React's
-  // "adjust state while rendering" pattern) instead of reading a ref during render
-  const order = TABS.map((x) => x.id);
-  const [prevTab, setPrevTab] = useState(p.tab);
-  const [dir, setDir] = useState(1);
-  if (prevTab !== p.tab) {
-    setDir(order.indexOf(p.tab) >= order.indexOf(prevTab) ? 1 : -1);
-    setPrevTab(p.tab);
-  }
+  const period = `${monthLabel(variables.period.start, lang)} – ${monthLabel(variables.period.end, lang)}`;
+  const hasAnswer = !!(shown && result && !shownError && verdict);
+  const title = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
+  const f1 = (x: number) => smartSigned(x, v.decimals + 1);
 
-  const summary = (
-    <>
-      <nav className="trail" aria-label="breadcrumb">
-        {p.trail.map((s, i) => (
-          <button key={i} className="crumb" onClick={s.go} disabled={i === p.trail.length - 1}>
-            {s.label}
-          </button>
-        ))}
-      </nav>
+  // one entrance per selection: place, variable, and whether the answer is a series or a summary
+  const sceneKey = `${p.mode}|${targetKey}|${p.area?.kind ?? ""}|${p.continent ?? ""}|${p.countryId ?? ""}|${p.admin1Id ?? ""}|${v.id}|${hasAnswer}`;
+  const scene = { hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : 0.07, delayChildren: reduce ? 0 : 0.04 } } };
 
-      {p.mode === "point" && (
-        <section>
-          <h3>{t(lang, "scales")}</h3>
-          <ScaleLadder lang={lang} path={p.path} onGo={p.onScale} />
-        </section>
+  // ── the answer ─────────────────────────────────────────────────────────────
+  const answer = hasAnswer ? (
+    <Card className={`verdict ${verdict!.cls}`}>
+      <p className="label">{t(lang, "slopeLabel")}</p>
+      {ok && (
+        <div className="headline">
+          <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed />
+          <span className="unit">{per}</span>
+        </div>
       )}
-
-      {loading && p.target && <div className="skeleton" aria-label={t(lang, "loading")} />}
-      {shownError && (
-        <p className="alert" role="alert">
-          {shownError}
+      {ok && (
+        <div className="meter" role="img" aria-label={`${t(lang, "evidence")}: ${t(lang, result!.level)}`}>
+          {(["none", "possible", "strong"] as const).map((lv) => (
+            <span key={lv} className={`meter-step ${lv} ${result!.level === lv ? "on" : ""}`}>
+              {t(lang, lv)}
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="card-text">{verdict!.body}</p>
+      {result!.cappedReason === "badge_disagree" && (
+        <p className="warn">
+          <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
         </p>
       )}
-
-      {shown && result && !shownError && card && (
-        <motion.section
-          className="answer"
-          key={`${targetKey}:${v.id}`}
-          initial={reduce ? false : { opacity: 0, y: 8, filter: "blur(6px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
-          <p className="eyebrow">{v.name[lang]}</p>
-          <h2>{place}</h2>
-          <div className={`verdict ${card.cls} ${card.cls === "strong" ? "beam" : ""}`}>
-            {ok && (
-              <div className="meter" role="img" aria-label={`${t(lang, "evidence")}: ${card.head ?? ""}`}>
-                {(["none", "possible", "strong"] as const).map((lv) => (
-                  <span key={lv} className={`meter-step ${lv} ${result.level === lv ? "on" : ""}`}>
-                    {t(lang, lv)}
-                  </span>
-                ))}
-              </div>
-            )}
-            {ok && (
-              <p className="headline">
-                <NumberTicker className="big" value={result.slopePerDecade} decimals={decimalsFor(result.slopePerDecade, v.decimals + 1)} signed />
-                <span className="unit">
-                  {unit} / {t(lang, "decade")}
-                </span>
-              </p>
-            )}
-            <p className="card-text">{card.body}</p>
-            {/* contract 1.1: experimental variables never reach "strong"; say why */}
-            {(result.capped || v.experimental) && v.caveat && (
-              <p className="warn">
-                {/* the caveat already starts with "Experimental:"; only add why the level dropped */}
-                {result.capped && <b>{t(lang, "cappedTitle")}</b>} {v.caveat[lang]}
-              </p>
-            )}
-            {/* contract 1.2: provinces smaller than one grid cell */}
-            {lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
-          </div>
-          {ok && (
-            <dl className="stats">
-              <div className="stat">
-                <dt>{t(lang, "ciLabel")}</dt>
-                <dd>
-                  {fmtSigned(result.ci95[0], v.decimals + 1)} … {fmtSigned(result.ci95[1], v.decimals + 1)}
-                </dd>
-              </div>
-              <div className="stat" title={t(lang, "statNote")}>
-                <dt>{t(lang, "pLabel")}</dt>
-                <dd>{result.pValue < 0.001 ? "p < 0.001" : `p = ${result.pValue.toFixed(3)}`}</dd>
-              </div>
-              <div className="stat">
-                <dt>{t(lang, "totalLabel")}</dt>
-                <dd>
-                  {fmtSigned(result.totalChange, v.decimals)} <small>{unit}</small>
-                </dd>
-              </div>
-              <div className="stat">
-                <dt>{t(lang, "yearsLabel")}</dt>
-                <dd>
-                  {result.nYears} <small>{result.startYear}–{result.endYear}</small>
-                </dd>
-              </div>
-            </dl>
-          )}
-          <button className="link-btn" onClick={() => p.onTab("chart")}>
-            <Icon name="chart" size={16} /> {t(lang, "seeChart")}
-          </button>
-        </motion.section>
+      {(result!.cappedReason === "experimental" || v.experimental) && v.caveat && (
+        <p className="warn">
+          {result!.capped && result!.cappedReason !== "badge_disagree" && <b>{t(lang, "cappedTitle")}</b>} {v.caveat[lang]}
+        </p>
       )}
-
-      {p.area && (!shown || p.area.kind === "continent") && (
-        <AreaCard lang={lang} area={p.area} v={v} name={areaName} hasSeries={!!country} compact={!!shown} />
-      )}
-
-      {p.mode === "region" && p.countryId && country && (
-        <section>
-          <h3>{t(lang, "provinces")}</h3>
-          <div className="chips">
-            <button className={`chip ${p.admin1Id === null ? "on" : ""}`} onClick={() => p.onCountry(country.id)}>
-              {country.name[lang]}
-            </button>
-            {country.admin1.map((a) => (
-              <button key={a.id} className={`chip ${p.admin1Id === a.id ? "on" : ""}`} onClick={() => p.onAdmin1(country.id, a.id)}>
-                {a.name[lang]}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-      <p className="fine source">
-        {t(lang, "source")} · {variables.dataset}
-        {!variables.is_mock && ` · ${variables.processed_at.slice(0, 10)}`}
+      {province?.lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
+    </Card>
+  ) : p.area ? (
+    <Card className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
+      <p className="label">
+        {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")} · {t(lang, "slopeLabel").toLowerCase()}
       </p>
-    </>
+      <div className="headline">
+        <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed />
+        <span className="unit">{per}</span>
+      </div>
+      <ShareBar s={p.area.summary} lang={lang} />
+      <p className="card-text">
+        {p.area.kind === "province"
+          ? p.area.nearest
+            ? tr
+              ? "Bu bölge bir ızgara hücresinden küçük; sayı, merkezine en yakın tek hücrenin trendi."
+              : "This region is smaller than one grid cell; the number is the trend of the single cell nearest its centre."
+            : tr
+              ? `Sınırları içindeki ${p.area.summary.cells} ızgara hücresinin dünya trend haritasındaki değerlerinden. Bu bölgenin aylık serisi henüz veride yok.`
+              : `From the world trend map values of the ${p.area.summary.cells} grid cells inside its borders. A monthly series for this region is not in the data yet.`
+          : t(lang, p.area.kind === "country" ? (country ? "countryNoteSeries" : "countryNoteNoSeries") : p.area.kind === "world" ? "worldNote" : "continentNote")}
+      </p>
+    </Card>
+  ) : (
+    <Card className="verdict idle">
+      {shownError ? (
+        <p className="alert">{shownError}</p>
+      ) : loading ? (
+        <TextShimmer>{tr ? "Aylık seri yükleniyor…" : "Loading the monthly series…"}</TextShimmer>
+      ) : (
+        <>
+          <p className="card-text">{p.mode === "point" ? (tr ? "Globda bir kareye tıkla: o ızgara hücresinin 1980'den bugüne serisi burada hesaplanır." : "Click a square on the globe: that grid cell's series since 1980 is analysed here.") : t(lang, "pickPrompt")}</p>
+          <Demos demos={p.demos} />
+        </>
+      )}
+    </Card>
   );
 
-  const chart = shown && result && !shownError ? (
+  // ── the calculation ────────────────────────────────────────────────────────
+  const math =
+    hasAnswer && ok && diag ? (
+      <Card className="math">
+        <header className="card-head">
+          <h3>{tr ? "Hesap adımları" : "The calculation"}</h3>
+          <span className="pill">Mann-Kendall · Sen</span>
+        </header>
+        <ZCurve z={diag.z} p={diag.p} lang={lang} />
+        <StatGrid
+          items={[
+            { label: tr ? "Yıl (n)" : "Years (n)", value: diag.n, hint: tr ? "Teste giren tam yıl sayısı" : "Complete years in the test" },
+            { label: tr ? "Yıl çifti" : "Year pairs", value: diag.pairs.toLocaleString(lang), hint: "n·(n−1)/2" },
+            { label: "S", value: `${diag.s > 0 ? "+" : ""}${diag.s}`, hint: tr ? "Artan çift − azalan çift" : "Rising pairs − falling pairs" },
+            { label: "Kendall τ", value: smartSigned(diag.tau, 2), hint: tr ? "S ÷ çift sayısı: −1 hep azalış, +1 hep artış" : "S ÷ pairs: −1 always falling, +1 always rising" },
+            { label: "Z", value: smartSigned(diag.z, 2), hint: "(S ∓ 1) / √Var(S)" },
+            { label: "p", value: diag.p < 0.001 ? "< 0.001" : diag.p.toFixed(3), hint: t(lang, "statNote") },
+          ]}
+        />
+        <h4>{tr ? "Sen eğimi ve %95 aralığı" : "Sen's slope and its 95 % range"}</h4>
+        <CiBar slope={diag.slopePerDecade} ci={diag.ci95} unit={per} decimals={v.decimals} lang={lang} />
+        <StatGrid
+          items={[
+            { label: tr ? "Eğim / 10 yıl" : "Slope / decade", value: f1(diag.slopePerDecade), hint: tr ? "Tüm yıl çiftlerinin eğimlerinin ortancası" : "Median of the slopes of all year pairs" },
+            { label: tr ? "Toplam değişim" : "Total change", value: `${smartSigned(result!.totalChange, v.decimals)} ${unit}`, hint: `${result!.startYear}–${result!.endYear}` },
+            { label: tr ? "Otokorelasyon r₁" : "Autocorrelation r₁", value: diag.r1.toFixed(2), hint: tr ? "Bir yılın bir sonrakine benzerliği; aralığı genişletir" : "How much one year resembles the next; widens the range" },
+            { label: tr ? "Etkili yıl" : "Effective years", value: diag.nEff.toFixed(1), hint: "n·(1−r₁)/(1+r₁)" },
+            { label: tr ? "Gürültü (σ)" : "Noise (σ)", value: `${smartFixed(diag.noise, v.decimals + 1)} ${unit}`, hint: tr ? "Yıllık değerlerin trend çizgisi etrafındaki yayılımı" : "Spread of the annual values around the trend line" },
+            { label: tr ? "Sinyal / gürültü" : "Signal / noise", value: diag.snr.toFixed(1), hint: tr ? "|Toplam değişim| ÷ gürültü" : "|Total change| ÷ noise" },
+          ]}
+        />
+        <h4>{tr ? "Etikete giden kontroller" : "Checks behind the label"}</h4>
+        <Gates d={diag} lang={lang} />
+        {result!.capped && <p className="fine">{tr ? "Dört kontrol de geçti, ama etiket bilerek “olası”da tutuldu (yukarıdaki nota bak)." : "All four checks pass, but the label is deliberately kept at “possible” (see the note above)."}</p>}
+      </Card>
+    ) : p.area ? (
+      <Card className="math">
+        <header className="card-head">
+          <h3>{tr ? "Hücre eğimlerinin dağılımı" : "Spread of the cell slopes"}</h3>
+          <span className="pill">
+            {p.area.summary.cells.toLocaleString(lang)} {tr ? "hücre" : p.area.summary.cells === 1 ? "cell" : "cells"}
+          </span>
+        </header>
+        {p.area.summary.cells > 1 && <Histogram s={p.area.summary} unit={per} decimals={v.decimals} lang={lang} />}
+        <StatGrid
+          items={[
+            { label: tr ? "Ortalama" : "Mean", value: f1(p.area.summary.meanSlope), hint: tr ? "Alan ağırlıklı (cos enlem)" : "Area-weighted (cos latitude)" },
+            { label: tr ? "Ortanca" : "Median", value: f1(p.area.summary.median) },
+            { label: tr ? "Yayılım (σ)" : "Spread (σ)", value: smartFixed(p.area.summary.sd, v.decimals + 1) },
+            { label: tr ? "Ortadaki %80" : "Middle 80 %", value: `${f1(p.area.summary.p10)} … ${f1(p.area.summary.p90)}`, wide: true, hint: tr ? "Alanın %10'u bunun altında, %10'u üstünde" : "10 % of the area lies below, 10 % above" },
+            { label: tr ? "Artan alan" : "Area rising", value: pct(p.area.summary.upShare), hint: tr ? "Eğimi sıfırın üstünde olan alan" : "Area whose slope is above zero" },
+            { label: tr ? "Çoklu test sonrası anlamlı" : "Significant after FDR", value: pct(p.area.summary.fdrShare), wide: true, hint: tr ? "Çoklu test düzeltmesinden (Benjamini-Hochberg) sonra da anlamlı kalan alan" : "Area still significant after the multiple-testing correction (Benjamini-Hochberg)" },
+            { label: tr ? "Dönem" : "Period", value: `${variables.test_years.start}–${variables.test_years.end}` },
+          ]}
+        />
+        <p className="fine">
+          {tr
+            ? `Her hücrede ${variables.test_years.start}–${variables.test_years.end} yıllık anomalilerine Mann-Kendall testi ve Sen eğimi uygulandı; birim ${per}.`
+            : `Each cell: Mann-Kendall test and Sen's slope on its ${variables.test_years.start}–${variables.test_years.end} annual anomalies; unit ${per}.`}
+        </p>
+      </Card>
+    ) : null;
+
+  // ── shape over time ────────────────────────────────────────────────────────
+  const shape =
+    hasAnswer && ok ? (
+      <Card className="shape">
+        <header className="card-head">
+          <h3>
+            {result!.startYear}–{result!.endYear}
+          </h3>
+          <button className="link-btn" onClick={() => p.onDrawer("chart")}>
+            <Icon name="expand" size={14} /> {tr ? "Grafiği aç" : "Open chart"}
+          </button>
+        </header>
+        <Sparkline result={result!} unit={unit} lang={lang} />
+      </Card>
+    ) : null;
+
+  // ── where next ─────────────────────────────────────────────────────────────
+  const next =
+    p.mode === "point" ? (
+      <Card className="ladder-card">
+        <header className="card-head">
+          <h3>{t(lang, "scales")}</h3>
+        </header>
+        <ScaleLadder lang={lang} path={p.path} onGo={p.onScale} />
+      </Card>
+    ) : p.countryId ? (
+      <Card className="places">
+        <header className="card-head">
+          <h3>{t(lang, "provinces")}</h3>
+          <span className="pill">{p.provinces.length || "…"}</span>
+        </header>
+        {p.provinces.length ? (
+          <ProvinceSelect lang={lang} countryId={p.countryId} rows={p.provinces} value={p.admin1Id} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
+        ) : (
+          <TextShimmer>{tr ? "İller yükleniyor…" : "Loading provinces…"}</TextShimmer>
+        )}
+      </Card>
+    ) : (
+      <Card className="places">
+        <header className="card-head">
+          <h3>{t(lang, p.continent ? "countries" : "continents")}</h3>
+          {p.continent && <span className="pill">{countriesHere.length}</span>}
+        </header>
+        <div className="chips scroll">
+          {p.continent
+            ? countriesHere.map((c) => (
+                <button key={c.id} className="chip" onClick={() => p.onCountry(c.id)}>
+                  {c[`name_${lang}`]}
+                  {dataIds.has(c.id) && <i className="data-dot" />}
+                </button>
+              ))
+            : CONTINENTS.map((c) => (
+                <button key={c.id} className="chip" onClick={() => p.onContinent(c.id)}>
+                  {c[lang]}
+                </button>
+              ))}
+        </div>
+      </Card>
+    );
+
+  // ── how it was checked ─────────────────────────────────────────────────────
+  const checks = (
+    <Card className="checks">
+      {hasAnswer && ok && result!.badges && result!.badges.length > 0 && (
+        <>
+          <header className="card-head">
+            <h3>{t(lang, "checksTitle")}</h3>
+          </header>
+          <BadgeList badges={result!.badges} lang={lang} decimals={v.decimals} />
+        </>
+      )}
+      <p className="prov-line">
+        <Icon name="book" size={14} />
+        <span>
+          {variables.is_mock ? (tr ? "Demo veri" : "Demo data") : "NASA MERRA-2 v5.12.4"} · {period} · {tr ? "referans" : "baseline"} {variables.baseline_years.start}–{variables.baseline_years.end}
+        </span>
+      </p>
+      <button className="link-btn" onClick={() => p.onDrawer("sources")}>
+        {t(lang, "allSources")}
+      </button>
+    </Card>
+  );
+
+  // ── drawer contents ───────────────────────────────────────────────────────
+  const chartPane = hasAnswer ? (
     <>
       <p className="eyebrow">{v.name[lang]}</p>
       <h2>{place}</h2>
@@ -370,7 +458,7 @@ export function Panel(p: Props) {
           </button>
         ))}
       </div>
-      <Chart series={shown} result={result} view={view} unit={unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} />
+      <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} />
       <div className="controls">
         <label>
           {t(lang, "period")} <b>{years[0]}–{years[1]}</b>
@@ -392,207 +480,174 @@ export function Panel(p: Props) {
       </div>
       {v.caveat && <p className="note">{v.caveat[lang]}</p>}
       <button className="link-btn" onClick={downloadCsv}>
-        <Icon name="download" size={16} /> {t(lang, "downloadCsv")}
+        <Icon name="download" size={15} /> {t(lang, "downloadCsv")}
       </button>
+      <section className="source">
+        <h3>{t(lang, "aboutData")}</h3>
+        <Provenance variables={variables} lang={lang} />
+      </section>
     </>
   ) : (
     <div className="empty">
-      <Icon name="chart" size={28} />
-      <p>{t(lang, p.target ? "loading" : "chartEmpty")}</p>
-      <div className="chips">
-        {p.demos.map((d) => (
-          <button key={d.label} className="chip demo" onClick={d.go}>
-            {d.label}
-          </button>
-        ))}
-      </div>
+      <Icon name="chart" size={26} />
+      <p>{t(lang, "chartEmpty")}</p>
+      <Demos demos={p.demos} />
     </div>
   );
 
-  const explore = (
+  const explorePane = (
     <>
-      <PlaceSearch lang={lang} countryRows={p.countryRows} index={p.index} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
-
       <section className="varinfo">
-        <div className="varinfo-head">
-          <span className="varinfo-icon">
-            <Icon name={VAR_ICONS[v.id]} size={20} />
-          </span>
-          <div>
-            <strong>{v.name[lang]}</strong> <span className="unit">{unit}</span>
-            {v.land_only && <span className="tag">{t(lang, "landOnly")}</span>}
-            {v.experimental && <span className="tag exp">{t(lang, "experimentalTag")}</span>}
-            <p>{v.description[lang]}</p>
-          </div>
+        <span className="varinfo-icon">
+          <Icon name={VAR_ICONS[v.id]} size={18} />
+        </span>
+        <div>
+          <strong>{v.name[lang]}</strong> <span className="unit">{unit}</span>
+          {v.land_only && <span className="tag">{t(lang, "landOnly")}</span>}
+          {v.experimental && <span className="tag exp">{t(lang, "experimentalTag")}</span>}
+          <p>{v.description[lang]}</p>
         </div>
       </section>
-
       <section>
         <h3>{t(lang, "curious")}</h3>
         <div className="questions">
           {QUESTIONS.map((q) => (
             <button key={q.id} className={`qchip ${p.question?.id === q.id ? "on" : ""}`} onClick={() => p.onQuestion(p.question?.id === q.id ? null : q)}>
-              <Icon name={q.icon} size={15} /> {q.q[lang]}
+              <Icon name={q.icon} size={14} /> {q.q[lang]}
             </button>
           ))}
         </div>
         {p.question && <p className="qtip">{p.question.tip[lang]}</p>}
       </section>
-
       {p.mode === "region" && (
         <section>
-          <h3>{t(lang, p.continent ? "countries" : "continents")}</h3>
-          <div className="chips scroll">
-            {p.continent
-              ? countriesHere.map((c) => (
-                  <button key={c.id} className={`chip ${dataIds.has(c.id) ? "has" : ""} ${c.id === p.countryId ? "on" : ""}`} onClick={() => p.onCountry(c.id)}>
-                    {c[`name_${lang}`]}
-                    {dataIds.has(c.id) && <i className="data-dot" />}
-                  </button>
-                ))
-              : CONTINENTS.map((c) => (
-                  <button key={c.id} className="chip" onClick={() => p.onContinent(c.id)}>
-                    {c[lang]}
-                  </button>
-                ))}
+          <h3>{t(lang, "continents")}</h3>
+          <div className="chips">
+            {CONTINENTS.map((c) => (
+              <button key={c.id} className={`chip ${c.id === p.continent ? "on" : ""}`} onClick={() => p.onContinent(c.id)}>
+                {c[lang]}
+              </button>
+            ))}
           </div>
         </section>
       )}
-
       <section>
         <h3>{t(lang, "demos")}</h3>
-        <div className="chips">
-          {p.demos.map((d) => (
-            <button key={d.label} className="chip demo" onClick={d.go}>
-              {d.label}
-            </button>
-          ))}
-        </div>
+        <Demos demos={p.demos} />
       </section>
     </>
   );
 
-  const content = { summary, chart, explore }[p.tab];
+  const sourcesPane = (
+    <>
+      <section>
+        <h3>{t(lang, "aboutData")}</h3>
+        <Provenance variables={variables} lang={lang} />
+      </section>
+      <section>
+        <h3>{t(lang, "sources")}</h3>
+        <References lang={lang} />
+      </section>
+    </>
+  );
 
   return (
-    <aside className="inspector" aria-live="polite">
-      {/* the goo: blur, then pull the alpha back to a hard edge (LiquidTabs) */}
-      <svg aria-hidden className="goo-defs">
-        <defs>
-          <filter id={gooId} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" />
-          </filter>
-        </defs>
-      </svg>
-      <div aria-hidden className="insp-strip" style={{ height: TAB_H + 18 }} />
-      <div aria-hidden className="insp-surface">
-        <div className="insp-goo" style={{ filter: `url(#${gooId})` }}>
-          <div className="insp-body" style={{ top: TAB_H }} />
-          {blob && (
-            <motion.div
-              className="insp-blob"
-              style={{ height: TAB_H + 18 }}
-              initial={false}
-              animate={{ x: blob.x, width: blob.w }}
-              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }}
-            />
-          )}
-        </div>
-      </div>
+    <>
+      <motion.aside className="side" aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
+        <header className="side-head">
+          <nav className="trail" aria-label="breadcrumb">
+            {p.trail.map((s, i) => (
+              <button key={i} className="crumb" onClick={s.go} disabled={i === p.trail.length - 1}>
+                {s.label}
+              </button>
+            ))}
+          </nav>
+          {/* React Bits BlurText (subtle): the place name settles in on every selection */}
+          <h1 key={title}>
+            <BlurText text={title} animateBy="words" trigger="load" direction="bottom" delay={50} blur={6} distance={6} stepDuration={0.22} />
+          </h1>
+          <p className="eyebrow">
+            <Icon name={VAR_ICONS[v.id]} size={14} /> {v.name[lang]}
+            <span className="unit">{unit}</span>
+            {v.experimental && <span className="tag exp">{t(lang, "experimentalTag")}</span>}
+            {hasAnswer && province && <span className="tag">{tr ? "aylık seri" : "monthly series"}</span>}
+            {!hasAnswer && p.area && <span className="tag">{tr ? "trend haritası" : "trend map"}</span>}
+          </p>
+        </header>
+        <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
+          {answer}
+          {math}
+          {shape}
+        </motion.div>
+        {/* not re-keyed: the province filter and its scroll position survive a selection */}
+        <motion.div className="side-body" variants={scene} initial="hidden" animate="show">
+          {next}
+          {checks}
+        </motion.div>
+      </motion.aside>
 
-      <div ref={barRef} className="insp-bar" role="tablist" aria-label={t(lang, "panelTabs")} style={{ height: TAB_H }}>
-        {TABS.map((x, i) => (
-          <button
-            key={x.id}
-            ref={(el) => {
-              tabRefs.current[x.id] = el;
-            }}
-            role="tab"
-            aria-selected={p.tab === x.id}
-            className={`insp-tab ${p.tab === x.id ? "on" : ""}`}
-            onClick={() => p.onTab(x.id)}
-            onKeyDown={(e) => {
-              if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-              e.preventDefault();
-              const next = TABS[(i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length].id;
-              p.onTab(next);
-              tabRefs.current[next]?.focus();
-            }}
+      <AnimatePresence>
+        {p.drawer && (
+          <motion.aside
+            className="drawer"
+            initial={reduce ? false : { x: -40, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={reduce ? undefined : { x: -40, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 380, damping: 36 }}
           >
-            <Icon name={x.icon} size={14} />
-            {t(lang, x.key)}
-            {x.id === "chart" && shown && result && <i className="tab-dot" />}
-          </button>
-        ))}
-      </div>
-
-      <div className="insp-scroll">
-        <AnimatePresence mode="wait" initial={false} custom={dir}>
-          <motion.div
-            key={p.tab}
-            className="insp-content"
-            custom={dir}
-            initial={reduce ? false : { opacity: 0, x: 14 * dir, filter: "blur(4px)" }}
-            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-            exit={reduce ? undefined : { opacity: 0, x: -14 * dir, filter: "blur(4px)" }}
-            transition={{ duration: 0.18 }}
-          >
-            {content}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </aside>
+            <div className="drawer-head">
+              <div className="seg" role="tablist">
+                {DRAWER_TABS.map((x) => (
+                  <button key={x.id} role="tab" aria-selected={p.drawer === x.id} className={p.drawer === x.id ? "on" : ""} onClick={() => p.onDrawer(x.id)}>
+                    <Icon name={x.icon} size={14} /> {t(lang, x.key)}
+                  </button>
+                ))}
+              </div>
+              <button className="icon-btn" onClick={() => p.onDrawer(null)} aria-label={t(lang, "close")}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            <div className="drawer-body">{{ chart: chartPane, explore: explorePane, sources: sourcesPane }[p.drawer]}</div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
-/** `compact`: shown under the place's own series (continents) — no second title. */
-function AreaCard({ lang, area, v, name, hasSeries, compact = false }: { lang: Lang; area: AreaInfo; v: VariableInfo; name: string; hasSeries: boolean; compact?: boolean }) {
-  const s = area.summary;
+function ShareBar({ s, lang }: { s: AreaSummary; lang: Lang }) {
   const parts = [
     { key: "strongUp", share: s.strongUp, cls: "share-up" },
     { key: "possibleShare", share: s.possible, cls: "share-maybe" },
     { key: "noneShare", share: s.none, cls: "share-flat" },
     { key: "strongDown", share: s.strongDown, cls: "share-down" },
   ] as const;
-  const pct = (x: number) => `${Math.round(x * 100)}%`;
-  const title = area.kind === "world" ? "worldSummary" : area.kind === "continent" ? "continentSummary" : "countrySummary";
-  const note = area.kind === "country" ? (hasSeries ? "countryNoteSeries" : "countryNoteNoSeries") : area.kind === "world" ? "worldNote" : "continentNote";
-  const unit = unitLabel(v.unit, lang);
   return (
-    <section className="answer">
-      {compact ? (
-        <h3>{t(lang, "areaShares")}</h3>
-      ) : (
-        <>
-          <p className="eyebrow">
-            {t(lang, title)} · {v.name[lang]}
-          </p>
-          <h2>{name}</h2>
-        </>
-      )}
-      <div className="verdict">
-        <p className="fine">{t(lang, area.kind === "world" ? "meanTrendAll" : "meanTrend")}</p>
-        <p className="headline">
-          <NumberTicker className="big" value={s.meanSlope} decimals={decimalsFor(s.meanSlope, v.decimals + 1)} signed />
-          <span className="unit">
-            {unit} / {t(lang, "decade")}
-          </span>
-        </p>
-        <div className="sharebar" role="img" aria-label={parts.map((x) => `${t(lang, x.key)} ${pct(x.share)}`).join(", ")}>
-          {parts.map((x) => (
-            <span key={x.key} className={x.cls} style={{ flexGrow: x.share }} />
-          ))}
-        </div>
-        <ul className="sharelegend">
-          {parts.map((x) => (
-            <li key={x.key}>
-              <i className={x.cls} /> {t(lang, x.key)} <b>{pct(x.share)}</b>
-            </li>
-          ))}
-        </ul>
+    <>
+      <div className="sharebar" role="img" aria-label={parts.map((x) => `${t(lang, x.key)} ${pct(x.share)}`).join(", ")}>
+        {parts.map((x) => (
+          <motion.span key={x.key} className={x.cls} initial={{ flexGrow: 0 }} animate={{ flexGrow: x.share }} transition={{ duration: 0.7, ease: EASE }} />
+        ))}
       </div>
-      <p className="note">{t(lang, note)}</p>
-    </section>
+      <ul className="sharelegend">
+        {parts.map((x) => (
+          <li key={x.key}>
+            <i className={x.cls} /> {t(lang, x.key)} <b>{pct(x.share)}</b>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function Demos({ demos }: { demos: { label: string; go: () => void }[] }) {
+  return (
+    <div className="chips">
+      {demos.map((d) => (
+        <button key={d.label} className="chip demo" onClick={d.go}>
+          {d.label}
+        </button>
+      ))}
+    </div>
   );
 }
