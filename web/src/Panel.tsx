@@ -52,6 +52,7 @@ import { TextShimmer } from "./amicro/TextShimmer.tsx";
 import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
+import { MonthStrip } from "./MonthStrip.tsx";
 import { RankBadge, RankingPane } from "./Ranking.tsx";
 import { RANK_TAB_LABEL, type RankInputs, type RankScope } from "./useRankRows.ts";
 
@@ -488,6 +489,14 @@ export function Panel(p: Props) {
       </Card>
     ) : null;
 
+  // change by month (MonthStrip.tsx): only with a monthly series, not during time travel
+  const monthCard =
+    hasAnswer && ok && !p.anim ? (
+      <Card className="months">
+        <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />
+      </Card>
+    ) : null;
+
   // ── where next ─────────────────────────────────────────────────────────────
   const next =
     p.mode === "point" ? (
@@ -711,6 +720,7 @@ export function Panel(p: Props) {
           )}
           {math}
           {shape}
+          {monthCard}
         </motion.div>
         {/* not re-keyed: the province filter and its scroll position survive a selection */}
         <motion.div className="side-body" variants={scene} initial="hidden" animate="show">
