@@ -3,6 +3,21 @@
 Rules: adding a field → minor (1.x). Removing/renaming → major (2.0), Enes + Rumet agree.
 One PR per change: `types.ts` + `schema/` + `worker/mock.py` + `web/src/data.ts` + this file.
 
+## 1.3 — 2026-11-14 (additions only)
+- `regions/badges.json` (`BadgesFile`): independent-source checks per region.
+  `GPCP` = NASA GPCP v3.3 precipitation (1983–2025), `GHCN` = NOAA GHCN-M v4 station
+  temperature (1980–2025). Status `agree` / `disagree` / `inconclusive`; rule in `types.ts`,
+  fixed before any badge was computed.
+- `data.ts`: `getBadges(regionId)`, `loadBadges()`. `Series.region` is set for region series.
+- `analyzeTrend` adds `badges` and lowers "strong" to "possible" (`cappedReason: "badge_disagree"`)
+  when a badge disagrees and the analysed years cover ≥ 80% of the badge's years.
+  `cappedReason: "experimental"` for experimental variables.
+- Real results: stations agree in 954 / 1,013 regions (94%; all 36 Turkish stations together,
+  Diyarbakır, Konya, Ankara agree). GPCP agrees in 2,793, disagrees in 811, inconclusive 1,257.
+  Global T2M vs NASA GISTEMP: agree (+0.16 vs +0.21 °C/decade, r = 0.97).
+- UI to do (Rumet): show badges on the card ("✔ consistent with NOAA stations",
+  "✔ consistent with NASA GPCP", "⚠ independent source disagrees") and explain `cappedReason`.
+
 ## 1.2 — 2026-11-14 (additions only)
 - Continents: `RegionIndexFile.continents` (id, name, camera `bbox`, `cells`) and
   `regions/continents.bin` (header `country: "continents"`, `level: "continent"`).

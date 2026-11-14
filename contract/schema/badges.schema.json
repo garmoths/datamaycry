@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "badges.schema.json",
+  "title": "regions/badges.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "regions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$"
+    },
+    "kind": {
+      "const": "badges"
+    },
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "source",
+            "var",
+            "status",
+            "years",
+            "ours",
+            "ref"
+          ],
+          "properties": {
+            "source": {
+              "enum": [
+                "GPCP",
+                "GHCN"
+              ]
+            },
+            "var": {
+              "enum": [
+                "T2M",
+                "QV2M",
+                "SPEED",
+                "PRECTOT",
+                "EVAP",
+                "GWETROOT",
+                "RUNOFF",
+                "SNOMAS",
+                "TOTEXTTAU"
+              ]
+            },
+            "status": {
+              "enum": [
+                "agree",
+                "disagree",
+                "inconclusive"
+              ]
+            },
+            "years": {
+              "type": "object",
+              "required": [
+                "start",
+                "end"
+              ],
+              "properties": {
+                "start": {
+                  "type": "integer"
+                },
+                "end": {
+                  "type": "integer"
+                }
+              }
+            },
+            "ours": {
+              "type": "object",
+              "required": [
+                "slopePerDecade",
+                "ci95",
+                "pValue"
+              ],
+              "properties": {
+                "slopePerDecade": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "pValue": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "ref": {
+              "type": "object",
+              "required": [
+                "slopePerDecade",
+                "ci95",
+                "pValue"
+              ],
+              "properties": {
+                "slopePerDecade": {
+                  "type": "number"
+                },
+                "ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "pValue": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "detail": {
+              "type": "object",
+              "required": [
+                "en",
+                "tr"
+              ],
+              "properties": {
+                "en": {
+                  "type": "string"
+                },
+                "tr": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

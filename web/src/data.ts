@@ -33,25 +33,59 @@ import {
 } from "../../contract/types.ts";
 
 import { analyzeTrend as analyzeRaw } from "./trend.ts";
-import type { TrendOptions, TrendResult } from "../../contract/types.ts";
+import type { Badge, BadgesFile, TrendOptions, TrendResult } from "../../contract/types.ts";
 
 export { anomalies, monthLabels } from "./trend.ts";
 export type * from "../../contract/types.ts";
 
 /** Variables flagged `experimental` in variables.json (filled by loadVariables). */
 const experimental = new Set<VarId>();
+/** Badges per region (filled by loadBadges; empty until loaded or if the file is missing). */
+let badgeIndex: Record<string, Badge[]> = {};
+
+/** Share of the badge's years that the analysed period covers. */
+function coverage(b: Badge, start: number, end: number): number {
+  const lo = Math.max(b.years.start, start);
+  const hi = Math.min(b.years.end, end);
+  return Math.max(0, hi - lo + 1) / (b.years.end - b.years.start + 1);
+}
 
 /**
- * Result card numbers for a series. For experimental variables (data-quality
- * problems, see VariableInfo.experimental) "strong" is lowered to "possible"
- * and `capped` is set, so the card can explain why.
+ * Result card numbers for a series. "strong" is lowered to "possible" (and
+ * `capped` + `cappedReason` set, so the card can explain why) when
+ *  - the variable is experimental (VariableInfo.experimental), or
+ *  - an independent source disagrees for this region (badge, contract 1.3).
+ * Region series also get their `badges` for this variable.
  */
 export function analyzeTrend(series: Series, opts?: TrendOptions): TrendResult {
-  const r = analyzeRaw(series, opts);
-  if (experimental.has(series.var) && r.level === "strong") {
-    return { ...r, level: "possible", capped: true };
+  let r = analyzeRaw(series, opts);
+  const badges = series.region ? (badgeIndex[series.region] ?? []).filter((b) => b.var === series.var) : [];
+  if (badges.length) r = { ...r, badges };
+  if (r.level === "strong") {
+    if (experimental.has(series.var)) {
+      return { ...r, level: "possible", capped: true, cappedReason: "experimental" };
+    }
+    if (badges.some((b) => b.status === "disagree" && coverage(b, r.startYear, r.endYear) >= 0.8)) {
+      return { ...r, level: "possible", capped: true, cappedReason: "badge_disagree" };
+    }
   }
   return r;
+}
+
+/** 1.3: independent-source badges for all regions (GPCP precipitation, GHCN stations). */
+export function loadBadges(): Promise<Record<string, Badge[]>> {
+  return cached("badges", async () => {
+    const res = await fetch(`${DATA_URL}regions/badges.json`);
+    if (!res.ok) return (badgeIndex = {}); // optional file: no badges, no error
+    const doc = (await res.json()) as BadgesFile;
+    checkVersion(doc.schema_version, "badges.json");
+    return (badgeIndex = doc.regions);
+  });
+}
+
+/** Badges of one region (continent, country or province), all variables. */
+export async function getBadges(regionId: string): Promise<Badge[]> {
+  return (await loadBadges())[regionId] ?? [];
 }
 
 /**
@@ -166,6 +200,7 @@ export async function getRegionSeries(
     cached(`region:${country}`, () => fetchDmc<RegionHeader>(`${DATA_URL}regions/${country}.bin`)),
     listCountries(),
     getVariable(varId),
+    loadBadges(),
   ]);
   const { header, data } = file;
   const r = admin1 === null ? 0 : header.regions.findIndex((x) => x.id === admin1);
@@ -188,6 +223,7 @@ export async function getRegionSeries(
     start: header.start,
     values: unpack(data.subarray(at, at + n), header.packing[v]),
     label,
+    region: admin1 ?? country,
   };
 }
 
@@ -200,6 +236,7 @@ export async function getContinentSeries(continent: ContinentId, varId: VarId): 
     cached("region:continents", () => fetchDmc<RegionHeader>(`${DATA_URL}regions/continents.bin`)),
     listCountries(),
     getVariable(varId),
+    loadBadges(),
   ]);
   const { header, data } = file;
   const r = header.regions.findIndex((x) => x.id === continent);
@@ -215,6 +252,7 @@ export async function getContinentSeries(continent: ContinentId, varId: VarId): 
     start: header.start,
     values: unpack(data.subarray(at, at + n), header.packing[v]),
     label: c?.name ?? { en: continent, tr: continent },
+    region: continent,
   };
 }
 
