@@ -152,6 +152,8 @@ const S = {
   play: { en: "Play", tr: "Oynat" },
   pause: { en: "Pause", tr: "Duraklat" },
   closeAnim: { en: "Back to the trend map", tr: "Trend haritasına dön" },
+  openPanel: { en: "Show panel", tr: "Paneli aç" },
+  closePanel: { en: "Hide panel", tr: "Paneli kapat" },
   animYear: { en: "Year", tr: "Yıl" },
   animRange: { en: "Years", tr: "Yıllar" },
   speed: { en: "Speed", tr: "Hız" },

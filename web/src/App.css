@@ -1670,9 +1670,6 @@ dialog.method::backdrop {
     gap: 6px;
     padding: 0 4px 0 7px;
   }
-  .tt-pill {
-    margin-right: 2px;
-  }
   .side {
     top: auto;
     left: var(--edge);
@@ -1764,182 +1761,10 @@ dialog.method::backdrop {
 /* ── 1.4 time travel ─────────────────────────────────────────────────── */
 .legend[hidden] { display: none; }
 
-/* top-right action next to share / explore / sources / info / language */
-.tt-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  margin-right: 4px;
-  padding: 0 12px 0 6px;
-  border-radius: 9px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-  font: 500 13px/1 var(--sans);
-  white-space: nowrap;
-  flex: none;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.tt-pill:hover { background: rgba(255, 255, 255, 0.1); }
-.tt-dot {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--text);
-  color: var(--bg);
-}
-.tt-pill.on { background: var(--surface-3); }
-
-/* control bar: in the bottom deck, where the legend sits when the animation is off */
-.deck-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  max-width: 100%;
-}
-.timebar {
-  width: min(760px, 100%);
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px 12px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  color: var(--text-2);
-  font: 12px/1.4 var(--sans);
-}
-.tb-play {
-  flex: none;
-  width: 46px;
-  height: 46px;
-  margin-top: 2px;
-  border-radius: 50%;
-  border: 0;
-  display: grid;
-  place-items: center;
-  background: var(--text);
-  color: var(--bg);
-  cursor: pointer;
-  transition: transform 0.15s var(--ease);
-}
-.tb-play:hover { transform: scale(1.04); }
-.tb-play:disabled { cursor: progress; transform: none; }
-.tb-ring { width: 30px; height: 30px; transform: rotate(-90deg); }
-.tb-ring circle { fill: none; stroke-width: 3.5; stroke: color-mix(in srgb, var(--bg) 25%, transparent); }
-.tb-ring circle + circle { stroke: var(--bg); stroke-linecap: round; transition: stroke-dasharray 0.15s; }
-
-.tb-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
-.tb-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.tb-year { font: 600 24px/1 var(--sans); letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
-.tb-mean { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tb-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
-.tb-chip {
-  height: 24px;
-  padding: 0 9px;
-  border-radius: var(--radius-s);
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--text-2);
-  font: 500 11px/1 var(--sans);
-  cursor: pointer;
-}
-.tb-chip.on { background: var(--surface-3); border-color: var(--text-2); color: var(--text); }
-
-/* the scrubber track is a climate-stripes strip (data, not decoration) */
-.tb-track { position: relative; height: 24px; }
-.tb-stripes {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  border-radius: 4px;
-  overflow: hidden;
-  outline: 1px solid var(--line);
-}
-.tb-stripes span { flex: 1; transition: opacity 0.2s; }
-.tb-cursor {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--text);
-  box-shadow: 0 0 0 2px var(--bg);
-  pointer-events: none;
-  transition: left 0.12s linear;
-}
-.tb-track input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: grab; }
-.tb-foot { position: relative; height: 12px; }
-.tb-ticks i {
-  position: absolute;
-  transform: translateX(-50%);
-  font: 9.5px/1 var(--mono);
-  font-style: normal;
-  color: var(--muted);
-}
-.tb-ticks i:first-child { transform: none; }
-.tb-ticks i:last-child { transform: translateX(-100%); }
-.tb-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.tb-range { display: flex; align-items: center; gap: 5px; color: var(--muted); }
-.tb-range select {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-s);
-  color: var(--text);
-  font: 11px var(--mono);
-  padding: 2px 4px;
-}
-.tb-legend { display: flex; align-items: center; gap: 6px; color: var(--muted); font-family: var(--mono); }
-.tb-legend .bar { width: 110px; height: 6px; border-radius: 2px; }
-.tb-close {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-s);
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-.tb-close:hover { color: var(--text); border-color: var(--line-strong); }
-
-.yearbadge {
-  position: absolute;
-  top: calc(var(--top-h) + 8px);
-  left: calc(var(--edge) + 8px);
-  z-index: 3;
-  pointer-events: none;
-  display: grid;
-  gap: 3px;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
-}
-.yearbadge b { font: 600 64px/0.95 var(--sans); letter-spacing: -0.05em; color: var(--text); font-variant-numeric: tabular-nums; }
-.yearbadge small { color: var(--text-2); font: 11px var(--mono); }
-.yearbadge span { color: var(--text-2); font-size: 12px; }
-.yearbadge em { font: 500 18px var(--mono); font-style: normal; }
-.yearbadge em.warm { color: var(--up); }
-.yearbadge em.cold { color: var(--down); }
-
 @media (prefers-reduced-motion: reduce) {
-  .emerged span, .tb-cursor, .tb-stripes span { transition: none; }
+  .emerged span, .ys-cursor { transition: none; }
 }
 @media (max-width: 900px) {
-  .tt-pill { padding: 0 6px; }
-  .tt-label { display: none; }
-  .timebar { gap: 10px; padding: 10px; }
-  .tb-play { width: 40px; height: 40px; }
-  .tb-tools .seg { display: none; }
 }
 
 /* ── calm UI pass: dock names, disclosure sections ─────────────────────── */
@@ -1979,3 +1804,90 @@ dialog.method::backdrop {
 .checks-fold { margin: -14px -12px 6px; }
 .card-head.end { justify-content: flex-end; margin-bottom: 6px; }
 .trail:empty { display: none; }
+
+/* ── year scale (under the view switch) ─────────────────────────────────── */
+.yearscale {
+  position: absolute;
+  top: var(--top-h);
+  left: var(--edge);
+  z-index: 6;
+  width: 340px;
+  max-width: calc(100vw - 2 * var(--edge));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 8px 0 7px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.ys-play {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--text);
+  color: var(--bg);
+}
+.ys-play:disabled { cursor: progress; }
+.ys-ring { width: 22px; height: 22px; transform: rotate(-90deg); }
+.ys-ring circle { fill: none; stroke-width: 4; stroke: color-mix(in srgb, var(--bg) 25%, transparent); }
+.ys-ring circle + circle { stroke: var(--bg); stroke-linecap: round; }
+.ys-track { position: relative; flex: 1; height: 20px; }
+.ys-stripes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+.ys-stripes span { flex: 1; }
+.yearscale:not(.on) .ys-stripes span:nth-child(10n + 1) { box-shadow: inset 1px 0 rgba(255, 255, 255, 0.1); }
+.ys-cursor {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--bg);
+  pointer-events: none;
+  transition: left 0.12s linear;
+}
+.ys-track input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.ys-label { flex: none; min-width: 74px; display: grid; line-height: 1.15; }
+.ys-label b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+.ys-label small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.ys-close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: var(--muted);
+}
+.ys-close:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.legend-title { color: var(--text-2); }
+.legend .warn { margin-top: 8px; }
+
+/* ── closable side panel ────────────────────────────────────────────────── */
+.app.side-closed { --side-w: 0px; }
+.side-head { position: relative; }
+.side-close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; color: var(--muted); }
+.side-head .trail, .side-head h1 { padding-right: 34px; }
+@media (max-width: 900px) {
+  .app.side-closed { --sheet: 0px; }
+  .yearscale { width: auto; right: var(--edge); }
+}

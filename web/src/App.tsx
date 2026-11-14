@@ -25,7 +25,7 @@ import { Panel, type AreaInfo, type CountryRow, type DrawerTab, type ProvinceRow
 import { Starfield } from "./Starfield.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { anomalyTileUrl, preloadFrames, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
-import { TimeBar } from "./TimeBar.tsx";
+import { YearScale } from "./YearScale.tsx";
 import { clampTimeline, frameMs, nextYear, playFrom, type Timeline } from "./timeline.ts";
 import {
   bboxOf,
@@ -58,19 +58,6 @@ function whenIdle(fn: () => void): void {
   if (ric) ric(fn, { timeout: 4000 });
   else window.setTimeout(fn, 1500);
 }
-/** Centred 5-point running mean that uses the points available at the ends (same rule as the map). */
-function runningMean5(a: number[]): number[] {
-  return a.map((_, k) => {
-    let s = 0, m = 0;
-    for (let q = Math.max(0, k - 2); q <= Math.min(a.length - 1, k + 2); q++)
-      if (Number.isFinite(a[q])) {
-        s += a[q];
-        m++;
-      }
-    return m ? s / m : NaN;
-  });
-}
-
 const savedLang = (): Lang => {
   try {
     return localStorage.getItem("dmc-lang") === "tr" ? "tr" : "en";
@@ -100,8 +87,8 @@ export default function App() {
   // ── 1.4 "time travel": yearly maps of the difference from the 1991–2020 normal ──
   const [animOn, setAnimOn] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const [smooth, setSmooth] = useState(false);
+  const [wantPlay, setWantPlay] = useState(false); // ▶ pressed before the yearly maps arrived
+  const [sideOpen, setSideOpen] = useState(true);
   const [tl, setTl] = useState<Timeline>({ min: 1980, max: 2025, from: 1980, to: 2025, year: 1980 });
   const [frames, setFrames] = useState<AnomalyFrames | null>(null);
   const [animError, setAnimError] = useState<string | null>(null);
@@ -257,6 +244,7 @@ export default function App() {
 
   const pickContinent = useCallback(
     (id: string) => {
+      setSideOpen(true);
       setContinent(id);
       setCountryId(null);
       setAdmin1Id(null);
@@ -272,6 +260,7 @@ export default function App() {
       if (row) setContinent(row.properties.continent);
       setCountryId(id);
       setAdmin1Id(null);
+      setSideOpen(true);
       const box = index.find((c) => c.id === id)?.bbox ?? (row ? mainBbox(row) : WORLD);
       flyTo(box, `country:${id}`);
     },
@@ -286,6 +275,7 @@ export default function App() {
       if (row) setContinent(row.properties.continent);
       setCountryId(country);
       setAdmin1Id(id);
+      setSideOpen(true);
       // provinces are fetched per country: the file may still be on its way
       void loadAdmin1(country).then((fs) => {
         const f = fs.find((x) => x.properties.id === id);
@@ -295,19 +285,17 @@ export default function App() {
     [bounds, flyTo],
   );
 
-  const animTiles = animOn && frames && urlFor ? urlFor(tl.year - frames.years[0], smooth) : null;
+  const animTiles = animOn && frames && urlFor ? urlFor(tl.year - frames.years[0], false) : null;
   // the next two years load ahead while one is on screen
   const animAhead = useMemo(
     () =>
       animOn && frames && urlFor
-        ? [1, 2].map((d) => tl.year + d).filter((y) => y <= tl.to).map((y) => urlFor(y - frames.years[0], smooth))
+        ? [1, 2].map((d) => tl.year + d).filter((y) => y <= tl.to).map((y) => urlFor(y - frames.years[0], false))
         : [],
-    [animOn, frames, urlFor, tl.year, tl.to, smooth],
+    [animOn, frames, urlFor, tl.year, tl.to],
   );
-  // world mean per year: computed once per variable (46 means), the 5-year option smooths
-  // those 46 numbers instead of all 2.4 million cell values on the main thread
-  const yearlyMeans = useMemo(() => (frames ? frames.years.map((_, k) => frameMean(frames, k)) : []), [frames]);
-  const animMeans = useMemo(() => (smooth ? runningMean5(yearlyMeans) : yearlyMeans), [yearlyMeans, smooth]);
+  // world mean per year: computed once per variable (46 means)
+  const animMeans = useMemo(() => (frames ? frames.years.map((_, k) => frameMean(frames, k)) : []), [frames]);
   const animMean = frames ? (animMeans[tl.year - frames.years[0]] ?? NaN) : NaN;
 
   // playback: the next year is scheduled only after the current one is on screen
@@ -320,7 +308,7 @@ export default function App() {
   useEffect(() => {
     if (!playing || !animTiles || shownUrl !== animTiles) return;
     // the frame period counts from the step, so loading time is not added on top
-    const wait = Math.max(0, frameMs(speed) - (performance.now() - stepAt.current));
+    const wait = Math.max(0, frameMs(1) - (performance.now() - stepAt.current));
     timer.current = window.setTimeout(() => {
       setTl((t0) => {
         const n = nextYear(t0);
@@ -332,7 +320,7 @@ export default function App() {
       });
     }, wait);
     return () => window.clearTimeout(timer.current);
-  }, [playing, animTiles, shownUrl, speed]);
+  }, [playing, animTiles, shownUrl]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const play = async () => {
@@ -341,11 +329,11 @@ export default function App() {
     setTl((t0) => ({ ...t0, year: start }));
     // paint every year's tiles for the current view once, so playback does not stutter
     const tiles = viewTiles.current;
-    const key = `${frames.var}|${smooth}|${tl.from}-${tl.to}|${tiles.map((x) => `${x.z}/${x.x}/${x.y}`).join(",")}`;
+    const key = `${frames.var}|${tl.from}-${tl.to}|${tiles.map((x) => `${x.z}/${x.x}/${x.y}`).join(",")}`;
     if (tiles.length && !preloaded.current.has(key)) {
       setPreload(0);
       const idx = Array.from({ length: tl.to - start + 1 }, (_, k) => start + k - frames.years[0]);
-      await preloadFrames(frames.var, idx, smooth, tiles, setPreload);
+      await preloadFrames(frames.var, idx, false, tiles, setPreload);
       preloaded.current.add(key);
       setPreload(null);
     }
@@ -357,8 +345,23 @@ export default function App() {
   };
   const closeAnim = () => {
     pause();
+    setWantPlay(false);
     setAnimOn(false);
+    setFrames(null);
   };
+  // ▶ on the year scale before the maps are loaded: open, then play once they arrive
+  const startPlay = () => {
+    if (animOn && frames) void play();
+    else {
+      setAnimOn(true);
+      setWantPlay(true);
+    }
+  };
+  useEffect(() => {
+    if (!frames || !wantPlay) return;
+    setWantPlay(false);
+    void play();
+  }, [frames, wantPlay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const switchMode = (m: "region" | "point") => {
     if (m === mode) return;
@@ -378,6 +381,7 @@ export default function App() {
       const tile = next[2];
       const sameTile = path[2] && path[2].i0 === tile.i0 && path[2].j0 === tile.j0;
       setPath(next);
+      setSideOpen(true);
       if (!sameTile) flyTo(nodeBounds(tile), `tile:${tile.i0}:${tile.j0}`);
     },
     [path, flyTo],
@@ -518,7 +522,7 @@ export default function App() {
   const variable = variables.variables.find((x) => x.id === varId) ?? variables.variables[0];
 
   return (
-    <div className="app">
+    <div className={`app ${sideOpen ? "" : "side-closed"}`}>
       <Starfield />
       {!noGl && (
         <Globe
@@ -569,17 +573,11 @@ export default function App() {
               {t(lang, "mock")}
             </span>
           )}
-          <button
-            className={`tt-pill ${animOn ? "on" : ""}`}
-            onClick={() => (animOn ? closeAnim() : setAnimOn(true))}
-            aria-pressed={animOn}
-            data-tip={t(lang, animOn ? "closeAnim" : "timeTravelTip")}
-          >
-            <span className="tt-dot" aria-hidden>
-              <Icon name={animOn ? "close" : "play"} size={12} />
-            </span>
-            <span className="tt-label">{t(lang, "timeTravel")}</span>
-          </button>
+          {!sideOpen && (
+            <button className="icon-btn" onClick={() => setSideOpen(true)} aria-label={t(lang, "openPanel")} data-tip={t(lang, "openPanel")}>
+              <Icon name="panel" size={16} />
+            </button>
+          )}
           <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
             <Icon name="link" size={16} />
           </button>
@@ -597,6 +595,32 @@ export default function App() {
           </button>
         </div>
       </motion.header>
+
+      <YearScale
+        lang={lang}
+        min={tl.min}
+        max={tl.max}
+        year={animOn ? tl.year : null}
+        means={animMeans}
+        value={
+          Number.isFinite(animMean)
+            ? `${(animMean > 0 ? "+" : "") + (lang === "tr" ? animMean.toFixed(2).replace(".", ",") : animMean.toFixed(2))} ${variable.unit}`
+            : null
+        }
+        playing={playing || wantPlay}
+        preload={preload}
+        onYear={(y) => {
+          pause();
+          setAnimOn(true);
+          setTl((t0) => clampTimeline({ ...t0, year: y }));
+        }}
+        onPlay={startPlay}
+        onPause={() => {
+          pause();
+          setWantPlay(false);
+        }}
+        onClose={closeAnim}
+      />
 
       <CommandPalette
         lang={lang}
@@ -620,69 +644,41 @@ export default function App() {
 
       {/* bottom: the map legend and the variable dock */}
       <motion.div className="deck" initial={reduce ? false : { y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
-        <div className="legend" hidden={animOn}>
-          <label>
-            <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
-          </label>
+        <div className="legend">
+          {animOn ? (
+            <span className="legend-title">{t(lang, "animLegend")}</span>
+          ) : (
+            <label>
+              <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
+            </label>
+          )}
           <div className="bar" style={{ background: PALETTE_CSS }} />
           <div className="ends">
-            <span>{t(lang, "legendDown")}</span>
-            <span>{t(lang, "legendUp")}</span>
+            {animOn && frames ? (
+              <>
+                <span>−{frames.colorMax.toFixed(variable.decimals)}</span>
+                <span>
+                  +{frames.colorMax.toFixed(variable.decimals)} {variable.unit}
+                </span>
+              </>
+            ) : (
+              <>
+                <span>{t(lang, "legendDown")}</span>
+                <span>{t(lang, "legendUp")}</span>
+              </>
+            )}
           </div>
+          {animError && <p className="warn">{animError}</p>}
         </div>
-        <div className="deck-col">
-          {animOn && (
-            <TimeBar
-              lang={lang}
-              unit={variable.unit}
-              decimals={variable.decimals}
-              colorMax={frames?.colorMax ?? null}
-              means={animMeans}
-              tl={tl}
-              playing={playing}
-              speed={speed}
-              smooth={smooth}
-              preload={preload}
-              error={animError}
-              onPlay={play}
-              onPause={pause}
-              onYear={(y) => {
-                pause();
-                setTl((t0) => clampTimeline({ ...t0, year: y }));
-              }}
-              onRange={(a, b) => {
-                pause();
-                setTl((t0) => clampTimeline({ ...t0, from: a, to: b, year: a }));
-              }}
-              onSpeed={setSpeed}
-              onSmooth={(on) => {
-                pause();
-                setSmooth(on);
-              }}
-              onClose={closeAnim}
-            />
-          )}
-          <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
-        </div>
+        <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
       </motion.div>
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />
 
-      {animOn && frames && (
-        <div className="yearbadge" aria-live="polite">
-          <b>{tl.year}</b>
-          {smooth && <small>{tl.year - 2}–{tl.year + 2}</small>}
-          <span>{variable.name[lang]} · {t(lang, "animLegend")}</span>
-          {Number.isFinite(animMean) && (
-            <em className={animMean >= 0 ? "warm" : "cold"}>
-              {(animMean > 0 ? "+" : "") + (lang === "tr" ? animMean.toFixed(2).replace(".", ",") : animMean.toFixed(2))} {variable.unit}
-            </em>
-          )}
-        </div>
-      )}
-
       <Panel
         lang={lang}
+        open={sideOpen}
+        onClose={() => setSideOpen(false)}
         anim={animOn && frames ? { from: tl.from, year: tl.year, to: tl.to } : null}
         mode={mode}
         variables={variables}

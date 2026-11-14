@@ -87,6 +87,9 @@ export type DrawerTab = "chart" | "explore" | "sources";
 
 interface Props {
   lang: Lang;
+  /** the side panel can be hidden; the drawer works either way */
+  open: boolean;
+  onClose: () => void;
   /** 1.4 time travel: while playing, the card and chart cover [from, year] (null = off) */
   anim?: { from: number; year: number; to: number } | null;
   mode: "region" | "point";
@@ -619,8 +622,20 @@ export function Panel(p: Props) {
 
   return (
     <>
-      <motion.aside className="side" aria-live="polite" initial={reduce ? false : { x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.7, ease: EASE, delay: 0.25 }}>
+      <AnimatePresence initial={false}>
+      {p.open && (
+      <motion.aside
+        className="side"
+        aria-live="polite"
+        initial={reduce ? false : { x: 40, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={reduce ? undefined : { x: 40, opacity: 0 }}
+        transition={{ duration: 0.35, ease: EASE }}
+      >
         <header className="side-head">
+          <button className="icon-btn side-close" onClick={p.onClose} aria-label={t(lang, "closePanel")}>
+            <Icon name="close" size={16} />
+          </button>
           <nav className="trail" aria-label="breadcrumb">
             {p.trail.slice(0, -1).map((s, i) => (
               <button key={i} className="crumb" onClick={s.go}>
@@ -649,6 +664,8 @@ export function Panel(p: Props) {
           {checks}
         </motion.div>
       </motion.aside>
+      )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {p.drawer && (
