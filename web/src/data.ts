@@ -54,9 +54,20 @@ export function analyzeTrend(series: Series, opts?: TrendOptions): TrendResult {
   return r;
 }
 
-const DATA_URL = `${import.meta.env.BASE_URL}data/`;
-/** Point-mode tiles live on Cloudflare R2 in production (set VITE_TILES_URL). */
-const TILES_URL: string = import.meta.env.VITE_TILES_URL ?? `${DATA_URL}tiles/`;
+/**
+ * Where the data files live.
+ *  - Local development and tests: unset → mock files in web/public/data/
+ *  - Production (Vercel env var): VITE_DATA_URL = public Cloudflare R2 URL with the real files
+ * Tiles default to `${DATA_URL}tiles/`; VITE_TILES_URL can override them separately.
+ */
+function withSlash(u: string): string {
+  return u.endsWith("/") ? u : `${u}/`;
+}
+const DATA_URL: string = withSlash(import.meta.env.VITE_DATA_URL || `${import.meta.env.BASE_URL}data/`);
+const TILES_URL: string = withSlash(import.meta.env.VITE_TILES_URL || `${DATA_URL}tiles/`);
+
+/** Base URL data is read from (shown in the About page / for debugging). */
+export const dataSource = { data: DATA_URL, tiles: TILES_URL };
 
 export class DataError extends Error {}
 

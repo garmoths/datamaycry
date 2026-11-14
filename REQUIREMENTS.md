@@ -137,16 +137,9 @@ npm run preview      # internet yoksa demo için lokal sunucu
 | R2 erişim anahtarları | `worker/.env` | Enes |
 | Copernicus CDS anahtarı | `~/.cdsapirc` | Enes |
 
-`worker/.env` şablonu:
+`worker/.env` şablonu: [`worker/.env.example`](worker/.env.example) (bucket: `data-may-cry`).
 
-```
-R2_ACCOUNT_ID=...
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
-R2_BUCKET=data-may-cry-tiles
-```
-
-Frontend'e sadece **okuma** adresi girer: `VITE_TILES_URL` (R2'nin public `r2.dev` adresi, Vercel ortam değişkeni). R2 yazma anahtarı asla frontend'e girmez.
+Frontend'e sadece **okuma** adresi girer: `VITE_DATA_URL` (R2'nin public `r2.dev` adresi + `/v1/`, Vercel ortam değişkeni, şablon: [`web/.env.example`](web/.env.example)). Boş bırakılırsa sahte veri (`web/public/data`) kullanılır. R2 yazma anahtarı asla frontend'e girmez.
 
 ---
 
@@ -154,8 +147,8 @@ Frontend'e sadece **okuma** adresi girer: `VITE_TILES_URL` (R2'nin public `r2.de
 
 | Servis | Limit | Bizim kullanım |
 |---|---|---|
-| Vercel Hobby | Deploy başına 100 MB ve 15.000 dosya, aylık 100 GB trafik | `variables.json`, trend haritaları (~17 MB), bölge serileri (~54 MB), sınırlar |
-| Cloudflare R2 (ücretsiz) | 10 GB depolama, 1 M yazma, 10 M okuma, trafik ücretsiz | Karolar: 6.480 dosya, ~2,3 GB |
+| Vercel Hobby | Deploy başına 100 MB ve 15.000 dosya, aylık 100 GB trafik | Sadece site kodu + sahte veri (~18 MB). Gerçek veri git'e ve Vercel'e girmez |
+| Cloudflare R2 (ücretsiz) | 10 GB depolama, 1 M yazma, 10 M okuma, trafik ücretsiz | **Tüm gerçek veri:** 6.102 dosya, 2,17 GB (web kısmı 64,8 MB + karolar 2,10 GB). Yükleme: `uv run upload.py` |
 | `r2.dev` adresi | Hız sınırlı, geliştirme amaçlı | Demo için kabul edildi |
 
 ---
