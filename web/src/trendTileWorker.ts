@@ -1,13 +1,13 @@
 /**
  * Renders map tiles off the main thread so the globe never stutters.
- *   in:  { kind: "field", varId, field }                     – trend map, once per variable
+ *   in:  { kind: "trendmap", varId, grid, slope, pValue, level } – trend map, once per variable (field built here)
  *        { kind: "tile", id, varId, z, x, y }                – trend tile
  *        { kind: "frames", varId, grid, values, colorMax }   – yearly anomaly maps (1.4), once per variable
  *        { kind: "atile", id, varId, frame, z, x, y }        – one year's tile (PNG cached)
  *   out: { id, png: ArrayBuffer | null }
  * Written with AI assistance (Claude).
  */
-import { buildAnomalyField, renderTile, type TrendField } from "./trendField.ts";
+import { buildAnomalyField, buildField, renderTile, type TrendField } from "./trendField.ts";
 
 const fields = new Map<string, TrendField>();
 const SIZE = 256;
@@ -24,6 +24,14 @@ const MAX_PNG = 1500;
 
 type Msg =
   | { kind: "field"; varId: string; field: TrendField }
+  | {
+      kind: "trendmap";
+      varId: string;
+      grid: { nlat: number; nlon: number; lat0: number; lon0: number; dlat: number; dlon: number };
+      slope: Float32Array;
+      pValue: Float32Array;
+      level: Uint8Array;
+    }
   | { kind: "tile"; id: number; varId: string; z: number; x: number; y: number }
   | ({ kind: "frames"; varId: string } & Frames)
   | { kind: "atile"; id: number; varId: string; frame: string; z: number; x: number; y: number };
@@ -74,6 +82,10 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
   const m = e.data;
   if (m.kind === "field") {
     fields.set(m.varId, m.field);
+    return;
+  }
+  if (m.kind === "trendmap") {
+    fields.set(m.varId, buildField({ grid: m.grid as never, slopePerDecade: m.slope, pValue: m.pValue, level: m.level }));
     return;
   }
   if (m.kind === "frames") {

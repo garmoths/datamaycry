@@ -67,6 +67,8 @@ const HOVER = (on: number) => ["case", ["boolean", ["feature-state", "hover"], f
 const REGION_LAYERS = ["admin1-fill", "countries-fill"];
 const EMPTY = { type: "FeatureCollection", features: [] } as const;
 const ANOM_LAYERS = ["anomA", "anomB", "anomC"];
+const TREND_LAYERS = ["trendA", "trendB"];
+const TREND_OPACITY = ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.72, 7, 0.45] as never;
 const ANOM_MAXZOOM = 3;
 const ANOM_OPACITY = ["interpolate", ["linear"], ["zoom"], 0, 0.9, 4, 0.78, 7, 0.5] as never;
 
@@ -472,32 +474,63 @@ export function Globe(props: Props) {
     } as never);
   }, [ready, mode, markers, countryId, admin1Id]);
 
-  // ── trend raster ──
+  // ── trend raster: two layers, the new variable loads hidden and cross-fades in when ready ──
   const { trendTiles, showTrend } = props;
+  const animShown = !!props.animTiles;
+  const trendFront = useRef<string | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !trendTiles) return;
-    const src = map.getSource("trend") as RasterTileSource | undefined;
-    if (src) src.setTiles([trendTiles]);
-    else {
+    if (!map.getSource(TREND_LAYERS[0])) {
       // a tiled source is subdivided properly on the globe (no seam) and each tile is
       // computed for its own zoom (no pixelation); beyond z6 MapLibre scales smoothly
-      map.addSource("trend", { type: "raster", tiles: [trendTiles], tileSize: 256, maxzoom: 6 });
-      map.addLayer(
-        {
-          id: "trend",
-          type: "raster",
-          source: "trend",
-          paint: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.72, 7, 0.45], "raster-fade-duration": 300, "raster-resampling": "linear" },
-        } as never,
-        "continent-fill",
-      );
+      for (const id of TREND_LAYERS) {
+        map.addSource(id, { type: "raster", tiles: [trendTiles], tileSize: 256, maxzoom: 6 });
+        map.addLayer(
+          {
+            id,
+            type: "raster",
+            source: id,
+            paint: {
+              "raster-opacity": 0,
+              "raster-opacity-transition": { duration: 450, delay: 0 },
+              "raster-fade-duration": 0,
+              "raster-resampling": "linear",
+            },
+          } as never,
+          "continent-fill",
+        );
+      }
     }
+    // the old map stays on screen until every tile of the new one is ready
+    const back = TREND_LAYERS.find((l) => l !== trendFront.current)!;
+    (map.getSource(back) as RasterTileSource).setTiles([trendTiles]);
+    let done = false;
+    const swap = () => {
+      if (done) return;
+      done = true;
+      map.setPaintProperty(back, "raster-opacity", TREND_OPACITY);
+      if (trendFront.current) map.setPaintProperty(trendFront.current, "raster-opacity", 0);
+      trendFront.current = back;
+      map.off("sourcedata", onData);
+      clearTimeout(timer);
+    };
+    const onData = (e: { sourceId?: string; sourceDataType?: string }) => {
+      if (e.sourceId === back && e.sourceDataType !== "metadata" && map.isSourceLoaded(back)) swap();
+    };
+    map.on("sourcedata", onData);
+    const timer = setTimeout(swap, 2000); // never keep the old variable forever
+    return () => {
+      done = true;
+      map.off("sourcedata", onData);
+      clearTimeout(timer);
+    };
   }, [ready, trendTiles]);
   useEffect(() => {
     const map = mapRef.current;
-    if (map && ready && map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", showTrend ? "visible" : "none");
-  }, [ready, showTrend, trendTiles]);
+    if (!map || !ready) return;
+    for (const id of TREND_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", showTrend && !animShown ? "visible" : "none");
+  }, [ready, showTrend, trendTiles, animShown]);
 
   // ── 1.4 animation: a ring of three raster layers ──
   // The year on screen sits in one layer; the next year(s) load ahead in the others, so a
@@ -538,15 +571,12 @@ export function Globe(props: Props) {
     if (!map || !ready) return;
     if (!animTiles) {
       for (const id of ANOM_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
-      if (map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", showTrend ? "visible" : "none");
       ring.current.want = null;
       return;
     }
     if (!map.getSource(ANOM_LAYERS[0])) return; // created by the effect above, runs again on next change
     for (const id of ANOM_LAYERS) map.setLayoutProperty(id, "visibility", "visible");
     spin.current = false; // a spinning globe needs new tiles every frame: hold still while playing
-    if (map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", "none");
-
     const r = ring.current;
     const target = loadLayer(map, r, animTiles, [r.front]) ?? ANOM_LAYERS.find((l) => l !== r.front)!;
     if (r.loaded[target]) showLayer(map, r, target, shownCb.current);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { readLink, writeLink } from "./share.ts";
 import { preloadPlotly } from "./plotlyLoader.ts";
 import { VariableDock } from "./VariableDock.tsx";
@@ -538,7 +538,7 @@ export default function App() {
         </button>
       </header>
 
-      <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={setVarId} />
+      <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />
 
