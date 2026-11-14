@@ -1939,7 +1939,7 @@ dialog.method::backdrop {
 
 .yearbadge {
   position: absolute;
-  top: calc(var(--top-h) + 100px);
+  top: calc(var(--top-h) + 108px);
   left: calc(var(--edge) + 8px);
   z-index: 3;
   pointer-events: none;
@@ -2012,96 +2012,98 @@ dialog.method::backdrop {
   .app.side-closed { --sheet: 0px; }
 }
 
-/* ── period scale (under the view switch): no panel, the text sits on the map ── */
+/* ── period scale: climate stripes in a glass pill (under the view switch) ── */
 .period {
   position: absolute;
-  top: calc(var(--top-h) + 4px);
-  left: calc(var(--edge) + 4px);
+  top: calc(var(--top-h) + 2px);
+  left: var(--edge);
   z-index: 6;
-  width: 360px;
-  max-width: calc(100vw - 2 * var(--edge) - 8px);
+  width: 380px;
+  max-width: calc(100vw - 2 * var(--edge));
+  padding: 12px 14px 10px;
+  border-radius: 16px;
   user-select: none;
   -webkit-user-select: none;
   font-family: var(--display);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.6);
 }
-.period-head { display: flex; align-items: baseline; gap: 12px; }
-.period-label { font-size: 14px; font-weight: 500; color: var(--text-2); }
+.period-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.period-label { font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.62); }
 .period-years {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--text);
+  color: #fff;
   font-variant-numeric: tabular-nums;
 }
-.period-years i { font-style: normal; margin: 0 6px; color: var(--muted); font-weight: 400; }
-.period.on .period-years { color: #fff; }
-.period-slot { flex: none; width: 28px; height: 28px; margin-left: auto; align-self: center; display: grid; place-items: center; }
-.period-track { position: relative; height: 28px; margin-top: 6px; }
-.period-rail,
-.period-fill {
+.period-years i { font-style: normal; margin: 0 5px; color: rgba(255, 255, 255, 0.45); font-weight: 400; }
+.period-slot { flex: none; width: 26px; height: 26px; margin-left: auto; align-self: center; display: grid; place-items: center; }
+
+/* the strip: one stripe per year */
+.period-strip { position: relative; height: 34px; cursor: ew-resize; touch-action: none; }
+.period-stripes {
+  position: absolute;
+  inset: 4px 0;
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+.period-stripes span { flex: 1; transition: opacity 0.25s var(--ease), filter 0.25s var(--ease); }
+.period-stripes span.out { opacity: 0.22; filter: saturate(0.4); }
+
+/* the chosen years: a bright frame with a grip at each end */
+.period-box {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: left 0.08s linear, width 0.08s linear;
+}
+.period.dragging .period-box { transition: none; }
+.period-grip {
   position: absolute;
   top: 50%;
-  height: 6px;
-  margin-top: -3px;
-  border-radius: 999px;
+  width: 10px;
+  height: 22px;
+  margin-top: -11px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
-.period-rail { left: 0; right: 0; background: rgba(255, 255, 255, 0.2); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
-.period-fill { background: var(--text); }
-.period.on .period-fill { background: var(--accent); }
-.period-track input {
+.period-grip::after {
+  content: "";
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  background: none;
-  pointer-events: none;
-  appearance: none;
-  -webkit-appearance: none;
+  inset: 6px 3px;
+  border-left: 1px solid rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
 }
-.period-track input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  pointer-events: auto;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  border: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(255, 255, 255, 0.12);
-  cursor: grab;
-  transition: box-shadow 0.15s;
-}
-.period-track input:active::-webkit-slider-thumb { cursor: grabbing; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 6px rgba(122, 167, 255, 0.35); }
-.period-track input::-moz-range-thumb {
-  pointer-events: auto;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  border: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-  cursor: grab;
-}
-.period-track input::-webkit-slider-runnable-track { background: none; }
-.period-track input::-moz-range-track { background: none; }
-.period-ticks { display: flex; justify-content: space-between; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.period-grip.start { left: -5px; }
+.period-grip.end { right: -5px; }
+.period-grip.focus { box-shadow: 0 0 0 3px var(--accent), 0 1px 4px rgba(0, 0, 0, 0.5); }
+/* keyboard sliders: there for focus and arrow keys, the pointer uses the strip */
+.period-key { position: absolute; inset: 0; width: 100%; margin: 0; opacity: 0; pointer-events: none; }
+.period-ticks { position: relative; height: 14px; margin-top: 4px; font-size: 11px; color: rgba(255, 255, 255, 0.5); font-variant-numeric: tabular-nums; }
+.period-ticks span { position: absolute; transform: translateX(-50%); }
+.period-ticks span:first-child { transform: none; left: 0 !important; }
+.period-ticks span:last-child { transform: none; left: auto !important; right: 0; }
 .period-reset {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.14);
-  color: var(--text);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 .period-reset:hover { background: rgba(255, 255, 255, 0.24); }
 .period-spin {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-top-color: #fff;
@@ -2141,7 +2143,8 @@ dialog.method::backdrop {
 .dock,
 .brand,
 .cmdbar,
-.actions {
+.actions,
+.period {
   position: relative;
   isolation: isolate;
   background: var(--glass-sheen), var(--glass-tint);
@@ -2158,7 +2161,8 @@ dialog.method::backdrop {
 .dock::before,
 .brand::before,
 .cmdbar::before,
-.actions::before {
+.actions::before,
+.period::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -2175,7 +2179,8 @@ dialog.method::backdrop {
 .dock::after,
 .brand::after,
 .cmdbar::after,
-.actions::after {
+.actions::after,
+.period::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -2189,7 +2194,8 @@ dialog.method::backdrop {
 .dock:hover::after,
 .brand:hover::after,
 .cmdbar:hover::after,
-.actions:hover::after {
+.actions:hover::after,
+.period:hover::after {
   opacity: 1;
 }
 
@@ -2230,3 +2236,5 @@ dialog.method::backdrop {
   .dock-item svg { transition: none; }
   .dock-item:hover svg { transform: none; }
 }
+/* the period pill uses the glass recipe but stays pinned under the view switch */
+.period { position: absolute; }

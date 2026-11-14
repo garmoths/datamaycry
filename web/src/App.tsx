@@ -109,6 +109,8 @@ export default function App() {
   const [period, setPeriod] = useState<[number, number] | null>(null);
   const [rangeTiles, setRangeTiles] = useState<{ varId: VarId; url: string } | null>(null);
   const [rangeBusy, setRangeBusy] = useState(false);
+  // world mean per year of the chosen variable: the colours of the period scale's stripes
+  const [stripes, setStripes] = useState<number[]>([]);
   const [tl, setTl] = useState<Timeline>({ min: 1980, max: 2025, from: 1980, to: 2025, year: 1980 });
   const [frames, setFrames] = useState<AnomalyFrames | null>(null);
   const [animError, setAnimError] = useState<string | null>(null);
@@ -166,6 +168,16 @@ export default function App() {
         setTrendMap(null);
         setTrendTiles(null);
       });
+    return () => {
+      dead = true;
+    };
+  }, [varId]);
+
+  useEffect(() => {
+    let dead = false;
+    getAnomalyFrames(varId)
+      .then((f) => !dead && setStripes(f.years.map((_, k) => frameMean(f, k))))
+      .catch(() => !dead && setStripes([]));
     return () => {
       dead = true;
     };
@@ -644,6 +656,7 @@ export default function App() {
         min={fullYears[0]}
         max={fullYears[1]}
         value={years}
+        means={stripes}
         busy={rangeBusy}
         onChange={setYears}
         onReset={() => setPeriod(null)}

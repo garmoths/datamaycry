@@ -4,7 +4,7 @@
  * one listener serves every bar and nothing re-renders.
  * Written with AI assistance (Claude).
  */
-export const GLASS = ".dock, .brand, .cmdbar, .actions";
+export const GLASS = ".dock, .brand, .cmdbar, .actions, .period";
 
 /** --mx / --my for a pointer at (x, y) over a box: pixel position inside the box. */
 export function lightPosition(x: number, y: number, box: { left: number; top: number }): { mx: string; my: string } {
