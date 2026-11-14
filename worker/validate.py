@@ -67,6 +67,15 @@ def check(data_dir: Path) -> int:
         assert d.size == len(h["fields"]) * ncell, f"{f.name}: payload size"
         n += 1
 
+    for f in sorted((data_dir / "anomaly_frames").glob("*.bin")):
+        h, d = read_dmc(f)
+        validate(h, "anomaly_frames_header")
+        assert f.stem == h["var"] and h["var"] in var_ids
+        g = h["grid"]
+        ny = h["years"]["end"] - h["years"]["start"] + 1
+        assert d.size == ny * g["nlat"] * g["nlon"], f"{f.name}: payload size"
+        n += 1
+
     for f in sorted((data_dir / "tiles").glob("*/*.bin")):
         h, d = read_dmc(f)
         validate(h, "tile_header")

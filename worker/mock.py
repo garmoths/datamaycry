@@ -258,6 +258,21 @@ def write_trend_maps() -> None:
         write_dmc(OUT / "trend_map" / f"{v[0]}.bin", header, payload)
 
 
+def write_frames_mock() -> None:
+    """Fake yearly anomaly maps on a coarse 4° × 5° grid (contract 1.4), every variable."""
+    from frames import write_frames
+    lat = np.arange(-88, 89, 4.0)
+    lon = np.arange(-177.5, 180, 5.0)
+    grid = {"nlat": len(lat), "nlon": len(lon), "lat0": float(lat[0]), "lon0": float(lon[0]), "dlat": 4.0, "dlon": 5.0}
+    years = np.arange(1980, 2026)
+    for k, v in enumerate(VARS):
+        mean, amp, trend, sd, lo = v[11]
+        base = trend * (1 + np.abs(lat)[None, :, None] / 45) * (0.6 + 0.6 * np.sin(np.radians(lon)[None, None, :] * 2 + k))
+        t = (years - 2005.5)[:, None, None] / 10
+        frames = base * t + rng.normal(0, sd * 0.4, (len(years), len(lat), len(lon)))
+        write_frames(OUT, v[0], frames.astype(np.float32), grid, (1980, 2025))
+
+
 def write_tiles() -> None:
     for ty, tx in MOCK_TILES:
         i0, j0 = ty * 20, tx * 16
@@ -277,7 +292,7 @@ def write_tiles() -> None:
 if __name__ == "__main__":
     # Remove only what this script writes: web/public/data/boundaries (map borders) lives here too.
     OUT.mkdir(parents=True, exist_ok=True)
-    for sub in ("regions", "trend_map", "tiles"):
+    for sub in ("regions", "trend_map", "tiles", "anomaly_frames"):
         if (OUT / sub).exists():
             shutil.rmtree(OUT / sub)
     (OUT / "variables.json").unlink(missing_ok=True)
@@ -286,6 +301,7 @@ if __name__ == "__main__":
     write_badges()
     write_trend_maps()
     write_tiles()
+    write_frames_mock()
     n = check(OUT)
     size = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
     print(f"Mock data: {n} files, {size / 1e6:.1f} MB in {OUT} — all match contract v{SCHEMA_VERSION}")

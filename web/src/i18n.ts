@@ -135,6 +135,34 @@ const S = {
     tr: "Demo veri Nokta modunda sadece 30–40°K, 40–50°D alanını kapsıyor.",
   },
   cell: { en: "Grid cell", tr: "Izgara hücresi" },
+  timeTravel: { en: "Time travel", tr: "Zaman yolculuğu" },
+  timeTravelTip: {
+    en: "Play the map year by year: how far each place was from its 1991–2020 normal.",
+    tr: "Haritayı yıl yıl oynat: her yer 1991–2020 normalinden ne kadar uzaktaydı.",
+  },
+  play: { en: "Play", tr: "Oynat" },
+  pause: { en: "Pause", tr: "Duraklat" },
+  closeAnim: { en: "Back to the trend map", tr: "Trend haritasına dön" },
+  animYear: { en: "Year", tr: "Yıl" },
+  animRange: { en: "Years", tr: "Yıllar" },
+  speed: { en: "Speed", tr: "Hız" },
+  smooth5: { en: "5-year average", tr: "5 yıllık ortalama" },
+  smoothTip: {
+    en: "Each frame shows the average of 5 years around it: less flicker, the long-term change stands out.",
+    tr: "Her kare çevresindeki 5 yılın ortalaması: daha az titreme, uzun dönemli değişim öne çıkar.",
+  },
+  animLegend: { en: "difference from the 1991–2020 normal", tr: "1991–2020 normalinden fark" },
+  worldMean: { en: "World average", tr: "Dünya ortalaması" },
+  vsNormal: { en: "vs normal", tr: "normalden" },
+  animNoData: { en: "No yearly maps for this variable yet.", tr: "Bu değişken için yıllık haritalar henüz yok." },
+  animWait: {
+    en: "A trend needs at least 10 years: the card fills in as the years play.",
+    tr: "Bir eğilim için en az 10 yıl gerekiyor: yıllar ilerledikçe kart dolacak.",
+  },
+  emergedPossible: { en: "Likely change since", tr: "Muhtemel değişim:" },
+  emergedStrong: { en: "Clear change since", tr: "Net değişim:" },
+  emergedNever: { en: "In this period the evidence never became clear.", tr: "Bu dönemde kanıt hiç netleşmedi." },
+  emergedSuffix: { en: "", tr: "ve sonrası" },
 } satisfies Record<string, Record<Lang, string>>;
 
 export type StringKey = keyof typeof S;

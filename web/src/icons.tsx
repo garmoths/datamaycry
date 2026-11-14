@@ -8,7 +8,8 @@ import type { SVGProps } from "react";
 export type IconName =
   | "globe" | "grid" | "info" | "chevron" | "language"
   | "thermometer" | "droplet" | "wind" | "rain" | "evaporation" | "runoff"
-  | "sprout" | "snow" | "haze" | "sun" | "drought" | "flame" | "kite" | "search" | "link" | "chart" | "download";
+  | "sprout" | "snow" | "haze" | "sun" | "drought" | "flame" | "kite" | "search" | "link" | "chart" | "download"
+  | "play" | "pause" | "close" | "clock";
 
 const PATHS: Record<IconName, string> = {
   globe: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M3 12h18 M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9 M12 3c-2.6 2.6-3.8 5.6-3.8 9s1.2 6.4 3.8 9",
@@ -32,6 +33,10 @@ const PATHS: Record<IconName, string> = {
   search: "M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14 M20 20l-4-4",
   chart: "M4 20V4 M4 20h16 M7 15l4-5 3 3 5-6",
   download: "M12 4v11 M7.5 10.5L12 15l4.5-4.5 M5 20h14",
+  play: "M8 5.5v13l10.5-6.5z",
+  pause: "M8 5v14 M16 5v14",
+  close: "M6 6l12 12 M18 6L6 18",
+  clock: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 7v5l3.5 2",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
 };
 

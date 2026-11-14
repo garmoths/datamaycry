@@ -199,3 +199,31 @@ export function robustness(
   ).length;
   return { windows, same };
 }
+
+/**
+ * When did the evidence appear? Runs the test for every end year from start+MIN_YEARS−1
+ * to `endYear` and returns the first end year from which the level stays at least
+ * "possible" / "strong" until the end (null if never). Used by the animation.
+ */
+export function emergence(
+  series: Series,
+  opts: TrendOptions,
+  startYear: number,
+  endYear: number,
+): { possible: number | null; strong: number | null; levels: Map<number, TrendResult["level"]> } {
+  const levels = new Map<number, TrendResult["level"]>();
+  for (let e = startYear + MIN_YEARS - 1; e <= endYear; e++) {
+    const r = analyzeTrend(series, { ...opts, startYear, endYear: e });
+    levels.set(e, r.status === "ok" ? r.level : "none");
+  }
+  const rank = { none: 0, possible: 1, strong: 2 } as const;
+  const since = (min: number): number | null => {
+    let first: number | null = null;
+    for (let e = endYear; e >= startYear + MIN_YEARS - 1; e--) {
+      if (rank[levels.get(e) ?? "none"] >= min) first = e;
+      else break;
+    }
+    return first;
+  };
+  return { possible: since(1), strong: since(2), levels };
+}

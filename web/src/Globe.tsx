@@ -38,6 +38,12 @@ interface Props {
   /** tile URL template of the trend layer (trendImage.ts), null = none */
   trendTiles: string | null;
   showTrend: boolean;
+  /** 1.4 animation: tile URL of the year to show; null = animation off (trend map back) */
+  animTiles?: string | null;
+  /** the year's tiles are on screen (double-buffered swap done) */
+  onAnimShown?: (url: string) => void;
+  /** tiles in view at the current zoom, reported after every move while animating (for preloading) */
+  onViewTiles?: (tiles: { z: number; x: number; y: number }[]) => void;
   continent: string | null;
   countryId: string | null;
   admin1Id: string | null;
@@ -460,6 +466,77 @@ export function Globe(props: Props) {
     if (map && ready && map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", showTrend ? "visible" : "none");
   }, [ready, showTrend, trendTiles]);
 
+  // ── 1.4 animation: two raster layers, the next year loads hidden and swaps in when ready ──
+  const { animTiles, onAnimShown, onViewTiles } = props;
+  const front = useRef<"anomA" | "anomB">("anomA");
+  const shownCb = useRef(onAnimShown);
+  useEffect(() => {
+    shownCb.current = onAnimShown;
+  }, [onAnimShown]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const ANOM_OPACITY = ["interpolate", ["linear"], ["zoom"], 0, 0.9, 4, 0.78, 7, 0.5] as never;
+    if (!animTiles) {
+      for (const id of ["anomA", "anomB"]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+      if (map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", showTrend ? "visible" : "none");
+      return;
+    }
+    if (!map.getSource("anomA")) {
+      for (const id of ["anomA", "anomB"]) {
+        map.addSource(id, { type: "raster", tiles: [animTiles], tileSize: 256, maxzoom: 6 });
+        map.addLayer(
+          { id, type: "raster", source: id, paint: { "raster-opacity": 0, "raster-fade-duration": 0, "raster-resampling": "linear" } } as never,
+          "continent-fill",
+        );
+      }
+    }
+    for (const id of ["anomA", "anomB"]) map.setLayoutProperty(id, "visibility", "visible");
+    spin.current = false; // a spinning globe needs new tiles every frame: hold still while playing
+    if (map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", "none");
+
+    const back = front.current === "anomA" ? "anomB" : "anomA";
+    (map.getSource(back) as RasterTileSource).setTiles([animTiles]);
+    let done = false;
+    const swap = () => {
+      if (done) return;
+      done = true;
+      map.setPaintProperty(back, "raster-opacity", ANOM_OPACITY);
+      map.setPaintProperty(front.current, "raster-opacity", 0);
+      front.current = back;
+      map.off("sourcedata", onData);
+      clearTimeout(timer);
+      shownCb.current?.(animTiles);
+    };
+    const onData = (e: { sourceId?: string; sourceDataType?: string }) => {
+      if (e.sourceId === back && e.sourceDataType !== "metadata" && map.isSourceLoaded(back)) swap();
+    };
+    map.on("sourcedata", onData);
+    const timer = setTimeout(swap, 1500); // a slow tile never stalls playback
+    return () => {
+      done = true;
+      map.off("sourcedata", onData);
+      clearTimeout(timer);
+    };
+  }, [ready, animTiles, showTrend]);
+
+  // tiles in view, for preloading every year of the animation
+  const tilesCb = useRef(onViewTiles);
+  useEffect(() => {
+    tilesCb.current = onViewTiles;
+  }, [onViewTiles]);
+  const animOn = !!animTiles;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !animOn) return;
+    const report = () => tilesCb.current?.(visibleTiles(map));
+    report();
+    map.on("moveend", report);
+    return () => {
+      map.off("moveend", report);
+    };
+  }, [ready, animOn]);
+
   // ── camera ──
   const { view } = props;
   useEffect(() => {
@@ -478,4 +555,23 @@ export function Globe(props: Props) {
   }, [ready, view.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div ref={box} className="globe" />;
+}
+
+/** Web-Mercator tiles covering the current view at the current (integer) zoom, max 32. */
+function visibleTiles(map: MapLibreMap): { z: number; x: number; y: number }[] {
+  const z = Math.max(0, Math.min(6, Math.floor(map.getZoom())));
+  const n = 2 ** z;
+  const b = map.getBounds();
+  const tx = (lon: number) => Math.floor(((lon + 180) / 360) * n);
+  const ty = (lat: number) => {
+    const r = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
+    return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n);
+  };
+  const y0 = Math.max(0, ty(b.getNorth())), y1 = Math.min(n - 1, ty(b.getSouth()));
+  let x0 = tx(b.getWest()), x1 = tx(b.getEast());
+  if (x1 < x0 || b.getEast() - b.getWest() >= 360) [x0, x1] = [0, n - 1];
+  const out: { z: number; x: number; y: number }[] = [];
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) if (out.length < 32) out.push({ z, x: ((x % n) + n) % n, y });
+  return out;
 }

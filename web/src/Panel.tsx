@@ -23,7 +23,7 @@ import {
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
 import { cardText, chanceText, decimalsFor, meaningHead, noTrendText, robustText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
-import { robustness, SEASONS, type Season } from "./trend.ts";
+import { emergence, robustness, SEASONS, type Season } from "./trend.ts";
 
 const SEASON_LABEL: Record<Season, StringKey> = {
   all: "seasonAll", winter: "seasonWinter", spring: "seasonSpring", summer: "seasonSummer", autumn: "seasonAutumn",
@@ -74,6 +74,8 @@ export type PanelTab = "summary" | "chart" | "explore";
 
 interface Props {
   lang: Lang;
+  /** 1.4 time travel: while playing, the card and chart cover [from, year] (null = off) */
+  anim?: { from: number; year: number; to: number } | null;
   mode: "region" | "point";
   variables: VariablesFile;
   variable: VariableInfo;
@@ -115,6 +117,12 @@ export function Panel(p: Props) {
   const reduce = useReducedMotion();
   const [season, setSeason] = useState<Season>("all");
   const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
+  // during time travel the analysed period follows the animation year
+  const animYear = p.anim?.year, animStart = p.anim?.from;
+  const eff = useMemo<[number, number]>(
+    () => (animYear !== undefined && animStart !== undefined ? [animStart, animYear] : years),
+    [animYear, animStart, years],
+  );
 
   const targetKey = JSON.stringify(p.target);
   useEffect(() => {
@@ -147,9 +155,18 @@ export function Panel(p: Props) {
   const result = useMemo(
     () =>
       shown
-        ? analyzeTrend(shown, { startYear: years[0], endYear: years[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined })
+        ? analyzeTrend(shown, { startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined })
         : null,
-    [shown, years, season],
+    [shown, eff, season],
+  );
+  // 1.4: when did the evidence appear in the animation's range? (one test per end year, ~46 ms)
+  const animFrom = p.anim?.from, animTo = p.anim?.to;
+  const emerged = useMemo(
+    () =>
+      shown && animFrom !== undefined && animTo !== undefined && animTo - animFrom + 1 >= 10
+        ? emergence(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, animFrom, animTo)
+        : null,
+    [shown, animFrom, animTo, season],
   );
   // Start/end-year sensitivity (display only): same test with the period moved by 5 years
   const robust = useMemo(
@@ -195,7 +212,7 @@ export function Panel(p: Props) {
 
   const card = (() => {
     if (!result) return null;
-    if (result.status === "too_short") return { cls: "none", head: null, body: t(lang, "tooShort") };
+    if (result.status === "too_short") return { cls: "none", head: null, body: t(lang, p.anim ? "animWait" : "tooShort") };
     if (result.status === "insufficient_data") return { cls: "none", head: null, body: t(lang, "insufficient") };
     if (result.status === "constant") return { cls: "none", head: null, body: t(lang, "constant") };
     if (result.level === "none")
@@ -361,7 +378,27 @@ export function Panel(p: Props) {
               </div>
             </dl>
           )}
-          {ok && robust && robust.windows.length > 0 && (
+          {emerged && (
+            <p className="emerged">
+              {emerged.possible === null && emerged.strong === null ? (
+                t(lang, "emergedNever")
+              ) : (
+                <>
+                  {emerged.possible !== null && (
+                    <span className={animYear !== undefined && animYear >= emerged.possible ? "on" : ""}>
+                      {t(lang, "emergedPossible")} <b>{emerged.possible}</b> {t(lang, "emergedSuffix")}
+                    </span>
+                  )}
+                  {emerged.strong !== null && (
+                    <span className={`strong ${animYear !== undefined && animYear >= emerged.strong ? "on" : ""}`}>
+                      {t(lang, "emergedStrong")} <b>{emerged.strong}</b> {t(lang, "emergedSuffix")}
+                    </span>
+                  )}
+                </>
+              )}
+            </p>
+          )}
+          {ok && !p.anim && robust && robust.windows.length > 0 && (
             <p className={robust.same === robust.windows.length ? "note" : "warn"} title={t(lang, "robustTitle")}>
               {robustText(lang, robust.same, robust.windows.length)}
             </p>
@@ -409,7 +446,7 @@ export function Panel(p: Props) {
           </button>
         ))}
       </div>
-      <Chart series={shown} result={result} view={view} unit={unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} lang={lang} />
+      <Chart series={shown} result={result} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} />
       <div className="controls">
         <label>
           {t(lang, "period")} <b>{years[0]}–{years[1]}</b>

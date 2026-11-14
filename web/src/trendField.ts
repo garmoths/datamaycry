@@ -79,6 +79,11 @@ export function mercatorLat(yNorm: number): number {
 export interface TrendField {
   nlat: number;
   nlon: number;
+  /** cell centres: lat = lat0 + i·dlat, lon = lon0 + j·dlon (default: the MERRA-2 grid) */
+  lat0?: number;
+  lon0?: number;
+  dlat?: number;
+  dlon?: number;
   /** premultiplied RGBA (0…255 colour × alpha 0…1) per grid cell */
   rgba: Float32Array;
 }
@@ -130,6 +135,7 @@ function smooth121(src: Float32Array, nlat: number, nlon: number): Float32Array 
 /** RGBA pixels of map tile z/x/y (size × size), sampled from the field with a 2-D B-spline. */
 export function renderTile(field: TrendField, z: number, x: number, y: number, size = 256): Uint8ClampedArray {
   const { nlat, nlon, rgba } = field;
+  const lat0 = field.lat0 ?? -90, lon0 = field.lon0 ?? -180, dlat = field.dlat ?? 0.5, dlon = field.dlon ?? 0.625;
   const px = new Uint8ClampedArray(size * size * 4);
   const n = 2 ** z;
   // column weights are the same for every row of the tile
@@ -137,7 +143,7 @@ export function renderTile(field: TrendField, z: number, x: number, y: number, s
   const jW = new Float32Array(size * 4);
   for (let c = 0; c < size; c++) {
     const lon = ((x + (c + 0.5) / size) / n) * 360 - 180;
-    const f = (lon + 180) / 0.625; // cell j is centred on lon −180 + j·0.625
+    const f = (lon - lon0) / dlon; // cell j is centred on lon0 + j·dlon
     const j0 = Math.floor(f);
     const w = bspline(f - j0);
     for (let m = 0; m < 4; m++) {
@@ -149,7 +155,7 @@ export function renderTile(field: TrendField, z: number, x: number, y: number, s
     const lat = mercatorLat((y + (r + 0.5) / size) / n);
     const fade = polarFade(lat);
     if (fade <= 0) continue;
-    const fi = (lat + 90) / 0.5;
+    const fi = (lat - lat0) / dlat;
     const i0 = Math.floor(fi);
     const wi = bspline(fi - i0);
     const rows = [0, 1, 2, 3].map((m) => Math.min(nlat - 1, Math.max(0, i0 - 1 + m)) * nlon);
@@ -179,3 +185,33 @@ export function renderTile(field: TrendField, z: number, x: number, y: number, s
   return px;
 }
 
+/**
+ * Colour + opacity for one year of the animation (contract 1.4): colour = difference from
+ * the 1991–2020 normal on a FIXED scale (colorMax) so years compare; opacity grows with the
+ * size of the difference, so near-normal places let the satellite picture show through.
+ * No p-value here: a single year is not a trend test.
+ */
+export function buildAnomalyField(
+  values: ArrayLike<number>,
+  offset: number,
+  grid: { nlat: number; nlon: number; lat0: number; lon0: number; dlat: number; dlon: number },
+  colorMax: number,
+): TrendField {
+  const { nlat, nlon } = grid;
+  const n = nlat * nlon;
+  const rgba = new Float32Array(n * 4);
+  for (let k = 0; k < n; k++) {
+    const v = values[offset + k];
+    if (!Number.isFinite(v)) continue;
+    const norm = v / colorMax;
+    const [r, g, b] = trendColor(norm);
+    // fully transparent at the normal, clearly visible from ~1/3 of the scale on
+    const x = Math.min(1, Math.max(0, (Math.abs(norm) - 0.03) / 0.37));
+    const a = 0.9 * x * x * (3 - 2 * x);
+    rgba[k * 4] = r * a;
+    rgba[k * 4 + 1] = g * a;
+    rgba[k * 4 + 2] = b * a;
+    rgba[k * 4 + 3] = a;
+  }
+  return { ...grid, rgba };
+}

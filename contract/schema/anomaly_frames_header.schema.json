@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "anomaly_frames_header.schema.json",
+  "title": "anomaly_frames/{VAR}.bin header",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "var",
+    "grid",
+    "years",
+    "baseline",
+    "packing",
+    "color_max"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$"
+    },
+    "kind": {
+      "const": "anomaly_frames"
+    },
+    "var": {
+      "enum": [
+        "T2M",
+        "QV2M",
+        "SPEED",
+        "PRECTOT",
+        "EVAP",
+        "GWETROOT",
+        "RUNOFF",
+        "SNOMAS",
+        "TOTEXTTAU"
+      ]
+    },
+    "grid": {
+      "type": "object",
+      "required": [
+        "nlat",
+        "nlon",
+        "lat0",
+        "lon0",
+        "dlat",
+        "dlon"
+      ],
+      "properties": {
+        "nlat": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "nlon": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "lat0": {
+          "type": "number"
+        },
+        "lon0": {
+          "type": "number"
+        },
+        "dlat": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "dlon": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "years": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "integer"
+        },
+        "end": {
+          "type": "integer"
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "const": 1991
+        },
+        "end": {
+          "const": 2020
+        }
+      }
+    },
+    "packing": {
+      "type": "object",
+      "required": [
+        "scale",
+        "offset"
+      ],
+      "properties": {
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "offset": {
+          "type": "number"
+        }
+      }
+    },
+    "color_max": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  }
+}

@@ -8,7 +8,11 @@ import { Icon, Logo } from "./icons.tsx";
 import { MethodDialog } from "./MethodDialog.tsx";
 import {
   getRegionSeries,
+  frameMean,
+  getAnomalyFrames,
   getTrendMap,
+  runningFrames,
+  type AnomalyFrames,
   listCountries,
   loadVariables,
   type CountryInfo,
@@ -19,7 +23,9 @@ import {
 import { Globe, type Marker, type View } from "./Globe.tsx";
 import { Panel, type AreaInfo, type CountryRow, type PanelTab, type Status, type Target } from "./Panel.tsx";
 import { StatusIsland } from "./StatusIsland.tsx";
-import { trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
+import { anomalyTileUrl, preloadFrames, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
+import { TimeBar } from "./TimeBar.tsx";
+import { clampTimeline, frameMs, nextYear, playFrom, type Timeline } from "./timeline.ts";
 import {
   bboxOf,
   CELL_LEVEL,
@@ -71,6 +77,20 @@ export default function App() {
   const [question, setQuestion] = useState<Question | null>(null);
   const [tab, setTab] = useState<PanelTab>("explore");
   const [status, setStatus] = useState<Status>({ place: "", value: null, level: null, loading: false });
+
+  // ── 1.4 "time travel": yearly maps of the difference from the 1991–2020 normal ──
+  const [animOn, setAnimOn] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [smooth, setSmooth] = useState(false);
+  const [tl, setTl] = useState<Timeline>({ min: 1980, max: 2025, from: 1980, to: 2025, year: 1980 });
+  const [frames, setFrames] = useState<AnomalyFrames | null>(null);
+  const [animError, setAnimError] = useState<string | null>(null);
+  const [preload, setPreload] = useState<number | null>(null);
+  const [urlFor, setUrlFor] = useState<((frame: number, smooth: boolean) => string) | null>(null);
+  const viewTiles = useRef<{ z: number; x: number; y: number }[]>([]);
+  const preloaded = useRef(new Set<string>());
+  const timer = useRef<number | undefined>(undefined);
 
   const [continent, setContinent] = useState<string | null>(null);
   const [countryId, setCountryId] = useState<string | null>(null);
@@ -124,6 +144,26 @@ export default function App() {
       dead = true;
     };
   }, [varId]);
+
+  // load the yearly maps of the chosen variable while the animation is open
+  useEffect(() => {
+    if (!animOn) return;
+    let dead = false;
+    setAnimError(null);
+    setFrames(null);
+    getAnomalyFrames(varId)
+      .then((f) => {
+        if (dead) return;
+        const build = anomalyTileUrl(f);
+        setUrlFor(() => build);
+        setFrames(f);
+        setTl((t0) => clampTimeline({ ...t0, min: f.years[0], max: f.years[f.years.length - 1] }));
+      })
+      .catch(() => !dead && setAnimError(t(lang, "animNoData")));
+    return () => {
+      dead = true;
+    };
+  }, [animOn, varId, lang]);
 
   const countryRows: CountryRow[] = useMemo(
     () => bounds?.countries.features.map((f) => f.properties).filter((c) => c.id && c.id !== "-99") ?? [],
@@ -202,6 +242,54 @@ export default function App() {
     },
     [bounds, flyTo],
   );
+
+  const animTiles = animOn && frames && urlFor ? urlFor(tl.year - frames.years[0], smooth) : null;
+  const smoothed = useMemo(() => (frames && smooth ? runningFrames(frames, 5) : frames), [frames, smooth]);
+  const animMean = smoothed ? frameMean(smoothed, tl.year - smoothed.years[0]) : NaN;
+
+  // playback: the next year is scheduled only after the current one is on screen
+  const [shownUrl, setShownUrl] = useState<string | null>(null);
+  const onAnimShown = useCallback((url: string) => setShownUrl(url), []);
+  useEffect(() => {
+    if (!playing || !animTiles || shownUrl !== animTiles) return;
+    timer.current = window.setTimeout(() => {
+      setTl((t0) => {
+        const n = nextYear(t0);
+        if (n === null) {
+          setPlaying(false);
+          return t0;
+        }
+        return { ...t0, year: n };
+      });
+    }, frameMs(speed));
+    return () => window.clearTimeout(timer.current);
+  }, [playing, animTiles, shownUrl, speed]);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const play = async () => {
+    if (!frames) return;
+    const start = playFrom(tl);
+    setTl((t0) => ({ ...t0, year: start }));
+    // paint every year's tiles for the current view once, so playback does not stutter
+    const tiles = viewTiles.current;
+    const key = `${frames.var}|${smooth}|${tl.from}-${tl.to}|${tiles.map((x) => `${x.z}/${x.x}/${x.y}`).join(",")}`;
+    if (tiles.length && !preloaded.current.has(key)) {
+      setPreload(0);
+      const idx = Array.from({ length: tl.to - start + 1 }, (_, k) => start + k - frames.years[0]);
+      await preloadFrames(frames.var, idx, smooth, tiles, setPreload);
+      preloaded.current.add(key);
+      setPreload(null);
+    }
+    setPlaying(true);
+  };
+  const pause = () => {
+    setPlaying(false);
+    window.clearTimeout(timer.current);
+  };
+  const closeAnim = () => {
+    pause();
+    setAnimOn(false);
+  };
 
   const switchMode = (m: "region" | "point") => {
     if (m === mode) return;
@@ -373,6 +461,9 @@ export default function App() {
           mode={mode}
           trendTiles={trendTiles}
           showTrend={showTrend}
+          animTiles={animTiles}
+          onAnimShown={onAnimShown}
+          onViewTiles={(x) => (viewTiles.current = x)}
           continent={continent}
           countryId={countryId}
           admin1Id={admin1Id}
@@ -424,7 +515,53 @@ export default function App() {
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />
 
-      <div className="legend">
+      {animOn && frames && (
+        <div className="yearbadge" aria-live="polite">
+          <b>{tl.year}</b>
+          {smooth && <small>{tl.year - 2}–{tl.year + 2}</small>}
+          {Number.isFinite(animMean) && (
+            <span>
+              {t(lang, "worldMean")}: {(animMean > 0 ? "+" : "") + (lang === "tr" ? animMean.toFixed(2).replace(".", ",") : animMean.toFixed(2))} {variable.unit}{" "}
+              {t(lang, "vsNormal")}
+            </span>
+          )}
+        </div>
+      )}
+      {animOn && (
+        <TimeBar
+          lang={lang}
+          unit={variable.unit}
+          decimals={variable.decimals}
+          colorMax={frames?.colorMax ?? null}
+          tl={tl}
+          playing={playing}
+          speed={speed}
+          smooth={smooth}
+          preload={preload}
+          error={animError}
+          onPlay={play}
+          onPause={pause}
+          onYear={(y) => {
+            pause();
+            setTl((t0) => clampTimeline({ ...t0, year: y }));
+          }}
+          onRange={(a, b) => {
+            pause();
+            setTl((t0) => clampTimeline({ ...t0, from: a, to: b, year: a }));
+          }}
+          onSpeed={setSpeed}
+          onSmooth={(on) => {
+            pause();
+            setSmooth(on);
+          }}
+          onClose={closeAnim}
+        />
+      )}
+
+      <div className="legend" hidden={animOn}>
+        <button className="tt-btn" onClick={() => setAnimOn(true)} data-tip={t(lang, "timeTravelTip")}>
+          <Icon name="play" size={14} /> {t(lang, "timeTravel")}
+        </button>
         <label>
           <input type="checkbox" checked={showTrend} onChange={(e) => setShowTrend(e.target.checked)} /> {t(lang, "trendMap")}
         </label>
@@ -438,6 +575,7 @@ export default function App() {
 
       <Panel
         lang={lang}
+        anim={animOn && frames ? { from: tl.from, year: tl.year, to: tl.to } : null}
         mode={mode}
         variables={variables}
         variable={variable}
