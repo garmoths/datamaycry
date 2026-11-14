@@ -21,7 +21,7 @@ import {
   type VariablesFile,
   type VariableInfo,
 } from "./data.ts";
-import { Chart } from "./Chart.tsx";
+import { Chart, type ChartView } from "./Chart.tsx";
 import { cardText, chanceText, decimalsFor, meaningHead, noTrendText, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
 import { CONTINENTS, type Node } from "./geo.ts";
 import { ScaleLadder } from "./ScaleLadder.tsx";
@@ -106,7 +106,7 @@ export function Panel(p: Props) {
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<"raw" | "anomaly">("anomaly");
+  const [view, setView] = useState<ChartView>("anomaly");
   const reduce = useReducedMotion();
   const [season, setSeason] = useState<"all" | "summer">("all");
   const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
@@ -383,13 +383,13 @@ export function Panel(p: Props) {
       <p className="eyebrow">{v.name[lang]}</p>
       <h2>{place}</h2>
       <div className="seg" role="group">
-        {(["anomaly", "raw"] as const).map((k) => (
+        {(["anomaly", "raw", "seasons"] as const).map((k) => (
           <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>
             {t(lang, k)}
           </button>
         ))}
       </div>
-      <Chart series={shown} result={result} view={view} unit={unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} />
+      <Chart series={shown} result={result} view={view} unit={unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} lang={lang} />
       <div className="controls">
         <label>
           {t(lang, "period")} <b>{years[0]}–{years[1]}</b>

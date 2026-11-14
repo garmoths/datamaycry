@@ -156,3 +156,47 @@ function erfSeries(x: number): number {
   }
   return (2 / Math.sqrt(Math.PI)) * sum;
 }
+
+// ─── Display-only smoothers (charts). Not used by any test or label. ────────
+
+/**
+ * LOESS (Cleveland 1979): for every x, a straight line fitted to the nearest
+ * `span` share of the points with tricube weights. Shows bends and humps that
+ * a single straight trend line hides. x must be sorted ascending.
+ */
+export function loess(x: number[], y: number[], span = 0.5): number[] {
+  const n = x.length;
+  const k = Math.max(3, Math.min(n, Math.ceil(span * n)));
+  return x.map((x0) => {
+    const d = x.map((v) => Math.abs(v - x0));
+    const h = [...d].sort((a, b) => a - b)[k - 1] || 1;
+    let sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (let i = 0; i < n; i++) {
+      const u = d[i] / h;
+      if (u >= 1) continue;
+      const w = (1 - u ** 3) ** 3;
+      sw += w;
+      sx += w * x[i];
+      sy += w * y[i];
+      sxx += w * x[i] * x[i];
+      sxy += w * x[i] * y[i];
+    }
+    const den = sw * sxx - sx * sx;
+    if (Math.abs(den) < 1e-12) return sy / sw;
+    const b = (sw * sxy - sx * sy) / den;
+    return (sy - b * sx) / sw + b * x0;
+  });
+}
+
+/** Centred running mean over `window` points; NaN where the window is incomplete or has gaps. */
+export function runningMean(values: ArrayLike<number>, window = 12): number[] {
+  const n = values.length;
+  const before = Math.floor(window / 2);
+  const out = new Array<number>(n).fill(NaN);
+  for (let i = before; i + (window - before) <= n; i++) {
+    let s = 0;
+    for (let j = i - before; j < i - before + window; j++) s += values[j];
+    out[i] = s / window; // NaN propagates: a gap inside the window gives NaN
+  }
+  return out;
+}

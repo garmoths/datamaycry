@@ -897,7 +897,20 @@
 }
 
 .chart {
-  height: 220px;
+  height: 290px;
+}
+
+/* Climate stripes: one per tested year, same left/right inset as the plot area */
+.stripes {
+  display: flex;
+  height: 22px;
+  margin: 0 10px 6px 50px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+.stripes span {
+  flex: 1;
 }
 
 .shimmer {
