@@ -244,6 +244,14 @@ export default function App() {
   );
 
   const animTiles = animOn && frames && urlFor ? urlFor(tl.year - frames.years[0], smooth) : null;
+  // the next two years load ahead while one is on screen
+  const animAhead = useMemo(
+    () =>
+      animOn && frames && urlFor
+        ? [1, 2].map((d) => tl.year + d).filter((y) => y <= tl.to).map((y) => urlFor(y - frames.years[0], smooth))
+        : [],
+    [animOn, frames, urlFor, tl.year, tl.to, smooth],
+  );
   const smoothed = useMemo(() => (frames && smooth ? runningFrames(frames, 5) : frames), [frames, smooth]);
   const animMeans = useMemo(() => (smoothed ? smoothed.years.map((_, k) => frameMean(smoothed, k)) : []), [smoothed]);
   const animMean = smoothed ? (animMeans[tl.year - smoothed.years[0]] ?? NaN) : NaN;
@@ -251,8 +259,14 @@ export default function App() {
   // playback: the next year is scheduled only after the current one is on screen
   const [shownUrl, setShownUrl] = useState<string | null>(null);
   const onAnimShown = useCallback((url: string) => setShownUrl(url), []);
+  const stepAt = useRef(0); // when the current year was requested
+  useEffect(() => {
+    stepAt.current = performance.now();
+  }, [animTiles]);
   useEffect(() => {
     if (!playing || !animTiles || shownUrl !== animTiles) return;
+    // the frame period counts from the step, so loading time is not added on top
+    const wait = Math.max(0, frameMs(speed) - (performance.now() - stepAt.current));
     timer.current = window.setTimeout(() => {
       setTl((t0) => {
         const n = nextYear(t0);
@@ -262,7 +276,7 @@ export default function App() {
         }
         return { ...t0, year: n };
       });
-    }, frameMs(speed));
+    }, wait);
     return () => window.clearTimeout(timer.current);
   }, [playing, animTiles, shownUrl, speed]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -463,6 +477,7 @@ export default function App() {
           trendTiles={trendTiles}
           showTrend={showTrend}
           animTiles={animTiles}
+          animAhead={animAhead}
           onAnimShown={onAnimShown}
           onViewTiles={(x) => (viewTiles.current = x)}
           continent={continent}
