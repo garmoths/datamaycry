@@ -181,3 +181,28 @@ def test_fdr():
     # Benjamini & Hochberg (1995) style example: first two rejected at q = 0.05
     assert P.fdr_bh(p).tolist() == [True, True] + [False] * 8
     assert not P.fdr_bh(np.array([np.nan, 0.5])).any()
+
+
+def test_grid_ci_equals_scalar():
+    rng = np.random.default_rng(9)
+    years = np.arange(1980, 2026)
+    a = np.cumsum(rng.normal(0, 0.3, (300, len(years))), axis=1) * 0.3 + rng.normal(0, 1, (300, len(years)))
+    a[::4] = np.round(a[::4], 0)
+    _, v, _, _ = P.mk_sen_grid(a, years)
+    s, lo, hi = P.sen_ci_grid(a, years, v, chunk=64)
+    for r in range(len(a)):
+        sc = P.sen_slope(years, a[r])
+        assert s[r] == pytest.approx(sc.slope, abs=1e-12)
+        assert lo[r] == pytest.approx(sc.ci95[0], abs=1e-12) and hi[r] == pytest.approx(sc.ci95[1], abs=1e-12)
+
+
+def test_fast_mk_equals_mk():
+    rng = np.random.default_rng(10)
+    for k in range(300):
+        n = int(rng.integers(20, 600))
+        x = rng.normal(0, 1, n) + rng.normal(0, 0.002) * np.arange(n)
+        if k % 3 == 0:
+            x = np.round(x, 1)
+        a, b = P.fast_mk(x), P.mann_kendall(x)
+        assert a.s == b.s and a.var_s == pytest.approx(b.var_s) and abs(a.p - b.p) < 1e-12
+        assert abs(P.fast_prewhitened_mk(x).p - P.prewhitened_mk(x).p) < 1e-12

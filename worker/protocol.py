@@ -282,6 +282,62 @@ def mk_sen_grid(a: np.ndarray, years: np.ndarray, chunk: int = 2000):
     return (np.concatenate(s_all), np.concatenate(v_all), np.concatenate(p_all), np.concatenate(sl_all))
 
 
+def sen_ci_grid(a: np.ndarray, years: np.ndarray, var_s: np.ndarray, chunk: int = 2000):
+    """Vectorized sen_slope: returns slope, lo, hi (per year), identical to the scalar one."""
+    n = a.shape[1]
+    i, j = np.triu_indices(n, 1)
+    dt = (years[j] - years[i]).astype(np.float64)
+    t = years - years[0]
+    tmed = float(np.median(t))
+    out_s, out_lo, out_hi = [], [], []
+    for c0 in range(0, a.shape[0], chunk):
+        x = a[c0:c0 + chunk]
+        sl = np.sort((x[:, j] - x[:, i]) / dt, axis=1)
+        slope = np.median(sl, axis=1)
+        intercept = np.median(x, axis=1) - slope * tmed
+        resid = x - intercept[:, None] - slope[:, None] * t[None, :]
+        d = resid - resid.mean(1, keepdims=True)
+        den = (d * d).sum(1)
+        r1 = np.where(den == 0, 0.0, (d[:, :-1] * d[:, 1:]).sum(1) / np.where(den == 0, 1, den))
+        r1 = np.clip(r1, 0.0, 0.95)
+        c = Z975 * np.sqrt(var_s[c0:c0 + chunk] * ((1 + r1) / (1 - r1)))
+        m = sl.shape[1]
+        m1 = np.floor((m - c) / 2 + 0.5).astype(int)
+        m2 = np.floor((m + c) / 2 + 0.5).astype(int)
+        rows = np.arange(x.shape[0])
+        out_s.append(slope)
+        out_lo.append(sl[rows, np.clip(m1 - 1, 0, m - 1)])
+        out_hi.append(sl[rows, np.clip(m2, 0, m - 1)])
+    return np.concatenate(out_s), np.concatenate(out_lo), np.concatenate(out_hi)
+
+
+def fast_mk(x: np.ndarray) -> MK:
+    """mann_kendall in O(n log n) via Kendall's tau (for 552-month series). Same result."""
+    from scipy.stats import kendalltau
+    x = np.asarray(x, dtype=np.float64)
+    x = x[~np.isnan(x)]
+    n = len(x)
+    n0 = n * (n - 1) / 2
+    _, t = np.unique(x, return_counts=True)
+    n2 = float((t * (t - 1) / 2).sum())
+    if n0 - n2 <= 0:
+        return MK(n, 0.0, 0.0, 0.0, 1.0)
+    tau = kendalltau(np.arange(n), x).statistic
+    s = float(round(tau * sqrt(n0 * (n0 - n2))))
+    v = mk_variance(x)
+    z = 0.0
+    if v > 0:
+        z = (s - 1) / sqrt(v) if s > 0 else (s + 1) / sqrt(v) if s < 0 else 0.0
+    return MK(n, s, v, z, norm_sf2(z))
+
+
+def fast_prewhitened_mk(x: np.ndarray) -> MK:
+    x = np.asarray(x, dtype=np.float64)
+    x = x[~np.isnan(x)]
+    r1 = lag1(x)
+    return fast_mk(x[1:] - r1 * x[:-1])
+
+
 # ─── Step 6: area weights ───────────────────────────────────────────────────
 
 def area_weights(lat: np.ndarray, overlap: np.ndarray) -> np.ndarray:
