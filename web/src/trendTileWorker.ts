@@ -62,11 +62,19 @@ type Msg =
   | { kind: "tile"; id: number; varId: string; z: number; x: number; y: number }
   | ({ kind: "frames"; varId: string } & Frames)
   | { kind: "atile"; id: number; varId: string; frame: string; z: number; x: number; y: number }
-  | { kind: "rangetrend"; id: number; varId: string; key: string; i0: number; i1: number };
+  | { kind: "rangetrend"; id: number; varId: string; key: string; i0: number; i1: number; share?: boolean };
 
 // period maps: keep the last few, they are cheap to recompute
 const rangeKeys: string[] = [];
 const MAX_RANGES = 6;
+function keepRange(key: string) {
+  rangeKeys.push(key);
+  while (rangeKeys.length > MAX_RANGES) {
+    const old = rangeKeys.shift()!;
+    fields.delete(old);
+    for (const k of [...pngCache.keys()]) if (k.startsWith(`t/${old}/`)) pngCache.delete(k);
+  }
+}
 
 async function toPng(field: TrendField | undefined, z: number, x: number, y: number): Promise<ArrayBuffer> {
   const canvas = new OffscreenCanvas(SIZE, SIZE);
@@ -114,6 +122,7 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
   const m = e.data;
   if (m.kind === "field") {
     fields.set(m.varId, m.field);
+    if (m.varId.includes("@")) keepRange(m.varId); // a period map computed by the first worker
     return;
   }
   if (m.kind === "trendmap") {
@@ -136,14 +145,10 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
       const { nlat, nlon, lat0, lon0, dlat, dlon } = fr.grid;
       const r = rangeTrend(fr.values, nlat * nlon, m.i0, m.i1);
       fields.set(m.key, buildField({ grid: { nlat, nlon } as never, ...r }, { lat0, lon0, dlat, dlon }));
-      rangeKeys.push(m.key);
-      while (rangeKeys.length > MAX_RANGES) {
-        const old = rangeKeys.shift()!;
-        fields.delete(old);
-        for (const k of [...pngCache.keys()]) if (k.startsWith(`t/${old}/`)) pngCache.delete(k);
-      }
+      keepRange(m.key);
     }
-    (self as unknown as Worker).postMessage({ id: m.id, png: null, ok: fields.has(m.key) });
+    // with several tile workers, the others get the finished field (cloned, ~0.8 MB)
+    (self as unknown as Worker).postMessage({ id: m.id, png: null, ok: fields.has(m.key), field: m.share ? fields.get(m.key) : undefined });
     return;
   }
   // trend tiles are cached too: panning back or switching back to a variable is instant
