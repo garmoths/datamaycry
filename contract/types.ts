@@ -13,7 +13,7 @@
  * Written with AI assistance (Claude).
  */
 
-export const SCHEMA_VERSION = "1.0" as const;
+export const SCHEMA_VERSION = "1.2" as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared
@@ -89,6 +89,14 @@ export interface VariableInfo {
   land_only: boolean;
   /** Permanent footnote, e.g. observing-system changes (PLAN.md L5). */
   caveat?: I18nText;
+  /**
+   * 1.1: known data-quality problems. The variable is shown, but analyzeTrend
+   * never gives it the "strong" level and the card must show `caveat`.
+   * (RUNOFF: monthly runoff far above precipitation in ~1,200 cells, more often after 2016.)
+   */
+  experimental?: boolean;
+  /** 1.1: the MERRA-2 field actually used, when it differs from `id` (e.g. "PRECTOTCORR"). */
+  source_field?: string;
 }
 
 export interface VariablesFile {
@@ -114,9 +122,24 @@ export interface VariablesFile {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface Admin1Info {
-  /** Natural Earth admin-1 code (iso_3166_2 when present), e.g. "TR-21". */
+  /** ISO 3166-2 code when valid and unique (e.g. "TR-21"), else Natural Earth adm1_code. */
   id: string;
   name: I18nText;
+  /** 1.2: area in grid-cell equivalents (one cell ≈ 55 × 55 km at 39°N). */
+  cells?: number;
+  /** 1.2: smaller than one grid cell → the value is a blend of neighbouring cells.
+   *  The card should say so (e.g. Yalova, Kilis). */
+  low_resolution?: boolean;
+}
+
+/** 1.2: continent ids (Natural Earth CONTINENT; Russia counts as Europe). */
+export type ContinentId = "AF" | "AN" | "AS" | "EU" | "NA" | "OC" | "SA";
+
+export interface ContinentInfo {
+  id: ContinentId;
+  name: I18nText;
+  bbox: [number, number, number, number];
+  cells?: number;
 }
 
 export interface CountryInfo {
@@ -126,12 +149,18 @@ export interface CountryInfo {
   /** [minLon, minLat, maxLon, maxLat] for flyTo. */
   bbox: [number, number, number, number];
   admin1: Admin1Info[];
+  /** 1.2 */
+  continent?: ContinentId | null;
+  /** 1.2: area in grid-cell equivalents. */
+  cells?: number;
 }
 
 export interface RegionIndexFile {
   schema_version: string;
   kind: "region_index";
   countries: CountryInfo[];
+  /** 1.2: series in regions/continents.bin */
+  continents?: ContinentInfo[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +176,7 @@ export interface RegionIndexFile {
 export const DMC_MAGIC = "DMC1";
 
 // 3) regions/{COUNTRY}.bin — country + its admin-1 monthly series
+//    regions/continents.bin (1.2) — the 7 continents, country = "continents"
 //    payload layout: [region][var][month]  (region-major)
 export interface RegionHeader {
   schema_version: string;
@@ -155,7 +185,7 @@ export interface RegionHeader {
   start: YearMonth;
   months: number;
   /** Same order as payload. Index 0 is always the whole country. */
-  regions: { id: string; level: "country" | "admin1" }[];
+  regions: { id: string; level: "country" | "admin1" | "continent" }[];
   vars: VarId[];
   /** Per-variable packing, same order as `vars`. */
   packing: Packing[];
@@ -237,6 +267,8 @@ export interface TrendResult {
   /** Mann-Kendall two-sided p on annual mean anomalies. */
   pValue: number;
   level: TrendLevel;
+  /** 1.1: true when the variable is experimental and "strong" was lowered to "possible". */
+  capped?: boolean;
   /** slopePerDecade × (nYears − 1) / 10 */
   totalChange: number;
   /** Annual mean anomalies used for the test (for the chart). */
