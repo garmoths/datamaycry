@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { readLink, writeLink } from "./share.ts";
 import { preloadPlotly } from "./plotlyLoader.ts";
-import { VariablePicker } from "./VariablePicker.tsx";
+import { VariableDock } from "./VariableDock.tsx";
+import { ViewTabs } from "./ViewTabs.tsx";
+import type { Question } from "./content.ts";
 import { Icon, Logo } from "./icons.tsx";
 import { MethodDialog } from "./MethodDialog.tsx";
 import {
@@ -15,7 +18,7 @@ import {
 } from "./data.ts";
 import { Globe, type Marker, type View } from "./Globe.tsx";
 import { Panel, type AreaInfo, type CountryRow, type Target } from "./Panel.tsx";
-import { renderTrendImage, PALETTE_CSS } from "./trendImage.ts";
+import { trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
 import {
   bboxOf,
   CELL_LEVEL,
@@ -34,7 +37,6 @@ import { t, type Lang } from "./i18n.ts";
 import { countryCode, rasterizeContinents, rasterizeCountries, summarize } from "./continentStats.ts";
 import "./App.css";
 
-const trendImages = new Map<VarId, Promise<string | null>>();
 
 /** Run `fn` when the browser has nothing better to do (falls back to a timeout). */
 function whenIdle(fn: () => void): void {
@@ -58,11 +60,12 @@ export default function App() {
   const [bounds, setBounds] = useState<Boundaries | null>(null);
   const [varId, setVarId] = useState<VarId>("T2M");
   const [showTrend, setShowTrend] = useState(true);
-  const [trendImage, setTrendImage] = useState<string | null>(null);
+  const [trendTiles, setTrendTiles] = useState<string | null>(null);
   const [trendMap, setTrendMap] = useState<TrendMap | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [noGl, setNoGl] = useState(false);
   const [methodOpen, setMethodOpen] = useState(false);
+  const [question, setQuestion] = useState<Question | null>(null);
 
   const [continent, setContinent] = useState<string | null>(null);
   const [countryId, setCountryId] = useState<string | null>(null);
@@ -98,19 +101,16 @@ export default function App() {
   useEffect(() => {
     let dead = false;
     getTrendMap(varId)
-      .then(async (m) => {
+      .then((m) => {
         if (dead) return;
         setTrendMap(m);
-        // painting the smooth field costs a few hundred ms once; switching back is instant
-        let img = trendImages.get(varId);
-        if (!img) trendImages.set(varId, (img = renderTrendImage(m)));
-        const url = await img;
-        if (!dead) setTrendImage(url);
+        // tiles are painted on demand by the map (trendImage.ts); this only registers the field
+        setTrendTiles(trendTileUrl(varId, m));
       })
       .catch(() => {
         if (dead) return;
         setTrendMap(null);
-        setTrendImage(null);
+        setTrendTiles(null);
       });
     return () => {
       dead = true;
@@ -177,6 +177,9 @@ export default function App() {
   const pickAdmin1 = useCallback(
     (country: string, id: string) => {
       if (!bounds) return;
+      // a province can be reached straight from search or a link: keep the trail complete
+      const row = bounds.countries.features.find((x) => x.properties.id === country);
+      if (row) setContinent(row.properties.continent);
       setCountryId(country);
       setAdmin1Id(id);
       const f = bounds.admin1.features.find((x) => x.properties.id === id);
@@ -230,6 +233,45 @@ export default function App() {
     }
     return out;
   }, [bounds, index, lang]);
+
+  // ── shareable link: restore once when the data is ready, then keep the URL in sync ──
+  const linkApplied = useRef(false);
+  useEffect(() => {
+    if (linkApplied.current || !bounds || !variables || !index.length) return;
+    linkApplied.current = true;
+    const l = readLink();
+    if (l.v && variables.variables.some((x) => x.id === l.v)) setVarId(l.v);
+    if (l.m === "point" && l.cell) {
+      setMode("point");
+      pickCell(l.cell[0], l.cell[1]);
+    } else if (l.c) {
+      if (l.a) {
+        pickCountry(l.c);
+        pickAdmin1(l.c, l.a);
+      } else pickCountry(l.c);
+    }
+  }, [bounds, variables, index, pickCell, pickCountry, pickAdmin1]);
+  useEffect(() => {
+    if (!linkApplied.current) return;
+    const hash = writeLink({
+      v: varId,
+      m: mode,
+      c: mode === "region" ? (countryId ?? undefined) : undefined,
+      a: mode === "region" ? (admin1Id ?? undefined) : undefined,
+      cell: mode === "point" && cell ? [cell.i0, cell.j0] : undefined,
+    });
+    if (hash !== location.hash) history.replaceState(null, "", hash);
+  }, [varId, mode, countryId, admin1Id, cell]);
+  const [copied, setCopied] = useState(false);
+  const copyLink = () => {
+    navigator.clipboard?.writeText(location.href).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1800);
+      },
+      () => {},
+    );
+  };
 
   const target: Target = useMemo(() => {
     if (mode === "point") return point ? { type: "point", lat: point.lat, lon: point.lon } : null;
@@ -302,7 +344,7 @@ export default function App() {
       {!noGl && (
         <Globe
           mode={mode}
-          trendImage={trendImage}
+          trendTiles={trendTiles}
           showTrend={showTrend}
           continent={continent}
           countryId={countryId}
@@ -319,36 +361,33 @@ export default function App() {
       )}
       {noGl && <div className="globe fallback">{t(lang, "webgl")}</div>}
 
-      <div className="topleft">
-        <div className="views" role="group" aria-label={t(lang, "view")}>
-          <div className="views-head">
-            <Logo size={30} />
-            <span className="views-title">{t(lang, "view")}</span>
-          </div>
-          {(["region", "point"] as const).map((m) => (
-            <button key={m} className={`view ${mode === m ? "on" : ""}`} aria-pressed={mode === m} onClick={() => switchMode(m)}>
-              <span className="view-icon">
-                <Icon name={m === "region" ? "globe" : "grid"} size={20} />
-              </span>
-              <span className="view-text">
-                <strong>{t(lang, m === "region" ? "modeRegion" : "modePoint")}</strong>
-                <small>{t(lang, m === "region" ? "modeRegionSub" : "modePointSub")}</small>
-              </span>
-            </button>
-          ))}
-        </div>
-        <VariablePicker lang={lang} variables={variables.variables} value={varId} onChange={setVarId} />
+      <div className="brandbar">
+        <Logo size={34} />
+        <ViewTabs
+          label={t(lang, "view")}
+          value={mode}
+          onChange={switchMode}
+          tabs={[
+            { id: "region", label: t(lang, "modeRegion"), icon: "globe", title: t(lang, "modeRegionSub") },
+            { id: "point", label: t(lang, "modePoint"), icon: "grid", title: t(lang, "modePointSub") },
+          ]}
+        />
       </div>
 
       <header className="top">
-        <button className="seg-btn icon-btn" onClick={() => setMethodOpen(true)}>
+        {variables.is_mock && <span className="mockbadge">{t(lang, "mock")}</span>}
+        <button className="seg-btn" onClick={copyLink} aria-live="polite">
+          <Icon name="link" size={17} /> {t(lang, copied ? "copied" : "share")}
+        </button>
+        <button className="seg-btn" onClick={() => setMethodOpen(true)}>
           <Icon name="info" size={17} /> {t(lang, "howItWorks")}
         </button>
-        <button className="seg-btn icon-btn" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language">
+        <button className="seg-btn" onClick={() => setLang(lang === "en" ? "tr" : "en")} aria-label="language">
           <Icon name="language" size={17} /> {lang === "en" ? "TR" : "EN"}
         </button>
-        {variables.is_mock && <span className="mockbadge">{t(lang, "mock")}</span>}
       </header>
+
+      <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={setVarId} />
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />
 
@@ -383,6 +422,11 @@ export default function App() {
         onCountry={pickCountry}
         onAdmin1={pickAdmin1}
         demos={demos}
+        question={question}
+        onQuestion={(q) => {
+          setQuestion(q);
+          if (q) setVarId(q.vars[0]);
+        }}
       />
     </div>
   );

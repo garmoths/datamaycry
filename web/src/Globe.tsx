@@ -9,11 +9,10 @@
  * Written with AI assistance (Claude).
  */
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, NavigationControl, Popup, addProtocol, setWorkerUrl, type GeoJSONSource, type ImageSource, type MapMouseEvent } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl, Popup, addProtocol, setWorkerUrl, type GeoJSONSource, type MapMouseEvent, type RasterTileSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 // The worker file is served untouched by the plugin in vite.config.ts.
 setWorkerUrl(`${new URL(`${import.meta.env.BASE_URL}maplibre-worker/maplibre-gl-worker.mjs`, location.href)}`);
-import { IMAGE_COORDS } from "./trendImage.ts";
 import { cellOf } from "./data.ts";
 import { globeChecker, gridLines, loadBoundaries, nodeBounds, WORLD, type Bounds, type Node } from "./geo.ts";
 
@@ -36,7 +35,8 @@ export interface View {
 
 interface Props {
   mode: "region" | "point";
-  trendImage: string | null;
+  /** tile URL template of the trend layer (trendImage.ts), null = none */
+  trendTiles: string | null;
   showTrend: boolean;
   continent: string | null;
   countryId: string | null;
@@ -416,25 +416,31 @@ export function Globe(props: Props) {
   }, [ready, mode, markers, countryId, admin1Id]);
 
   // ── trend raster ──
-  const { trendImage, showTrend } = props;
+  const { trendTiles, showTrend } = props;
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !trendImage) return;
-    const src = map.getSource("trend") as ImageSource | undefined;
-    if (src) src.updateImage({ url: trendImage, coordinates: IMAGE_COORDS });
+    if (!map || !ready || !trendTiles) return;
+    const src = map.getSource("trend") as RasterTileSource | undefined;
+    if (src) src.setTiles([trendTiles]);
     else {
-      map.addSource("trend", { type: "image", url: trendImage, coordinates: IMAGE_COORDS });
+      // a tiled source is subdivided properly on the globe (no seam) and each tile is
+      // computed for its own zoom (no pixelation); beyond z6 MapLibre scales smoothly
+      map.addSource("trend", { type: "raster", tiles: [trendTiles], tileSize: 256, maxzoom: 6 });
       map.addLayer(
-        { id: "trend", type: "raster", source: "trend", // linear resampling + the smooth field from trendImage.ts = no visible blocks at any zoom
-          paint: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.7, 7, 0.4], "raster-fade-duration": 400, "raster-resampling": "linear" } } as never,
+        {
+          id: "trend",
+          type: "raster",
+          source: "trend",
+          paint: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.72, 7, 0.45], "raster-fade-duration": 300, "raster-resampling": "linear" },
+        } as never,
         "continent-fill",
       );
     }
-  }, [ready, trendImage]);
+  }, [ready, trendTiles]);
   useEffect(() => {
     const map = mapRef.current;
     if (map && ready && map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", showTrend ? "visible" : "none");
-  }, [ready, showTrend, trendImage]);
+  }, [ready, showTrend, trendTiles]);
 
   // ── camera ──
   const { view } = props;

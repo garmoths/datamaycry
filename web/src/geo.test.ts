@@ -2,12 +2,27 @@
 import { describe, expect, it } from "vitest";
 import { cellOf, tileOf } from "./data.ts";
 import { CELL_LEVEL, children, dataTileOf, gridLines, nodeBounds, nodeCenter, pathToCell, WORLD_NODE, type Node } from "./geo.ts";
-import { bspline, cellAlpha, IMAGE_COORDS, latForMercatorY, polarFade, trendColor } from "./trendImage.ts";
+import { bspline, buildField, cellAlpha, mercatorLat, polarFade, renderTile, trendColor } from "./trendImage.ts";
 
 describe("trend field", () => {
   it("places Mercator rows at the right latitude", () => {
-    expect(latForMercatorY(1023.5, 2048)).toBeCloseTo(0, 5); // equator
-    expect(latForMercatorY(-0.5, 2048)).toBeCloseTo(IMAGE_COORDS[0][1], 5); // top edge = 85.05°N
+    expect(mercatorLat(0.5)).toBeCloseTo(0, 6); // equator
+    expect(mercatorLat(0)).toBeCloseTo(85.0511, 3); // top edge
+  });
+  it("renders a tile: data → colour, no data → transparent", () => {
+    const N = 361 * 576;
+    const slope = new Float32Array(N).fill(NaN);
+    const level = new Uint8Array(N).fill(255);
+    // a strongly rising patch around 0°N 0°E (row 180, column 288)
+    for (let i = 170; i <= 190; i++) for (let j = 278; j <= 298; j++) { slope[i * 576 + j] = 1; level[i * 576 + j] = 2; }
+    const grid = { nlat: 361, nlon: 576, lat0: -90, lon0: -180, dlat: 0.5, dlon: 0.625 } as const;
+    const field = buildField({ grid, slopePerDecade: slope, level });
+    // z=1 tile x=1,y=0 covers 0…180°E, 0…85°N; its bottom-left corner is the patch
+    const px = renderTile(field, 1, 1, 0, 64);
+    const at = (c: number, r: number) => px[(r * 64 + c) * 4 + 3];
+    expect(at(0, 63)).toBeGreaterThan(100); // inside the patch: opaque, warm
+    expect(px[(63 * 64) * 4]).toBeGreaterThan(px[(63 * 64) * 4 + 2]); // red > blue
+    expect(at(40, 10)).toBe(0); // far away: no data
   });
   it("is neutral at zero and saturates at the ends", () => {
     expect(trendColor(0).map(Math.round)).toEqual([240, 240, 236]);

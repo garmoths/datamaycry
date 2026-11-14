@@ -6,6 +6,8 @@ const S = {
   tagline: { en: "Is your corner of Earth changing?", tr: "Dünyanın senin köşen değişiyor mu?" },
   mock: { en: "MOCK DATA", tr: "SAHTE VERİ" },
   view: { en: "View", tr: "Görünüm" },
+  share: { en: "Share", tr: "Paylaş" },
+  copied: { en: "Link copied", tr: "Bağlantı kopyalandı" },
   landOnly: { en: "land only", tr: "sadece kara" },
   curious: { en: "What are you curious about?", tr: "Ne merak ediyorsun?" },
   howItWorks: { en: "How it works", tr: "Nasıl çalışır?" },

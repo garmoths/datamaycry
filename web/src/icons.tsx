@@ -8,7 +8,7 @@ import type { SVGProps } from "react";
 export type IconName =
   | "globe" | "grid" | "info" | "chevron" | "language"
   | "thermometer" | "droplet" | "wind" | "rain" | "evaporation" | "runoff"
-  | "sprout" | "snow" | "haze" | "sun" | "drought" | "flame" | "kite" | "search";
+  | "sprout" | "snow" | "haze" | "sun" | "drought" | "flame" | "kite" | "search" | "link";
 
 const PATHS: Record<IconName, string> = {
   globe: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M3 12h18 M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9 M12 3c-2.6 2.6-3.8 5.6-3.8 9s1.2 6.4 3.8 9",
@@ -30,6 +30,7 @@ const PATHS: Record<IconName, string> = {
   flame: "M12 21a6 6 0 0 0 6-6c0-4-3-6-4-10-1.5 2-2 3.5-2 5-1-1-2-2-2.5-3.5C7.5 9 6 11.5 6 15a6 6 0 0 0 6 6z",
   kite: "M12 2l6 7-6 9-6-9z M12 18c0 2-2 2-2 4 M6 9h12",
   search: "M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14 M20 20l-4-4",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
 };
 
 export function Icon({ name, size = 20, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {

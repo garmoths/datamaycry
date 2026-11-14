@@ -1,32 +1,21 @@
 /**
- * Paints the world trend map as a smooth, continuous field for MapLibre's `image`
- * source (PLAN.md §10.4-4: never draw 200k cells as polygons).
+ * The world trend map drawn as map tiles, rendered on demand in the browser.
  *
- * - Colour-blind-safe diverging blue ↔ orange-red, 5 stops (no red/green, §10.4-5).
- * - Each grid cell gets a colour and an opacity; opacity = evidence level × size of the
- *   change, so small or unproven changes fade into the satellite picture underneath.
- * - The cell values are resampled with a cubic B-spline (premultiplied alpha) at 2048×2048
- *   directly in Web-Mercator and stored losslessly (PNG), so the result reads as a flowing
- *   field rather than 0.5° blocks. Colour fades out towards the poles. Missing data stays
- *   transparent.
+ * Why tiles and not one picture: a single 360° image is drawn on the globe as two huge
+ * triangles (a visible diagonal seam) and gets blurry/pixelated when zooming in. A raster
+ * tile source is subdivided properly on the globe, and every tile here is computed for its
+ * own zoom straight from the data, so the field stays sharp-but-smooth at every scale.
+ *
+ * - Colour-blind-safe diverging blue ↔ orange-red, 5 stops (no red/green, PLAN §10.4-5).
+ * - Opacity = evidence level × size of the change: small or unproven changes fade into the
+ *   satellite picture underneath. Missing data stays transparent, never 0.
+ * - Cell values are interpolated with a cubic B-spline (C²-smooth, never overshoots the
+ *   palette), premultiplied alpha, lossless PNG. Colour fades out towards the poles.
  *
  * Written with AI assistance (Claude).
  */
-import type { TrendMap } from "./data.ts";
-
-const MAX_LAT = 85.0511287798;
-const SIZE = 2048;
-export const IMAGE_COORDS: [[number, number], [number, number], [number, number], [number, number]] = [
-  [-180, MAX_LAT],
-  [180, MAX_LAT],
-  [180, -MAX_LAT],
-  [-180, -MAX_LAT],
-];
-
-/** Latitude at the centre of Web-Mercator image row y (0 = north). */
-export function latForMercatorY(y: number, height = SIZE): number {
-  return (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / height))) * 180) / Math.PI;
-}
+import { addProtocol } from "maplibre-gl";
+import type { TrendMap, VarId } from "./data.ts";
 
 // Diverging palette (ColorBrewer RdBu-like, readable for red-green colour blindness)
 export const COLD = [33, 102, 172] as const; // falling
@@ -56,18 +45,35 @@ export function cellAlpha(level: number, norm: number): number {
   return base * (0.3 + 0.7 * Math.min(1, Math.abs(norm)));
 }
 
-/** What the painter needs from a TrendMap (plain arrays, so it can cross into a worker). */
-export type TrendInput = Pick<TrendMap, "grid" | "slopePerDecade" | "level">;
+/** Uniform cubic B-spline weights for neighbours −1, 0, +1, +2 at fraction t. */
+export function bspline(t: number): [number, number, number, number] {
+  const t2 = t * t, t3 = t2 * t, u = 1 - t;
+  return [(u * u * u) / 6, (3 * t3 - 6 * t2 + 4) / 6, (-3 * t3 + 3 * t2 + 3 * t + 1) / 6, t3 / 6];
+}
 
-/**
- * Turns the trend map into a smooth picture: Mercator-projected RGBA pixels (SIZE × SIZE).
- * Pure function, no DOM — runs in a Web Worker (trendWorker.ts) or on the main thread.
- */
-export function paintTrendPixels(map: TrendInput): Uint8ClampedArray {
+/** Colour fades out between 72° and 84° latitude (the globe fans the last row over the poles). */
+export function polarFade(lat: number): number {
+  const x = Math.min(1, Math.max(0, (84 - Math.abs(lat)) / 12));
+  return x * x * (3 - 2 * x);
+}
+
+/** Latitude of Web-Mercator y in 0…1 (0 = north edge). */
+export function mercatorLat(yNorm: number): number {
+  return (Math.atan(Math.sinh(Math.PI * (1 - 2 * yNorm))) * 180) / Math.PI;
+}
+
+export interface TrendField {
+  nlat: number;
+  nlon: number;
+  /** premultiplied RGBA (0…255 colour × alpha 0…1) per grid cell */
+  rgba: Float32Array;
+}
+
+/** Colour + opacity for every grid cell; built once per variable (~10 ms). */
+export function buildField(map: Pick<TrendMap, "grid" | "slopePerDecade" | "level">): TrendField {
   const { nlat, nlon } = map.grid;
   const n = nlat * nlon;
-
-  // Scale colours so the strongest 2 % of cells saturate.
+  // scale colours so the strongest 2 % of cells saturate
   const mags: number[] = [];
   for (let k = 0; k < n; k += 7) {
     const v = Math.abs(map.slopePerDecade[k]);
@@ -76,123 +82,94 @@ export function paintTrendPixels(map: TrendInput): Uint8ClampedArray {
   mags.sort((a, b) => a - b);
   const top = mags[Math.floor(mags.length * 0.98)] || 1;
 
-  // 1) premultiplied RGBA per cell
-  const field = new Float32Array(n * 4);
+  const rgba = new Float32Array(n * 4);
   for (let k = 0; k < n; k++) {
     const lvl = map.level[k];
     const slope = map.slopePerDecade[k];
-    if (lvl === 255 || !Number.isFinite(slope)) continue; // no data → transparent, never 0
+    if (lvl === 255 || !Number.isFinite(slope)) continue;
     const norm = slope / top;
     const [r, g, b] = trendColor(norm);
     const a = cellAlpha(lvl, norm);
-    field.set([r * a, g * a, b * a, a], k * 4);
+    rgba.set([r * a, g * a, b * a, a], k * 4);
   }
+  return { nlat, nlon, rgba };
+}
 
-  // 2) cubic B-spline resampling straight into Web-Mercator pixels. B-splines are C²-smooth
-  //    (no kinks, no diamond artefacts like bilinear) and never overshoot, so colours stay in
-  //    the palette. Separable: first along longitude for every grid row, then along latitude.
-  const H = new Float32Array(nlat * SIZE * 4);
-  for (let x = 0; x < SIZE; x++) {
-    const lon = -180 + ((x + 0.5) / SIZE) * 360;
+/** RGBA pixels of map tile z/x/y (size × size), sampled from the field with a 2-D B-spline. */
+export function renderTile(field: TrendField, z: number, x: number, y: number, size = 256): Uint8ClampedArray {
+  const { nlat, nlon, rgba } = field;
+  const px = new Uint8ClampedArray(size * size * 4);
+  const n = 2 ** z;
+  // column weights are the same for every row of the tile
+  const jIdx = new Int32Array(size * 4);
+  const jW = new Float32Array(size * 4);
+  for (let c = 0; c < size; c++) {
+    const lon = ((x + (c + 0.5) / size) / n) * 360 - 180;
     const f = (lon + 180) / 0.625; // cell j is centred on lon −180 + j·0.625
     const j0 = Math.floor(f);
     const w = bspline(f - j0);
     for (let m = 0; m < 4; m++) {
-      const j = (((j0 - 1 + m) % nlon) + nlon) % nlon; // longitude wraps around
-      const wm = w[m];
-      for (let i = 0; i < nlat; i++) {
-        const src = (i * nlon + j) * 4;
-        const dst = (i * SIZE + x) * 4;
-        H[dst] += wm * field[src];
-        H[dst + 1] += wm * field[src + 1];
-        H[dst + 2] += wm * field[src + 2];
-        H[dst + 3] += wm * field[src + 3];
-      }
+      jIdx[c * 4 + m] = (((j0 - 1 + m) % nlon) + nlon) % nlon;
+      jW[c * 4 + m] = w[m];
     }
   }
-
-  const px = new Uint8ClampedArray(SIZE * SIZE * 4);
-  for (let y = 0; y < SIZE; y++) {
-    const lat = latForMercatorY(y);
+  for (let r = 0; r < size; r++) {
+    const lat = mercatorLat((y + (r + 0.5) / size) / n);
     const fade = polarFade(lat);
     if (fade <= 0) continue;
     const fi = (lat + 90) / 0.5;
     const i0 = Math.floor(fi);
-    const w = bspline(fi - i0);
-    const rows = [0, 1, 2, 3].map((m) => Math.min(nlat - 1, Math.max(0, i0 - 1 + m)) * SIZE * 4);
-    for (let x = 0; x < SIZE; x++) {
-      const c = x * 4;
-      const a = w[0] * H[rows[0] + c + 3] + w[1] * H[rows[1] + c + 3] + w[2] * H[rows[2] + c + 3] + w[3] * H[rows[3] + c + 3];
-      if (a < 0.004) continue; // fully transparent: no data here
-      const o = (y * SIZE + x) * 4;
-      for (let q = 0; q < 3; q++)
-        px[o + q] = (w[0] * H[rows[0] + c + q] + w[1] * H[rows[1] + c + q] + w[2] * H[rows[2] + c + q] + w[3] * H[rows[3] + c + q]) / a;
-      px[o + 3] = a * fade * 255;
+    const wi = bspline(fi - i0);
+    const rows = [0, 1, 2, 3].map((m) => Math.min(nlat - 1, Math.max(0, i0 - 1 + m)) * nlon);
+    for (let c = 0; c < size; c++) {
+      let R = 0, G = 0, B = 0, A = 0;
+      for (let a = 0; a < 4; a++) {
+        const wa = wi[a];
+        if (wa === 0) continue;
+        const base = rows[a];
+        for (let b = 0; b < 4; b++) {
+          const w = wa * jW[c * 4 + b];
+          const k = (base + jIdx[c * 4 + b]) * 4;
+          R += w * rgba[k];
+          G += w * rgba[k + 1];
+          B += w * rgba[k + 2];
+          A += w * rgba[k + 3];
+        }
+      }
+      if (A < 0.004) continue; // no data here
+      const o = (r * size + c) * 4;
+      px[o] = R / A;
+      px[o + 1] = G / A;
+      px[o + 2] = B / A;
+      px[o + 3] = A * fade * 255;
     }
   }
   return px;
 }
 
-/** Uniform cubic B-spline weights for neighbours −1, 0, +1, +2 at fraction t. */
-export function bspline(t: number): [number, number, number, number] {
-  const t2 = t * t, t3 = t2 * t, u = 1 - t;
-  return [(u * u * u) / 6, (3 * t3 - 6 * t2 + 4) / 6, (-3 * t3 + 3 * t2 + 3 * t + 1) / 6, t3 / 6];
-}
+// ── MapLibre tile protocol: trend://{VAR}/{z}/{x}/{y} ───────────────────────
 
-/**
- * Colour fades out between 72° and 84° latitude. The globe stretches the image's last row
- * into a fan over the poles; fading avoids that artefact (and Web-Mercator ends at 85°).
- */
-export function polarFade(lat: number): number {
-  const x = Math.min(1, Math.max(0, (84 - Math.abs(lat)) / 12));
-  return x * x * (3 - 2 * x);
-}
+const fields = new Map<VarId, TrendField>();
+let registered = false;
 
-export const TREND_IMAGE_SIZE = SIZE;
-
-/**
- * Encode pixels as PNG on whatever canvas is available. Lossless on purpose: lossy WebP
- * compresses in 4×4/16×16 blocks, which showed up as pixelation on the smooth field.
- */
-export async function encodePixels(px: Uint8ClampedArray): Promise<Blob | null> {
-  if (typeof OffscreenCanvas !== "undefined") {
-    const c = new OffscreenCanvas(SIZE, SIZE);
-    const ctx = c.getContext("2d");
-    if (!ctx) return null;
-    ctx.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, SIZE, SIZE), 0, 0);
-    return c.convertToBlob({ type: "image/png" });
-  }
-  const c = document.createElement("canvas");
-  c.width = c.height = SIZE;
-  const ctx = c.getContext("2d");
-  if (!ctx) return null;
-  ctx.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, SIZE, SIZE), 0, 0);
-  return new Promise((res) => c.toBlob(res, "image/png"));
-}
-
-/**
- * The smooth trend picture as an object URL. Painting + encoding (~0.7 s) runs in a Web
- * Worker so the globe never stutters; falls back to the main thread if workers fail.
- */
-export async function renderTrendImage(map: TrendMap): Promise<string | null> {
-  const input: TrendInput = { grid: map.grid, slopePerDecade: map.slopePerDecade, level: map.level };
-  try {
-    const blob = await new Promise<Blob | null>((resolve, reject) => {
-      const w = new Worker(new URL("./trendWorker.ts", import.meta.url), { type: "module" });
-      w.onmessage = (e: MessageEvent<Blob | null>) => {
-        resolve(e.data);
-        w.terminate();
-      };
-      w.onerror = (e) => {
-        reject(e);
-        w.terminate();
-      };
-      w.postMessage(input);
+/** Make a variable's field available to the map; returns the tile URL template. */
+export function trendTileUrl(varId: VarId, map: TrendMap): string {
+  if (!fields.has(varId)) fields.set(varId, buildField(map));
+  if (!registered) {
+    registered = true;
+    addProtocol("trend", async (params) => {
+      const [v, z, x, y] = params.url.replace("trend://", "").split("/");
+      const field = fields.get(v as VarId);
+      const size = 256;
+      const canvas = new OffscreenCanvas(size, size);
+      const ctx = canvas.getContext("2d")!;
+      if (field) {
+        const px = renderTile(field, +z, +x, +y, size);
+        ctx.putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, size, size), 0, 0);
+      }
+      const blob = await canvas.convertToBlob({ type: "image/png" });
+      return { data: await blob.arrayBuffer() };
     });
-    if (blob) return URL.createObjectURL(blob);
-  } catch {
-    /* fall through to the main thread */
   }
-  const blob = await encodePixels(paintTrendPixels(input));
-  return blob ? URL.createObjectURL(blob) : null;
+  return `trend://${varId}/{z}/{x}/{y}`;
 }

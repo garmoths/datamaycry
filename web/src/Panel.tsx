@@ -16,6 +16,9 @@ import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
 import type { AreaSummary } from "./continentStats.ts";
 import { motion, useReducedMotion } from "motion/react";
+import { PlaceSearch } from "./PlaceSearch.tsx";
+import { Icon } from "./icons.tsx";
+import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
 
 const fmtSigned = smartSigned;
 
@@ -97,6 +100,8 @@ interface Props {
   onCountry: (id: string) => void;
   onAdmin1: (country: string, id: string) => void;
   demos: { label: string; go: () => void }[];
+  question: Question | null;
+  onQuestion: (q: Question | null) => void;
 }
 
 export function Panel(p: Props) {
@@ -133,6 +138,8 @@ export function Panel(p: Props) {
   }, [targetKey, v.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = p.target ? series : null;
+  // an error belongs to the selection that caused it; going back to the world clears it
+  const shownError = p.target ? error : null;
   const result = useMemo(
     () =>
       shown
@@ -188,6 +195,33 @@ export function Panel(p: Props) {
           </button>
         ))}
       </nav>
+
+      <PlaceSearch lang={lang} countryRows={p.countryRows} index={p.index} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
+
+      {/* the variable chosen in the dock, explained, + "What are you curious about?" */}
+      <section className="varinfo">
+        <div className="varinfo-head">
+          <span className="varinfo-icon">
+            <Icon name={VAR_ICONS[v.id]} size={20} />
+          </span>
+          <div>
+            <strong>{v.name[lang]}</strong> <span className="unit">{unitLabel(v.unit, lang)}</span>
+            {v.land_only && <span className="tag">{t(lang, "landOnly")}</span>}
+            <p>{v.description[lang]}</p>
+          </div>
+        </div>
+        <details className="curious" open={!p.target}>
+          <summary>{t(lang, "curious")}</summary>
+          <div className="questions">
+            {QUESTIONS.map((q) => (
+              <button key={q.id} className={`qchip ${p.question?.id === q.id ? "on" : ""}`} onClick={() => p.onQuestion(p.question?.id === q.id ? null : q)}>
+                <Icon name={q.icon} size={15} /> {q.q[lang]}
+              </button>
+            ))}
+          </div>
+          {p.question && <p className="qtip">{p.question.tip[lang]}</p>}
+        </details>
+      </section>
 
       {/* world → continent → country: always something to read, even without a series */}
       {p.area && (
@@ -263,14 +297,14 @@ export function Panel(p: Props) {
       )}
 
       {/* ── result ── */}
-      {loading && <p className="hint">{t(lang, "loading")}</p>}
-      {error && (
+      {loading && p.target && <p className="hint">{t(lang, "loading")}</p>}
+      {shownError && (
         <p className="alert" role="alert">
-          {t(lang, "error")}: {error}
+          {t(lang, "error")}: {shownError}
         </p>
       )}
 
-      {shown && result && !error && (
+      {shown && result && !shownError && (
         <motion.section
           className="result"
           key={`${targetKey}:${v.id}`}
@@ -361,7 +395,6 @@ export function Panel(p: Props) {
             </div>
           </div>
 
-          <p className="desc">{v.description[lang]}</p>
           {v.caveat && <p className="fine">⚠️ {v.caveat[lang]}</p>}
           <p className="fine">
             {t(lang, "source")} · {variables.dataset}
