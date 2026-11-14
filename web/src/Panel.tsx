@@ -235,7 +235,11 @@ export function Panel(p: Props) {
   const verdict = ((): { cls: string; meaning?: string | null; body: string } | null => {
     if (!result) return null;
     if (result.status === "too_short") return { cls: "none", body: t(lang, p.anim ? "animWait" : "tooShort") };
-    if (result.status === "insufficient_data") return { cls: "none", body: t(lang, "insufficient") };
+    if (result.status === "insufficient_data") {
+      // land-only variables have no values at all over atolls, sea cells and land ice
+      const empty = v.land_only && shown && !Array.from(shown.values).some(Number.isFinite);
+      return { cls: "none", body: t(lang, empty ? "landOnlyEmpty" : "insufficient") };
+    }
     if (result.status === "constant") return { cls: "none", body: t(lang, "constant") };
     // no clear change: no direction and no number (a non-significant slope is noise)
     if (result.level === "none") return { cls: "none", body: noTrendText(lang, { start: result.startYear, end: result.endYear }) };
@@ -318,7 +322,7 @@ export function Panel(p: Props) {
       )}
       {/* other known limits (precipitation, aerosol, mountain snow): a quiet note */}
       {!v.experimental && result!.cappedReason !== "experimental" && v.caveat && <p className="note">{v.caveat[lang]}</p>}
-      {province?.lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
+      {ok && province?.lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
       {emerged && (
         <p className="emerged">
           {emerged.possible === null && emerged.strong === null ? (

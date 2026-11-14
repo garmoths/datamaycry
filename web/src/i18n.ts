@@ -130,6 +130,10 @@ const S = {
     en: "Too many missing years here — no test possible.",
     tr: "Burada çok fazla eksik yıl var — test yapılamıyor.",
   },
+  landOnlyEmpty: {
+    en: "This variable exists only over land; on the data grid this place is sea or ice.",
+    tr: "Bu değişken yalnızca karada var; veri ızgarasında burası deniz ya da buz.",
+  },
   constant: {
     en: "The data does not vary (for example no snow at all) — nothing to test.",
     tr: "Veri hiç değişmiyor (ör. hiç kar yok) — test edilecek bir şey yok.",
