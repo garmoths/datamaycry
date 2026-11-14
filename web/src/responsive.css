@@ -159,3 +159,59 @@
     font-size: 18px;
   }
 }
+
+/* ── period scale on tablets and phones: compact, so the globe keeps its room ── */
+@media (max-width: 900px) {
+  .period {
+    width: min(420px, calc(100vw - 2 * var(--edge)));
+    right: auto;
+    padding: 8px 10px 8px;
+    border-radius: 14px;
+  }
+  .period-head {
+    margin-bottom: 6px;
+  }
+  .period-label {
+    font-size: 12px;
+  }
+  .period-years {
+    font-size: 17px;
+  }
+  .period-slot,
+  .period-reset {
+    width: 24px;
+    height: 24px;
+  }
+  .period-strip {
+    height: 28px;
+  }
+  .period-stripes {
+    inset: 3px 0;
+    border-radius: 5px;
+  }
+  .period-grip {
+    width: 9px;
+    height: 20px;
+    margin-top: -10px;
+  }
+  .period-grip.start {
+    left: -4px;
+  }
+  .period-grip.end {
+    right: -4px;
+  }
+  /* the first and last year are already in the heading */
+  .period-ticks {
+    display: none;
+  }
+  /* the year label of time travel sits where the period scale was */
+  .yearbadge b {
+    font-size: 44px;
+  }
+}
+@media (max-width: 520px) {
+  .period {
+    right: var(--edge);
+    width: auto;
+  }
+}

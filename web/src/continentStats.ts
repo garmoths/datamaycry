@@ -10,7 +10,7 @@
  */
 import type { Feature, MultiPolygon, Polygon } from "geojson";
 import type { TrendMap } from "./data.ts";
-import { CONTINENTS, pointInFeature, polygonsOf, type Boundaries } from "./geo.ts";
+import { CONTINENTS, polygonsOf, type Boundaries } from "./geo.ts";
 
 const NLAT = 361;
 const NLON = 576;
@@ -170,7 +170,46 @@ export function summarizeCells(map: TrendMap, list: ArrayLike<number>): AreaSumm
  * A shape smaller than one cell gets the single cell nearest to `fallback`.
  */
 export function cellsInside(f: Feature<Polygon | MultiPolygon>, fallback?: { lon: number; lat: number }): number[] {
+  let inside = insideCache.get(f);
+  if (!inside) insideCache.set(f, (inside = scanCells(f)));
+  if (inside.length || !fallback) return inside;
+  const i = Math.min(NLAT - 1, Math.max(0, Math.round((fallback.lat + 90) / 0.5)));
+  const j = ((Math.round((fallback.lon + 180) / 0.625) % NLON) + NLON) % NLON;
+  return [i * NLON + j];
+}
+
+// border features are loaded once and never change: the cells of each are worked out once
+const insideCache = new WeakMap<object, number[]>();
+
+/**
+ * Grid cells whose centre lies inside the feature, by scanline: for each grid row, the
+ * places where the row crosses the polygon's edges, sorted; the centres between each pair
+ * are inside. Same rule as pointInFeature (ray casting, holes cut out, x < crossing), but
+ * O(rows × edges) instead of O(cells × edges): Russia's 86 provinces went from ~720 ms to a
+ * few ms. Tested against the point-by-point version in provinces.test.ts.
+ */
+export function scanCells(f: Feature<Polygon | MultiPolygon>): number[] {
   const out = new Set<number>();
+  const xs: number[] = [];
+  const crossings = (ring: number[][], y: number) => {
+    xs.length = 0;
+    for (let k = 0, j = ring.length - 1; k < ring.length; j = k++) {
+      const yi = ring[k][1], yj = ring[j][1];
+      if (yi > y !== yj > y) xs.push(((ring[j][0] - ring[k][0]) * (y - yi)) / (yj - yi) + ring[k][0]);
+    }
+    return xs.sort((p, q) => p - q);
+  };
+  // columns j with centre x_j = −180 + j·0.625 in [a, b): inside one interval of the ray rule
+  const colsIn = (a: number, b: number, j0: number, j1: number, fn: (j: number) => void) => {
+    const from = Math.max(j0, Math.ceil((a + 180) / 0.625));
+    const to = Math.min(j1, Math.ceil((b + 180) / 0.625) - 1);
+    for (let j = from; j <= to; j++) {
+      const x = -180 + j * 0.625;
+      if (x >= a && x < b) fn(j); // guards rounding at the interval ends
+    }
+    // rounding may leave out a centre sitting just on the edge of the range: check neighbours
+    for (const j of [from - 1, to + 1]) if (j >= j0 && j <= j1 && -180 + j * 0.625 >= a && -180 + j * 0.625 < b) fn(j);
+  };
   for (const poly of polygonsOf(f)) {
     let w = 180, e = -180, s = 90, n = -90;
     for (const [x, y] of poly[0]) {
@@ -179,18 +218,23 @@ export function cellsInside(f: Feature<Polygon | MultiPolygon>, fallback?: { lon
       if (y < s) s = y;
       if (y > n) n = y;
     }
-    const one = { type: "Feature" as const, properties: {}, geometry: { type: "Polygon" as const, coordinates: poly } };
     const i0 = Math.max(0, Math.ceil((s + 90) / 0.5));
     const i1 = Math.min(NLAT - 1, Math.floor((n + 90) / 0.5));
     const j0 = Math.max(0, Math.ceil((w + 180) / 0.625));
     const j1 = Math.min(NLON - 1, Math.floor((e + 180) / 0.625));
-    for (let i = i0; i <= i1; i++)
-      for (let j = j0; j <= j1; j++) if (pointInFeature(-180 + j * 0.625, -90 + i * 0.5, one)) out.add(i * NLON + j);
-  }
-  if (!out.size && fallback) {
-    const i = Math.min(NLAT - 1, Math.max(0, Math.round((fallback.lat + 90) / 0.5)));
-    const j = ((Math.round((fallback.lon + 180) / 0.625) % NLON) + NLON) % NLON;
-    out.add(i * NLON + j);
+    const row = new Set<number>();
+    for (let i = i0; i <= i1; i++) {
+      const y = -90 + i * 0.5;
+      row.clear();
+      const outer = crossings(poly[0], y);
+      for (let k = 0; k + 1 < outer.length; k += 2) colsIn(outer[k], outer[k + 1], j0, j1, (j) => row.add(j));
+      if (!row.size) continue;
+      for (let h = 1; h < poly.length; h++) {
+        const hole = crossings(poly[h], y);
+        for (let k = 0; k + 1 < hole.length; k += 2) colsIn(hole[k], hole[k + 1], j0, j1, (j) => row.delete(j));
+      }
+      for (const j of row) out.add(i * NLON + j);
+    }
   }
   return [...out];
 }

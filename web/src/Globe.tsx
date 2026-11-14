@@ -189,6 +189,8 @@ export function Globe(props: Props) {
       // no on-map attribution button: the credits (NASA MERRA-2, Blue Marble/GIBS, Natural Earth)
       // are listed in the Sources drawer and the "How it works" dialog
       attributionControl: false,
+      // phones and tablets report 3× pixels: 2× looks the same and draws less than half as many
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
     });
     mapRef.current = map;
     if (import.meta.env.DEV) (window as unknown as { __map: MapLibreMap }).__map = map; // for debugging in the console
@@ -201,7 +203,9 @@ export function Globe(props: Props) {
       map.setPadding(
         wide
           ? { top: 64, left: GLOBE_PAD_LEFT, right: GLOBE_PAD_RIGHT, bottom: 92 }
-          : { top: 118, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.46) },
+          : // phones and tablets: below the top bars and the period scale (~190 px), above the
+            // variable bar and the bottom sheet (46 % of the height)
+            { top: 190, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.46) + 66 },
       );
     };
     pad();
