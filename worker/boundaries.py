@@ -17,16 +17,13 @@ import geopandas as gpd
 import shapely
 
 from download import ROOT
+from names import place_name
 from regions import NE, province_ids
 
 OUT = ROOT / "web" / "public" / "data" / "boundaries" / "admin1"
 TOLERANCE = 0.01  # degrees (~1 km)
 
 
-
-def first_name(*vals) -> str:
-    """First non-empty string; NaN / None / "" are skipped."""
-    return next(v.strip() for v in vals if isinstance(v, str) and v.strip())
 
 def rounded(geom: dict) -> dict:
     def r(c):
@@ -43,6 +40,9 @@ def main() -> None:
     for old in OUT.glob("*.geojson"):
         old.unlink()
 
+    # country names, for the few unnamed areas ("Mexico (other areas)")
+    c0 = json.loads((OUT.parent / "countries.geojson").read_text())["features"]
+    names0 = {f["properties"]["id"]: {"en": f["properties"]["name_en"], "tr": f["properties"]["name_tr"]} for f in c0}
     total = 0
     for cid, g in a1.groupby("adm0_a3"):
         feats = []
@@ -55,11 +55,9 @@ def main() -> None:
                 if not polys:
                     continue
                 geom = shapely.geometry.mapping(shapely.unary_union(polys))
-            # Natural Earth leaves some names empty (NaN, which is truthy): fall back in order
-            en = first_name(p.get("name_en"), p.get("name"), p.rid)
-            tr = first_name(p.get("name_tr"), en)
+            n = place_name([p.get("name_en"), p.get("name")], p.get("name_tr"), names0.get(cid))
             feats.append({"type": "Feature",
-                          "properties": {"id": p.rid, "country": cid, "name_en": en, "name_tr": tr},
+                          "properties": {"id": p.rid, "country": cid, "name_en": n["en"], "name_tr": n["tr"]},
                           "geometry": rounded(geom)})
         path = OUT / f"{cid}.geojson"
         path.write_text(json.dumps({"type": "FeatureCollection", "features": feats},

@@ -4,10 +4,13 @@
  *        { kind: "tile", id, varId, z, x, y }                – trend tile
  *        { kind: "frames", varId, grid, values, colorMax }   – yearly anomaly maps (1.4), once per variable
  *        { kind: "atile", id, varId, frame, z, x, y }        – one year's tile (PNG cached)
+ *        { kind: "rangetrend", id, varId, key, i0, i1 }      – trend map of a chosen period, from the
+ *                                                              yearly maps; tiles then use `key` as varId
  *   out: { id, png: ArrayBuffer | null }
  * Written with AI assistance (Claude).
  */
 import { buildAnomalyField, buildField, renderTile, type TrendField } from "./trendField.ts";
+import { rangeTrend } from "./rangeTrend.ts";
 
 const fields = new Map<string, TrendField>();
 const SIZE = 256;
@@ -58,7 +61,12 @@ type Msg =
     }
   | { kind: "tile"; id: number; varId: string; z: number; x: number; y: number }
   | ({ kind: "frames"; varId: string } & Frames)
-  | { kind: "atile"; id: number; varId: string; frame: string; z: number; x: number; y: number };
+  | { kind: "atile"; id: number; varId: string; frame: string; z: number; x: number; y: number }
+  | { kind: "rangetrend"; id: number; varId: string; key: string; i0: number; i1: number };
+
+// period maps: keep the last few, they are cheap to recompute
+const rangeKeys: string[] = [];
+const MAX_RANGES = 6;
 
 async function toPng(field: TrendField | undefined, z: number, x: number, y: number): Promise<ArrayBuffer> {
   const canvas = new OffscreenCanvas(SIZE, SIZE);
@@ -120,6 +128,22 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
     if (at >= 0) frameOrder.splice(at, 1);
     frameOrder.push(m.varId);
     while (frameOrder.length > MAX_FRAME_VARS) dropVar(frameOrder.shift()!);
+    return;
+  }
+  if (m.kind === "rangetrend") {
+    const fr = frames.get(m.varId);
+    if (fr && !fields.has(m.key)) {
+      const { nlat, nlon, lat0, lon0, dlat, dlon } = fr.grid;
+      const r = rangeTrend(fr.values, nlat * nlon, m.i0, m.i1);
+      fields.set(m.key, buildField({ grid: { nlat, nlon } as never, ...r }, { lat0, lon0, dlat, dlon }));
+      rangeKeys.push(m.key);
+      while (rangeKeys.length > MAX_RANGES) {
+        const old = rangeKeys.shift()!;
+        fields.delete(old);
+        for (const k of [...pngCache.keys()]) if (k.startsWith(`t/${old}/`)) pngCache.delete(k);
+      }
+    }
+    (self as unknown as Worker).postMessage({ id: m.id, png: null, ok: fields.has(m.key) });
     return;
   }
   // trend tiles are cached too: panning back or switching back to a variable is instant

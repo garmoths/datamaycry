@@ -1,19 +1,14 @@
 /**
  * Small, honest building blocks for the inspector:
  *  - Sparkline: the annual anomalies and the Sen trend line, inline SVG (no chart library)
- *  - BadgeList: independent-source checks (contract 1.3: NOAA GHCN stations, NASA GPCP)
  *  - Provenance: dataset, data period, test years, baseline, processing date
  *  - References: the full source list, grouped
- *  - ProvinceSelect: searchable province picker instead of dozens of chips
  * Written with AI assistance (Claude).
  */
-import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import type { Badge, TrendResult, VariablesFile } from "./data.ts";
+import type { TrendResult, VariablesFile } from "./data.ts";
 import { monthLabel, REFERENCE_GROUPS, REFERENCES, type Reference } from "./content.ts";
-import { fold } from "./fold.ts";
-import { Icon } from "./icons.tsx";
-import { smartSigned, type Lang } from "./i18n.ts";
+import type { Lang } from "./i18n.ts";
 import { COLD, WARM } from "./trendField.ts";
 
 const rgb = (c: readonly number[]) => `rgb(${c.join(",")})`;
@@ -75,39 +70,7 @@ export function Sparkline({ result, unit, lang }: { result: TrendResult; unit: s
   );
 }
 
-const SOURCE_NAME: Record<Badge["source"], Record<Lang, string>> = {
-  GHCN: { en: "NOAA weather stations (GHCN-M v4)", tr: "NOAA meteoroloji istasyonları (GHCN-M v4)" },
-  GPCP: { en: "NASA GPCP v3.3 (satellite + gauges)", tr: "NASA GPCP v3.3 (uydu + yağış ölçer)" },
-};
-const STATUS: Record<Badge["status"], Record<Lang, string>> = {
-  agree: { en: "consistent", tr: "tutarlı" },
-  disagree: { en: "disagrees", tr: "farklı sonuç veriyor" },
-  inconclusive: { en: "inconclusive", tr: "kararsız" },
-};
 
-/** Independent-source checks for this place and variable. */
-export function BadgeList({ badges, lang, decimals }: { badges: Badge[]; lang: Lang; decimals: number }) {
-  if (!badges.length) return null;
-  const f = (x: number) => smartSigned(x, decimals + 1);
-  return (
-    <ul className="badges">
-      {badges.map((b, k) => (
-        <li key={k} className={`badge ${b.status}`}>
-          <Icon name={b.status === "agree" ? "check" : b.status === "disagree" ? "alert" : "info"} size={15} />
-          <div>
-            <b>
-              {SOURCE_NAME[b.source][lang]}: {STATUS[b.status][lang]}
-            </b>
-            <small>
-              {b.years.start}–{b.years.end} · MERRA-2 {f(b.ours.slopePerDecade)} {lang === "tr" ? "vs" : "vs"} {f(b.ref.slopePerDecade)} / {lang === "tr" ? "10 yıl" : "decade"}
-              {b.detail ? ` · ${b.detail[lang]}` : ""}
-            </small>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /** Where the numbers come from, and when. */
 export function Provenance({ variables, lang }: { variables: VariablesFile; lang: Lang }) {
@@ -179,57 +142,3 @@ export interface ProvinceItem {
   lowRes: boolean;
 }
 
-/** Province picker with a filter box (the United Kingdom alone has 232). */
-export function ProvinceSelect({
-  lang,
-  countryId,
-  rows,
-  value,
-  onCountry,
-  onAdmin1,
-}: {
-  lang: Lang;
-  countryId: string;
-  rows: ProvinceItem[];
-  value: string | null;
-  onCountry: (id: string) => void;
-  onAdmin1: (country: string, id: string) => void;
-}) {
-  const [q, setQ] = useState("");
-  // a dot only helps when some rows have a monthly series and some do not
-  const allSeries = rows.every((r) => r.hasSeries);
-  const list = useMemo(() => {
-    const f = fold(q.trim());
-    return [...rows]
-      .sort((a, b) => Number(b.hasSeries) - Number(a.hasSeries) || a.name[lang].localeCompare(b.name[lang], lang))
-      .filter((a) => !f || fold(`${a.name.en} ${a.name.tr}`).includes(f));
-  }, [rows, q, lang]);
-  const tr = lang === "tr";
-  return (
-    <div className="provsel">
-      <div className="provsel-head">
-        <button className={`chip ${value === null ? "on" : ""}`} onClick={() => onCountry(countryId)}>
-          {tr ? "Ülkenin tamamı" : "Whole country"}
-        </button>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={tr ? `${rows.length} bölge içinde ara…` : `Filter ${rows.length} regions…`}
-          aria-label={tr ? "İl ara" : "Filter provinces"}
-        />
-      </div>
-      <ul className="provsel-list" role="listbox">
-        {list.map((a) => (
-          <li key={a.id}>
-            <button role="option" aria-selected={a.id === value} className={a.id === value ? "on" : ""} onClick={() => onAdmin1(countryId, a.id)}>
-              <span>{a.name[lang]}</span>
-              {a.hasSeries && !allSeries && <i className="data-dot" title={tr ? "Aylık serisi var" : "Has a monthly series"} />}
-              {a.lowRes && <small title={tr ? "Bir hücreden küçük" : "Smaller than one grid cell"}>{tr ? "düşük çöz." : "low res."}</small>}
-            </button>
-          </li>
-        ))}
-        {list.length === 0 && <li className="provsel-empty">{tr ? "Sonuç yok" : "No match"}</li>}
-      </ul>
-    </div>
-  );
-}

@@ -1916,7 +1916,7 @@ dialog.method::backdrop {
 
 .yearbadge {
   position: absolute;
-  top: calc(var(--top-h) + 8px);
+  top: calc(var(--top-h) + 60px);
   left: calc(var(--edge) + 8px);
   z-index: 3;
   pointer-events: none;
@@ -1979,3 +1979,111 @@ dialog.method::backdrop {
 .checks-fold { margin: -14px -12px 6px; }
 .card-head.end { justify-content: flex-end; margin-bottom: 6px; }
 .trail:empty { display: none; }
+
+/* ── closable side panel ────────────────────────────────────────────────── */
+.app.side-closed { --side-w: 0px; }
+.side-head { position: relative; }
+.side-close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; color: var(--muted); }
+.side-head .trail, .side-head h1 { padding-right: 34px; }
+@media (max-width: 900px) {
+  .app.side-closed { --sheet: 0px; }
+}
+
+/* ── period scale (under the view switch) ───────────────────────────────── */
+.period {
+  position: absolute;
+  top: var(--top-h);
+  left: var(--edge);
+  z-index: 6;
+  width: 400px;
+  max-width: calc(100vw - 2 * var(--edge));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 8px 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.period { user-select: none; -webkit-user-select: none; }
+.period-label { font-size: 13px; color: var(--muted); }
+.period-slot { flex: none; width: 26px; height: 26px; display: grid; place-items: center; }
+.period-track { position: relative; flex: 1; height: 24px; }
+.period-rail,
+.period-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+}
+.period-rail { left: 0; right: 0; background: var(--surface-3); }
+.period-fill { background: var(--text-2); }
+.period.on .period-fill { background: var(--accent); }
+.period-track input {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.period-track input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--surface-solid);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  cursor: grab;
+}
+.period-track input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--surface-solid);
+  cursor: grab;
+}
+.period-track input::-webkit-slider-runnable-track { background: none; }
+.period-track input::-moz-range-track { background: none; }
+.period-years { min-width: 84px; font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.period-reset {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: var(--muted);
+}
+.period-reset:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.period-spin {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--text);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { rotate: 360deg; } }
+@media (max-width: 900px) {
+  .period { width: auto; right: var(--edge); }
+}
+/* the panel is as tall as its content (never past the bottom edge) */
+@media (min-width: 901px) {
+  .side { bottom: auto; max-height: calc(100% - var(--top-h) - var(--edge)); }
+}

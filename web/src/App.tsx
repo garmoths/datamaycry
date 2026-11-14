@@ -24,7 +24,8 @@ import { Globe, type Marker, type View } from "./Globe.tsx";
 import { Panel, type AreaInfo, type CountryRow, type DrawerTab, type ProvinceRow, type Target } from "./Panel.tsx";
 import { Starfield } from "./Starfield.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
-import { anomalyTileUrl, preloadFrames, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
+import { anomalyTileUrl, preloadFrames, rangeTrendUrl, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
+import { PeriodScale } from "./PeriodScale.tsx";
 import { TimeBar } from "./TimeBar.tsx";
 import { clampTimeline, frameMs, nextYear, playFrom, type Timeline } from "./timeline.ts";
 import {
@@ -102,6 +103,11 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [smooth, setSmooth] = useState(false);
+  const [sideOpen, setSideOpen] = useState(true);
+  // analysed period (null = the whole period): drives the side panel and the map
+  const [period, setPeriod] = useState<[number, number] | null>(null);
+  const [rangeTiles, setRangeTiles] = useState<{ varId: VarId; url: string } | null>(null);
+  const [rangeBusy, setRangeBusy] = useState(false);
   const [tl, setTl] = useState<Timeline>({ min: 1980, max: 2025, from: 1980, to: 2025, year: 1980 });
   const [frames, setFrames] = useState<AnomalyFrames | null>(null);
   const [animError, setAnimError] = useState<string | null>(null);
@@ -163,6 +169,28 @@ export default function App() {
       dead = true;
     };
   }, [varId]);
+
+  // a chosen period: its trend map is computed in the tile worker from the yearly maps
+  useEffect(() => {
+    if (!period) {
+      setRangeTiles(null);
+      setRangeBusy(false);
+      return;
+    }
+    let dead = false;
+    setRangeBusy(true);
+    const wait = window.setTimeout(() => {
+      getAnomalyFrames(varId)
+        .then((f) => rangeTrendUrl(f, period[0], period[1]))
+        .then((url) => !dead && setRangeTiles(url ? { varId, url } : null))
+        .catch(() => !dead && setRangeTiles(null))
+        .finally(() => !dead && setRangeBusy(false));
+    }, 200); // wait until the slider rests
+    return () => {
+      dead = true;
+      window.clearTimeout(wait);
+    };
+  }, [period, varId]);
 
   // load the yearly maps of the chosen variable while the animation is open
   useEffect(() => {
@@ -257,6 +285,7 @@ export default function App() {
 
   const pickContinent = useCallback(
     (id: string) => {
+      setSideOpen(true);
       setContinent(id);
       setCountryId(null);
       setAdmin1Id(null);
@@ -272,6 +301,7 @@ export default function App() {
       if (row) setContinent(row.properties.continent);
       setCountryId(id);
       setAdmin1Id(null);
+      setSideOpen(true);
       const box = index.find((c) => c.id === id)?.bbox ?? (row ? mainBbox(row) : WORLD);
       flyTo(box, `country:${id}`);
     },
@@ -286,6 +316,7 @@ export default function App() {
       if (row) setContinent(row.properties.continent);
       setCountryId(country);
       setAdmin1Id(id);
+      setSideOpen(true);
       // provinces are fetched per country: the file may still be on its way
       void loadAdmin1(country).then((fs) => {
         const f = fs.find((x) => x.properties.id === id);
@@ -378,6 +409,7 @@ export default function App() {
       const tile = next[2];
       const sameTile = path[2] && path[2].i0 === tile.i0 && path[2].j0 === tile.j0;
       setPath(next);
+      setSideOpen(true);
       if (!sameTile) flyTo(nodeBounds(tile), `tile:${tile.i0}:${tile.j0}`);
     },
     [path, flyTo],
@@ -516,14 +548,17 @@ export default function App() {
     );
   }
   const variable = variables.variables.find((x) => x.id === varId) ?? variables.variables[0];
+  const fullYears: [number, number] = [variables.test_years.start, variables.test_years.end];
+  const years = period ?? fullYears;
+  const setYears = (y: [number, number]) => setPeriod(y[0] === fullYears[0] && y[1] === fullYears[1] ? null : y);
 
   return (
-    <div className="app">
+    <div className={`app ${sideOpen ? "" : "side-closed"}`}>
       <Starfield />
       {!noGl && (
         <Globe
           mode={mode}
-          trendTiles={trendTiles}
+          trendTiles={period && rangeTiles?.varId === varId ? rangeTiles.url : trendTiles}
           showTrend={showTrend}
           animTiles={animTiles}
           animAhead={animAhead}
@@ -580,6 +615,11 @@ export default function App() {
             </span>
             <span className="tt-label">{t(lang, "timeTravel")}</span>
           </button>
+          {!sideOpen && (
+            <button className="icon-btn" onClick={() => setSideOpen(true)} aria-label={t(lang, "openPanel")} data-tip={t(lang, "openPanel")}>
+              <Icon name="panel" size={16} />
+            </button>
+          )}
           <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
             <Icon name="link" size={16} />
           </button>
@@ -597,6 +637,16 @@ export default function App() {
           </button>
         </div>
       </motion.header>
+
+      <PeriodScale
+        lang={lang}
+        min={fullYears[0]}
+        max={fullYears[1]}
+        value={years}
+        busy={rangeBusy}
+        onChange={setYears}
+        onReset={() => setPeriod(null)}
+      />
 
       <CommandPalette
         lang={lang}
@@ -683,6 +733,10 @@ export default function App() {
 
       <Panel
         lang={lang}
+        open={sideOpen}
+        onClose={() => setSideOpen(false)}
+        years={years}
+        onYears={setYears}
         anim={animOn && frames ? { from: tl.from, year: tl.year, to: tl.to } : null}
         mode={mode}
         variables={variables}
