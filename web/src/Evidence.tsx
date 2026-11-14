@@ -5,6 +5,7 @@
  *  - References: the full source list, grouped
  * Written with AI assistance (Claude).
  */
+import { useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import type { TrendResult, VariablesFile } from "./data.ts";
 import { monthLabel, REFERENCE_GROUPS, REFERENCES, type Reference } from "./content.ts";
@@ -17,16 +18,26 @@ const rgb = (c: readonly number[]) => `rgb(${c.join(",")})`;
 /** `bendYear`: first year of a new pace (changepoint.ts), drawn as a dashed line. */
 export function Sparkline({ result, unit, lang, bendYear }: { result: TrendResult; unit: string; lang: Lang; bendYear?: number | null }) {
   const reduce = useReducedMotion();
+  // drawn at its real width (no stretching), so bars, corners and strokes keep their shape
+  const box = useRef<HTMLElement>(null);
+  const [W, setW] = useState(320);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(120, Math.round(e.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const { years, anomalies } = result.annual;
   const pts = years.map((y, k) => [y, anomalies[k]] as const).filter(([, a]) => Number.isFinite(a));
   if (pts.length < 3) return null;
-  const W = 320, H = 96, P = 6;
+  const H = 104, P = 8;
   const first = years[0], last = years[years.length - 1];
   const line = (y: number) => result.line.intercept + result.line.slopePerYear * (y - result.startYear);
   const ys = [...pts.map(([, a]) => a), line(first), line(last)];
   const lo = Math.min(...ys, 0), hi = Math.max(...ys, 0);
   const span = Math.max(1, last - first);
-  const bw = Math.max(1.5, ((W - 2 * P) / (span + 1)) * 0.62);
+  const bw = Math.max(1.5, ((W - 2 * P) / (span + 1)) * 0.68);
   const x = (y: number) => P + bw / 2 + ((y - first) / span) * (W - 2 * P - bw);
   const yy = (a: number) => H - P - ((a - lo) / Math.max(1e-9, hi - lo)) * (H - 2 * P);
   const up = result.slopePerDecade >= 0;
@@ -35,14 +46,14 @@ export function Sparkline({ result, unit, lang, bendYear }: { result: TrendResul
       ? `${first}–${last} yıllık anomaliler ve trend çizgisi, ${unit}`
       : `Annual anomalies ${first}–${last} and trend line, ${unit}`;
   return (
-    <figure className="spark" aria-label={label}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img">
+    <figure className="spark" aria-label={label} ref={box}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img">
         {pts.map(([y, a], k) => (
           <motion.rect
             key={y}
             x={x(y) - bw / 2}
             width={bw}
-            rx={Math.min(1.5, bw / 2)}
+            rx={Math.min(1.5, bw / 3)}
             className={a >= 0 ? "spark-pos" : "spark-neg"}
             initial={reduce ? false : { attrY: yy(0), height: 0 }}
             animate={{ attrY: Math.min(yy(a), yy(0)), height: Math.max(0.8, Math.abs(yy(a) - yy(0))) }}
@@ -63,6 +74,16 @@ export function Sparkline({ result, unit, lang, bendYear }: { result: TrendResul
           initial={reduce ? false : { pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: 1 }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
+        />
+        <motion.circle
+          cx={x(last)}
+          cy={yy(line(last))}
+          r={3.5}
+          fill={rgb(up ? WARM : COLD)}
+          className="spark-end"
+          initial={reduce ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 1.1 }}
         />
       </svg>
       <figcaption>

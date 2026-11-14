@@ -12,7 +12,7 @@
  *
  * Written with AI assistance (Claude).
  */
-import { cloneElement, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   analyzeTrend,
@@ -30,8 +30,8 @@ import {
   type TrendMap,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
-import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
-import { emergence, robustness, SEASONS, type Season } from "./trend.ts";
+import { cardText, decimalsFor, meaningHead, noTrendText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
+import { emergence, SEASONS, type Season } from "./trend.ts";
 
 const SEASON_LABEL: Record<Season, StringKey> = {
   all: "seasonAll", winter: "seasonWinter", spring: "seasonSpring", summer: "seasonSummer", autumn: "seasonAutumn",
@@ -45,13 +45,19 @@ import { Provenance, References, Sparkline, type ProvinceItem } from "./Evidence
 import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
-import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
+import { Fingerprint, FingerprintTable, SimilarPlaces } from "./Fingerprint.tsx";
+import { useFingerprint, type PlaceCells } from "./useFingerprint.ts";
+import { Ring, RingSlices, SideMenu, type MenuItem } from "./SideMenu.tsx";
+import { AnimatedTabs } from "./uilab/AnimatedTabs.tsx";
+import { monthlyTrends, MONTHS } from "./monthly.ts";
+import { standing } from "./ranking.ts";
+import { trendColor } from "./trendField.ts";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
 import { MonthStrip } from "./MonthStrip.tsx";
 import { Report } from "./Report.tsx";
 import { RankBadge, RankingPane } from "./Ranking.tsx";
-import { RANK_TAB_LABEL, type RankInputs, type RankScope } from "./useRankRows.ts";
+import { RANK_TAB_LABEL, useRankRows, type RankInputs, type RankScope } from "./useRankRows.ts";
 
 /** Summary of the world / a continent / a country / a province, from the per-cell trend map. */
 export interface AreaInfo {
@@ -158,6 +164,10 @@ export function Panel(p: Props) {
   const [season, setSeason] = useState<Season>("all");
   const [printing, setPrinting] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // phones: the nine trend maps (~15 MB) only load when a row that needs them is opened,
+  // and the menu starts closed so every row fits on the bottom sheet
+  const [isPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches);
+  const [openRow, setOpenRow] = useState<string | null>(null);
   const { years, onYears: setYears } = p;
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
@@ -211,14 +221,6 @@ export function Panel(p: Props) {
         ? emergence(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, animFrom, animTo)
         : null,
     [shown, animFrom, animTo, season],
-  );
-  // Start/end-year sensitivity (display only): same test with the period moved by 5 years
-  const robust = useMemo(
-    () =>
-      shown && result && result.status === "ok"
-        ? robustness(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, result, variables.test_years)
-        : null,
-    [shown, result, season, variables.test_years],
   );
   const bend = useMemo(() => bendFor(result), [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
   // rankings (Ranking.tsx): same period and season as the card
@@ -322,12 +324,6 @@ export function Panel(p: Props) {
       onAdmin1={p.onAdmin1}
     />
   ) : null;
-  const reportBtn =
-    hasAnswer || p.area ? (
-      <button className="link-btn report-btn" onClick={() => setPrinting(true)}>
-        <Icon name="download" size={14} /> {tr ? "Rapor (PDF)" : "Report (PDF)"}
-      </button>
-    ) : null;
   const areaFinding =
     p.area && !hasAnswer
       ? tr
@@ -350,7 +346,7 @@ export function Panel(p: Props) {
         <>
           {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
           {rankBadge}
-          {fingerprintEl && cloneElement(fingerprintEl, { eager: true })}
+          {fingerprintEl}
           {hasAnswer && ok && <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />}
         </>
       }
@@ -360,7 +356,7 @@ export function Panel(p: Props) {
 
   // ── the answer ─────────────────────────────────────────────────────────────
   const answer = hasAnswer ? (
-    <Card className={`verdict ${verdict!.cls}`}>
+    <div className={`verdict ${verdict!.cls}`}>
       {ok && (
         <div className="meter" role="img" aria-label={`${t(lang, "evidence")}: ${t(lang, result!.level)}`}>
           {(["none", "possible", "strong"] as const).map((lv) => (
@@ -379,8 +375,6 @@ export function Panel(p: Props) {
       )}
       <p className="card-text">{verdict!.body}</p>
       {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
-      {rankBadge}
-      {reportBtn}
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
@@ -415,14 +409,9 @@ export function Panel(p: Props) {
           )}
         </p>
       )}
-      {ok && !p.anim && robust && robust.windows.length > 0 && (
-        <p className={robust.same === robust.windows.length ? "note" : "warn"} title={t(lang, "robustTitle")}>
-          {robustText(lang, robust.same, robust.windows.length)}
-        </p>
-      )}
-    </Card>
+    </div>
   ) : p.area ? (
-    <Card className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
+    <div className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
       <p className="label">
         {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")}
       </p>
@@ -431,8 +420,6 @@ export function Panel(p: Props) {
         <span className="unit">{per}</span>
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
-      {rankBadge}
-      {reportBtn}
       <p className="card-text">
         {p.area.kind === "province"
           ? p.area.nearest
@@ -449,7 +436,7 @@ export function Panel(p: Props) {
             : `This summary is for ${variables.test_years.start}–${variables.test_years.end}; the chosen period is shown on the map.`}
         </p>
       )}
-    </Card>
+    </div>
   ) : (
     <Card className="verdict idle">
       {shownError ? (
@@ -465,38 +452,161 @@ export function Panel(p: Props) {
     </Card>
   );
 
-  // ── shape over time ────────────────────────────────────────────────────────
-  const shape =
-    hasAnswer && ok ? (
-      <Card className="shape">
-        <header className="card-head end">
-          <button className="link-btn" onClick={() => p.onDrawer("chart")}>
-            <Icon name="expand" size={14} /> {tr ? "Grafiği aç" : "Open chart"}
-          </button>
-        </header>
-        <Sparkline result={result!} unit={unit} lang={lang} bendYear={bend?.year} />
-      </Card>
-    ) : null;
+  // ── side menu (SideMenu.tsx): one row per topic, the answer visible on the right ──
+  const wantsMaps = !isPhone || openRow === "fingerprint" || openRow === "similar";
+  const fp = useFingerprint(
+    { lang, variables: variables.variables, target: p.target, opts: cardOpts, place: p.place, countryGrid: p.countryGrid, countries: p.countryRows, countryId: p.countryId, provinceFeatures: p.provinceFeatures },
+    !!p.place && wantsMaps,
+  );
+  const months = useMemo(
+    () => (hasAnswer && ok && !p.anim && shown ? monthlyTrends(shown, { startYear: eff[0], endYear: eff[1] }) : null),
+    [hasAnswer, ok, p.anim, shown, eff],
+  );
+  const rankData = useRankRows(rankScope, rankInputs);
+  const rankStand = rankScope && rankData.ready ? standing(rankData.rows, (p.admin1Id ?? p.countryId)!, lang) : null;
+  const rgb = (c: number[]) => `rgb(${c.map(Math.round).join(",")})`;
 
-  // change by month (MonthStrip.tsx): only with a monthly series, not during time travel
-  const monthCard =
-    hasAnswer && ok && !p.anim ? (
-      <Card className="months">
-        <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />
-      </Card>
-    ) : null;
+  const trendTitle = tr ? `${v.name[lang]} trendi` : `${v.name[lang]} trend`;
+  const LEVEL_FILL = { none: 0.22, possible: 0.6, strong: 1 } as const;
+  const menuItems: MenuItem[] = [];
+  if (hasAnswer || p.area) {
+    const slope = hasAnswer ? (ok ? result!.slopePerDecade : NaN) : p.area!.summary.meanSlope;
+    const level = hasAnswer ? (ok ? result!.level : "none") : "possible";
+    const dir = !Number.isFinite(slope) || level === "none" ? "flat" : slope > 0 ? "up" : "down";
+    const word = hasAnswer
+      ? verdict!.meaning ?? (level === "none" ? (tr ? "Belirgin değişim yok" : "No clear change") : t(lang, level))
+      : t(lang, p.area!.kind === "world" ? "meanTrendAll" : "meanTrend");
+    const showNum = Number.isFinite(slope) && (level !== "none" || !hasAnswer);
+    menuItems.push({
+      id: "trend",
+      icon: VAR_ICONS[v.id],
+      title: trendTitle,
+      feature: (
+        <span className="feat">
+          <span className={`feat-word ${dir}`}>{word}</span>
+          {showNum && (
+            <span className="feat-num">
+              <NumberTicker className="big" value={slope} decimals={decimalsFor(slope, v.decimals + 1)} signed comma={tr} />
+              <small>{per}</small>
+            </span>
+          )}
+        </span>
+      ),
+      indicator: hasAnswer && ok ? (
+        <Ring value={LEVEL_FILL[result!.level]} color={dir === "flat" ? "var(--muted)" : dir === "up" ? "var(--up)" : "var(--down)"} title={`${t(lang, "evidence")}: ${t(lang, result!.level)}`}>
+          {dir === "up" ? "↑" : dir === "down" ? "↓" : "–"}
+        </Ring>
+      ) : undefined,
+      content: (
+        <>
+          {answer}
+          {hasAnswer && ok && <Sparkline result={result!} unit={unit} lang={lang} bendYear={bend?.year} />}
+          {hasAnswer && ok && (
+            <div className="menu-actions">
+              <button className="link-btn" onClick={() => p.onDrawer("chart")}>
+                <Icon name="chart" size={14} /> {tr ? "Ayrıntılı grafiği aç" : "Open the full chart"}
+              </button>
+            </div>
+          )}
+        </>
+      ),
+    });
+  }
+  if (p.place) {
+    const tested = fp.rows.filter((r) => r.slope !== null);
+    const clear = tested.filter((r) => r.level === "strong").length;
+    menuItems.push({
+      id: "fingerprint",
+      icon: "grid",
+      title: tr ? "İklim parmak izi" : "Climate fingerprint",
+      hint: fp.ready ? (
+        tr ? <><b>{tested.length} değişkenden {clear}</b> tanesinde net değişim</> : <><b>{clear} of {tested.length}</b> variables clearly changing</>
+      ) : (
+        tr ? "9 değişken bir arada" : "All 9 variables together"
+      ),
+      indicator: fp.ready ? (
+        <RingSlices
+          items={tested.map((r) => ({
+            color: rgb(trendColor((r.relative ?? 0) / 1.5)),
+            strength: r.level === "strong" ? 1 : r.level === "possible" ? 0.6 : 0.15,
+            title: variables.variables.find((x) => x.id === r.var)?.name[lang] ?? r.var,
+          }))}
+        >
+          {clear}
+        </RingSlices>
+      ) : undefined,
+      content: <FingerprintTable data={fp} lang={lang} variables={variables.variables} current={v.id} onVariable={p.onVariable} />,
+    });
+    const top = fp.similar.world[0] ?? fp.similar.near[0];
+    menuItems.push({
+      id: "similar",
+      icon: "globe",
+      title: tr ? "Benzer yerler" : "Similar places",
+      hint: top ? (
+        <>{tr ? "En yakın: " : "Closest: "}<b>{top.name[lang]}</b></>
+      ) : fp.ready ? (
+        tr ? "Yeterince benzeyen yer yok" : "No close match"
+      ) : (
+        tr ? "Aynı şekilde değişen yerler" : "Places changing the same way"
+      ),
+      indicator: top ? (
+        <Ring value={top.score} color="var(--accent, #8ab4ff)" title={tr ? "Benzerlik" : "Similarity"}>
+          {Math.round(top.score * 100)}
+        </Ring>
+      ) : undefined,
+      content: <SimilarPlaces data={fp} lang={lang} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />,
+    });
+  }
+  if (months) {
+    const max = Math.max(1e-12, ...months.filter((m) => Number.isFinite(m.slope)).map((m) => Math.abs(m.slope)));
+    const fastest = months
+      .filter((m) => Number.isFinite(m.slope) && (m.level === "strong" || m.level === "possible"))
+      .sort((a, b) => Math.abs(b.slope) - Math.abs(a.slope))[0];
+    menuItems.push({
+      id: "months",
+      icon: "clock",
+      title: tr ? "Aylara göre" : "By month",
+      hint: fastest ? (
+        <>{tr ? "En hızlı değişen ay: " : "Fastest change: "}<b>{MONTHS[lang][fastest.month - 1]}</b></>
+      ) : (
+        tr ? "Hiçbir ayda net değişim yok" : "No month changes clearly"
+      ),
+      indicator: (
+        <RingSlices
+          items={months.map((m) => ({
+            color: Number.isFinite(m.slope) ? rgb(trendColor(m.slope / max)) : "rgba(255,255,255,0.15)",
+            strength: m.level === "strong" ? 1 : m.level === "possible" ? 0.7 : 0.2,
+            title: MONTHS[lang][m.month - 1],
+          }))}
+        />
+      ),
+      content: <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />,
+    });
+  }
+  if (rankScope) {
+    menuItems.push({
+      id: "rank",
+      icon: "flag",
+      title: tr ? "Sıralama" : "Ranking",
+      hint: rankStand ? (
+        tr ? <><b>{rankStand.of}</b> yer arasında {rankStand.dir === "up" ? "artışta" : "düşüşte"}</> : <>among <b>{rankStand.of}</b> places ({rankStand.dir === "up" ? "rising" : "falling"})</>
+      ) : (
+        tr ? "Komşularıyla karşılaştır" : "Compare with its neighbours"
+      ),
+      indicator: rankStand ? (
+        <Ring value={rankStand.of > 1 ? 1 - (rankStand.rank - 1) / (rankStand.of - 1) : 1} color="var(--text-2)">
+          {rankStand.rank}
+        </Ring>
+      ) : undefined,
+      onClick: () => p.onDrawer("rank"),
+    });
+  }
 
   // ── drawer contents ───────────────────────────────────────────────────────
   const chartPane = hasAnswer ? (
     <>
       <h2>{place}</h2>
-      <div className="seg" role="group">
-        {(["anomaly", "raw", "seasons"] as const).map((k) => (
-          <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>
-            {t(lang, k)}
-          </button>
-        ))}
-      </div>
+      <AnimatedTabs tabs={(["anomaly", "raw", "seasons"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={view} onChange={setView} />
       <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
       <div className="controls">
         <label>
@@ -508,13 +618,7 @@ export function Panel(p: Props) {
         </label>
         <div>
           {t(lang, "season")}
-          <div className="seg small" role="group">
-            {(["all", "winter", "spring", "summer", "autumn"] as const).map((s) => (
-              <button key={s} className={season === s ? "on" : ""} onClick={() => setSeason(s)}>
-                {t(lang, SEASON_LABEL[s])}
-              </button>
-            ))}
-          </div>
+          <AnimatedTabs size="sm" tabs={(["all", "winter", "spring", "summer", "autumn"] as const).map((x) => ({ id: x, label: t(lang, SEASON_LABEL[x]) }))} value={season} onChange={setSeason} />
           <p className="fine">{t(lang, "seasonHint")}</p>
         </div>
       </div>
@@ -610,9 +714,16 @@ export function Panel(p: Props) {
         {/* phones and tablets: the column is a bottom sheet; this handle makes it taller or shorter */}
         <button className="sheet-grab" onClick={() => setSheetOpen((o) => !o)} aria-expanded={sheetOpen} aria-label={tr ? (sheetOpen ? "Paneli küçült" : "Paneli büyüt") : sheetOpen ? "Shrink the panel" : "Expand the panel"} />
         <header className="side-head">
-          <button className="icon-btn side-close" onClick={p.onClose} aria-label={t(lang, "closePanel")}>
-            <Icon name="close" size={16} />
-          </button>
+          <div className="head-actions">
+            {(hasAnswer || p.area) && (
+              <button className="icon-btn" onClick={() => setPrinting(true)} aria-label={tr ? "Rapor (PDF)" : "Report (PDF)"} data-tip={tr ? "Rapor (PDF)" : "Report (PDF)"}>
+                <Icon name="download" size={16} />
+              </button>
+            )}
+            <button className="icon-btn" onClick={p.onClose} aria-label={t(lang, "closePanel")}>
+              <Icon name="close" size={16} />
+            </button>
+          </div>
           <nav className="trail" aria-label="breadcrumb">
             {p.trail.slice(0, -1).map((s, i) => (
               <button key={i} className="crumb" onClick={s.go}>
@@ -630,12 +741,13 @@ export function Panel(p: Props) {
             </p>
           )}
         </header>
-        <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
-          {answer}
-          {fingerprintEl && <Card className="fingerprint">{fingerprintEl}</Card>}
-          {shape}
-          {monthCard}
-        </motion.div>
+        {menuItems.length ? (
+          <SideMenu items={menuItems} open={openRow} onOpen={setOpenRow} lang={lang} />
+        ) : (
+          <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
+            {answer}
+          </motion.div>
+        )}
       </motion.aside>
       )}
       </AnimatePresence>
@@ -650,13 +762,11 @@ export function Panel(p: Props) {
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
           >
             <div className="drawer-head">
-              <div className="seg" role="tablist">
-                {DRAWER_TABS.map((x) => (
-                  <button key={x.id} role="tab" aria-selected={p.drawer === x.id} className={p.drawer === x.id ? "on" : ""} onClick={() => p.onDrawer(x.id)}>
-                    <Icon name={x.icon} size={14} /> {x.label ? x.label[lang] : t(lang, x.key!)}
-                  </button>
-                ))}
-              </div>
+              <AnimatedTabs
+                tabs={DRAWER_TABS.map((x) => ({ id: x.id, label: <><Icon name={x.icon} size={14} /> {x.label ? x.label[lang] : t(lang, x.key!)}</> }))}
+                value={p.drawer}
+                onChange={p.onDrawer}
+              />
               <button className="icon-btn" onClick={() => p.onDrawer(null)} aria-label={t(lang, "close")}>
                 <Icon name="close" size={16} />
               </button>

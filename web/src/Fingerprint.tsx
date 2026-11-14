@@ -1,6 +1,7 @@
 /**
- * "Climate fingerprint" card (docs/FEATURE_PLAN.md §2): every variable's trend for the
+ * "Climate fingerprint" views (docs/FEATURE_PLAN.md §2): every variable's trend for the
  * selected place in one table, what they show together, and the most alike places.
+ * The numbers come from useFingerprint.ts.
  *
  * Numbers per row: the place's own monthly series (same period and season as the main
  * card) when it has one, otherwise the world trend map inside its borders. Similar places
@@ -8,27 +9,12 @@
  *
  * Written with AI assistance (Claude).
  */
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { Feature, MultiPolygon, Polygon } from "geojson";
-import {
-  analyzeTrend,
-  getContinentSeries,
-  getPointSeries,
-  getRegionSeries,
-  type Series,
-  type TrendOptions,
-  type VarId,
-  type VariableInfo,
-} from "./data.ts";
-import { summarizeByGrid, summarizeList, type GridMean } from "./areaStats.ts";
-import { cellsInside } from "./continentStats.ts";
-import { interpret, levelOfArea, mostSimilar, relative, vectorOf, type Candidate, type FingerprintRow } from "./fingerprint.ts";
-import { loadTrendStack, scaleOf, type TrendStack } from "./trendStack.ts";
+import type { VarId, VariableInfo } from "./data.ts";
 import { VAR_GROUPS, VAR_ICONS } from "./content.ts";
 import { Icon } from "./icons.tsx";
 import { smartSigned, unitLabel, type Lang } from "./i18n.ts";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
-import type { Target } from "./Panel.tsx";
+import { useFingerprint, type FingerprintData, type FingerprintInputs } from "./useFingerprint.ts";
 import "./fingerprint.css";
 
 const T = {
@@ -63,32 +49,14 @@ const T = {
   },
 } as const;
 
-/** The selected place on the map: its grid cells (null = whole world) and its id. */
-export interface PlaceCells {
-  id: string;
-  cells: number[] | null;
-}
 
-interface Props {
-  lang: Lang;
-  variables: VariableInfo[];
+interface Props extends FingerprintInputs {
   current: VarId;
-  /** monthly series of the place (null when it has none) */
-  target: Target;
-  /** same period and season as the main card */
-  opts: TrendOptions;
-  place: PlaceCells | null;
-  /** similar-places pool: every country, plus the provinces of the open country */
-  countryGrid: Uint16Array | null;
-  countries: { id: string; name_en: string; name_tr: string }[];
-  countryId: string | null;
-  provinceFeatures: Feature<Polygon | MultiPolygon, { id: string; country: string; name_en: string; name_tr: string }>[];
   onVariable: (id: VarId) => void;
   onCountry: (id: string) => void;
   onAdmin1: (country: string, id: string) => void;
-  /** load at once (the PDF report); otherwise only when the card scrolls into view */
-  eager?: boolean;
 }
+
 
 /** Signed number, Turkish with a decimal comma (same as the main card). */
 const signed = (lang: Lang, x: number, d: number) => {
@@ -99,140 +67,21 @@ const signed = (lang: Lang, x: number, d: number) => {
 /** Similarity as a percentage; never shows a rounded 100 for a different place. */
 const pctOf = (score: number) => (score >= 0.995 ? "99+" : String(Math.round(score * 100)));
 
-function loadSeries(target: NonNullable<Target>, v: VarId): Promise<Series> {
-  if (target.type === "region") return getRegionSeries(target.country, target.admin1, v);
-  if (target.type === "continent") return getContinentSeries(target.id, v);
-  return getPointSeries(target.lat, target.lon, v);
-}
 
-export function Fingerprint(p: Props) {
-  const { lang } = p;
-  const ids = useMemo(() => p.variables.map((v) => v.id), [p.variables]);
-  const [stack, setStack] = useState<TrendStack | null>(null);
-  // the nine maps are ~15 MB: on a phone the card sits below the fold of the bottom sheet,
-  // so nothing is downloaded until it is actually scrolled into view
-  const anchor = useRef<HTMLSpanElement>(null);
-  const [seen, setSeen] = useState(!!p.eager);
-  useEffect(() => {
-    if (seen || !anchor.current) return;
-    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && setSeen(true), { rootMargin: "200px" });
-    io.observe(anchor.current);
-    return () => io.disconnect();
-  }, [seen]);
-  useEffect(() => {
-    if (!seen) return;
-    let dead = false;
-    void loadTrendStack(ids).then((s) => !dead && setStack(s));
-    return () => {
-      dead = true;
-    };
-  }, [ids, seen]);
-  const scales = useMemo(() => {
-    const out: Partial<Record<VarId, number>> = {};
-    if (stack) for (const id of ids) if (stack[id]) out[id] = scaleOf(stack[id]!);
-    return out;
-  }, [stack, ids]);
-
-  // every variable's monthly series of the place (one file holds them all)
-  const targetKey = JSON.stringify(p.target);
-  const [series, setSeries] = useState<{ key: string; byVar: Partial<Record<VarId, Series>> }>({ key: "", byVar: {} });
-  useEffect(() => {
-    if (!p.target) return;
-    let dead = false;
-    const target = p.target;
-    void Promise.all(ids.map((v) => loadSeries(target, v).then((s) => [v, s] as const, () => null))).then((pairs) => {
-      if (dead) return;
-      const byVar: Partial<Record<VarId, Series>> = {};
-      for (const x of pairs) if (x) byVar[x[0]] = x[1];
-      setSeries({ key: targetKey, byVar });
-    });
-    return () => {
-      dead = true;
-    };
-  }, [targetKey, ids]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // trend-map means of the place, per variable
-  const placeMeans = useMemo(() => {
-    const out: Partial<Record<VarId, GridMean | null>> = {};
-    if (!stack || !p.place) return out;
-    for (const id of ids) out[id] = stack[id] ? summarizeList(stack[id]!, p.place.cells) : null;
-    return out;
-  }, [stack, p.place, ids]);
-
-  const optsKey = JSON.stringify(p.opts);
-  const rows: FingerprintRow[] = useMemo(() => {
-    const own = p.target && series.key === targetKey ? series.byVar : {};
-    return ids.map((id) => {
-      const s = own[id];
-      if (s) {
-        const r = analyzeTrend(s, p.opts);
-        if (r.status === "ok") return { var: id, slope: r.slopePerDecade, level: r.level, relative: relative(r.slopePerDecade, scales[id] ?? 0), source: "series" as const };
-      }
-      const m = placeMeans[id];
-      if (m) return { var: id, slope: m.meanSlope, level: levelOfArea(m), relative: relative(m.meanSlope, scales[id] ?? 0), source: "map" as const };
-      return { var: id, slope: null, level: "none" as const, relative: null, source: "map" as const };
-    });
-    // optsKey stands in for p.opts (a new object every render)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids, series, targetKey, placeMeans, scales, optsKey]);
-  const insights = useMemo(() => interpret(rows), [rows]);
-
-  // ── similar places ──
-  const countryVectors: Candidate[] = useMemo(() => {
-    if (!stack || !p.countryGrid) return [];
-    const per: Partial<Record<VarId, (GridMean | null)[]>> = {};
-    for (const id of ids) if (stack[id]) per[id] = summarizeByGrid(stack[id]!, p.countryGrid, p.countries.length);
-    return p.countries.map((c, k) => {
-      const means: Partial<Record<VarId, GridMean | null>> = {};
-      // tiny countries (< 3 cells) are too noisy to be a match
-      for (const id of ids) {
-        const m = per[id]?.[k] ?? null;
-        means[id] = m && m.cells >= 3 ? m : null;
-      }
-      return { kind: "country", id: c.id, country: c.id, name: { en: c.name_en, tr: c.name_tr }, vector: vectorOf(means, scales) };
-    });
-  }, [stack, p.countryGrid, p.countries, ids, scales]);
-
-  const provinceVectors: Candidate[] = useMemo(() => {
-    if (!stack) return [];
-    return p.provinceFeatures.map((f) => {
-      const cells = cellsInside(f);
-      const means: Partial<Record<VarId, GridMean | null>> = {};
-      for (const id of ids) means[id] = stack[id] && cells.length >= 3 ? summarizeList(stack[id]!, cells) : null;
-      return { kind: "province", id: f.properties.id, country: f.properties.country, name: { en: f.properties.name_en, tr: f.properties.name_tr }, vector: vectorOf(means, scales) };
-    });
-  }, [stack, p.provinceFeatures, ids, scales]);
-
-  // two short lists: provinces of the same country, and countries elsewhere
-  // (otherwise the nearest neighbours always fill the list)
-  const similar = useMemo(() => {
-    if (!p.place) return { near: [], world: [] };
-    const self = vectorOf(placeMeans, scales);
-    return {
-      near: mostSimilar(self, p.place.id, provinceVectors, 3),
-      world: mostSimilar(self, p.place.id, countryVectors.filter((c) => c.id !== p.countryId), 3),
-    };
-  }, [p.place, placeMeans, scales, provinceVectors, countryVectors, p.countryId]);
-
-  if (!stack)
-    return (
-      <span ref={anchor}>
-        <TextShimmer>{T.loading[lang]}</TextShimmer>
-      </span>
-    );
-
-  const byId = new Map(p.variables.map((v) => [v.id, v]));
-  const anySeries = rows.some((r) => r.source === "series");
-  const anyMap = rows.some((r) => r.source === "map" && r.slope !== null);
+/** The nine rows and the "seen together" sentences. */
+export function FingerprintTable({ data, lang, variables, current, onVariable }: { data: FingerprintData; lang: Lang; variables: VariableInfo[]; current: VarId; onVariable: (id: VarId) => void }) {
+  if (!data.ready) return <TextShimmer>{T.loading[lang]}</TextShimmer>;
+  const { rows, insights } = data;
+  const byId = new Map(variables.map((v) => [v.id, v]));
   return (
     <>
-      <header className="card-head">
-        <h3>{T.title[lang]}</h3>
-        <span className="pill">
-          {rows.filter((r) => r.slope !== null).length} {T.vars[lang]}
-        </span>
-      </header>
-
+      {insights.length > 0 && (
+        <ul className="fp-insights">
+          {insights.map((x) => (
+            <li key={x.id}>{x.text[lang]}</li>
+          ))}
+        </ul>
+      )}
       <div className="fp-rows" role="list">
         {VAR_GROUPS.flatMap((g) => g.ids)
           .filter((id) => byId.has(id))
@@ -245,8 +94,8 @@ export function Fingerprint(p: Props) {
               <button
                 key={id}
                 role="listitem"
-                className={`fp-row lvl-${r.level} ${id === p.current ? "on" : ""} ${r.slope === null ? "empty" : ""}`}
-                onClick={() => p.onVariable(id)}
+                className={`fp-row lvl-${r.level} ${id === current ? "on" : ""} ${r.slope === null ? "empty" : ""}`}
+                onClick={() => onVariable(id)}
                 title={T.rowTip[lang]}
               >
                 <Icon name={VAR_ICONS[id]} size={14} />
@@ -263,49 +112,53 @@ export function Fingerprint(p: Props) {
             );
           })}
       </div>
-      <p className="fine">
-        {T.bar[lang]} {anySeries && anyMap ? `${T.fromSeries[lang]}; ${T.fromMap[lang]} ` : anySeries ? T.fromSeries[lang] : T.fromMap[lang]}.
-      </p>
+    </>
+  );
+}
 
-      <h4>{T.together[lang]}</h4>
-      {insights.length ? (
-        <ul className="fp-insights">
-          {insights.map((x) => (
-            <li key={x.id}>{x.text[lang]}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="fine">{T.noInsight[lang]}</p>
-      )}
+/** The most alike provinces of the same country and countries elsewhere. */
+export function SimilarPlaces({ data, lang, onCountry, onAdmin1 }: { data: FingerprintData; lang: Lang; onCountry: (id: string) => void; onAdmin1: (country: string, id: string) => void }) {
+  if (!data.ready) return <TextShimmer>{T.loading[lang]}</TextShimmer>;
+  const { similar } = data;
+  if (!similar.near.length && !similar.world.length) return <p className="fine">{T.noSimilar[lang]}</p>;
+  return (
+    <div className="fp-similar-groups">
+      {[
+        { key: "near", title: T.inCountry[lang], list: similar.near },
+        { key: "world", title: T.inWorld[lang], list: similar.world },
+      ]
+        .filter((g) => g.list.length)
+        .map((g) => (
+          <div key={g.key}>
+            <p className="fp-group">{g.title}</p>
+            <ol className="fp-similar">
+              {g.list.map((x) => (
+                <li key={`${x.kind}:${x.id}`}>
+                  <button onClick={() => (x.kind === "country" ? onCountry(x.id) : onAdmin1(x.country, x.id))}>
+                    <span>{x.name[lang]}</span>
+                    <b>%{pctOf(x.score)}</b>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+    </div>
+  );
+}
 
+/** The whole fingerprint in one block (used by the PDF report). */
+export function Fingerprint(p: Props) {
+  const { lang } = p;
+  const data = useFingerprint(p, true);
+  return (
+    <>
+      <header className="card-head">
+        <h3>{T.title[lang]}</h3>
+      </header>
+      <FingerprintTable data={data} lang={lang} variables={p.variables} current={p.current} onVariable={p.onVariable} />
       <h4>{T.similar[lang]}</h4>
-      {similar.near.length + similar.world.length ? (
-        <div className="fp-similar-groups">
-          {[
-            { key: "near", title: T.inCountry[lang], list: similar.near },
-            { key: "world", title: T.inWorld[lang], list: similar.world },
-          ]
-            .filter((g) => g.list.length)
-            .map((g) => (
-              <div key={g.key}>
-                <p className="fp-group">{g.title}</p>
-                <ol className="fp-similar">
-                  {g.list.map((x) => (
-                    <li key={`${x.kind}:${x.id}`}>
-                      <button onClick={() => (x.kind === "country" ? p.onCountry(x.id) : p.onAdmin1(x.country, x.id))}>
-                        <span>{x.name[lang]}</span>
-                        <b>%{pctOf(x.score)}</b>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
-          <p className="fine">{T.similarNote[lang]}</p>
-        </div>
-      ) : (
-        <p className="fine">{T.noSimilar[lang]}</p>
-      )}
+      <SimilarPlaces data={data} lang={lang} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
     </>
   );
 }
