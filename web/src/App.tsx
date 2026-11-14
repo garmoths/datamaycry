@@ -27,6 +27,7 @@ import { CommandPalette } from "./CommandPalette.tsx";
 import { anomalyTileUrl, preloadFrames, rangeTrendUrl, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
 import { PeriodScale } from "./PeriodScale.tsx";
 import { onGlassPointer } from "./glassLight.ts";
+import { escapeStep, isTyping } from "./escape.ts";
 import { TimeBar } from "./TimeBar.tsx";
 import { clampTimeline, frameMs, nextYear, playFrom, type Timeline } from "./timeline.ts";
 import {
@@ -517,6 +518,32 @@ export default function App() {
     }
     return out;
   }, [lang, mode, continent, countryId, province, point, index, countryRows, reset, pickContinent, pickCountry, pickAdmin1]);
+
+  // Esc closes one thing per press (escape.ts): drawer → time travel → one place level → period
+  const esc = useRef<() => void>(() => {});
+  useEffect(() => {
+    esc.current = () => {
+      const step = escapeStep({
+        overlay: paletteOpen || methodOpen,
+        typing: isTyping(document.activeElement),
+        drawer: !!drawer,
+        timeTravel: animOn,
+        depth: trail.length,
+        customPeriod: !!period,
+      });
+      if (step === "drawer") setDrawer(null);
+      else if (step === "timeTravel") closeAnim();
+      else if (step === "up") trail[trail.length - 2].go();
+      else if (step === "period") setPeriod(null);
+    };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) esc.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const demos = useMemo(() => {
     const regionDemo = (label: string, country: string, admin1: string, v: VarId) => ({
