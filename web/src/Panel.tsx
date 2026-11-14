@@ -13,7 +13,7 @@
  *
  * Written with AI assistance (Claude).
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   analyzeTrend,
@@ -27,6 +27,7 @@ import {
   type Series,
   type VariablesFile,
   type VariableInfo,
+  type VarId,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
 import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartFixed, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
@@ -47,6 +48,7 @@ import { CiBar, Gates, Histogram, StatGrid, ZCurve } from "./MathViz.tsx";
 import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
+import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
 
 /** Signed number with the variable's decimals; Turkish uses a decimal comma. */
 const fmtSignedIn = (lang: Lang) => (x: number, d: number) => {
@@ -110,6 +112,11 @@ interface Props {
   onQuestion: (q: Question | null) => void;
   drawer: DrawerTab | null;
   onDrawer: (t: DrawerTab | null) => void;
+  /** climate fingerprint (Fingerprint.tsx) */
+  place: PlaceCells | null;
+  countryGrid: Uint16Array | null;
+  provinceFeatures: ComponentProps<typeof Fingerprint>["provinceFeatures"];
+  onVariable: (id: VarId) => void;
 }
 
 const DRAWER_TABS: { id: DrawerTab; icon: IconName; key: "tabChart" | "tabExplore" | "sources" }[] = [
@@ -653,6 +660,25 @@ export function Panel(p: Props) {
         </header>
         <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
           {answer}
+          {p.place && (
+            <Card className="fingerprint">
+              <Fingerprint
+                lang={lang}
+                variables={variables.variables}
+                current={v.id}
+                target={p.target}
+                opts={{ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }}
+                place={p.place}
+                countryGrid={p.countryGrid}
+                countries={p.countryRows}
+                countryId={p.countryId}
+                provinceFeatures={p.provinceFeatures}
+                onVariable={p.onVariable}
+                onCountry={p.onCountry}
+                onAdmin1={p.onAdmin1}
+              />
+            </Card>
+          )}
           {math}
           {shape}
         </motion.div>
