@@ -1,7 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { readLink, writeLink } from "./share.ts";
-import { preloadPlotly } from "./plotlyLoader.ts";
 import { VariableDock } from "./VariableDock.tsx";
 import { ViewTabs } from "./ViewTabs.tsx";
 import type { Question } from "./content.ts";
@@ -142,9 +141,8 @@ export default function App() {
         setBounds(b);
       })
       .catch((e: Error) => setFatal(e.message));
-    // warm the caches the first click will need: the chart library and the demo countries
+    // warm the caches the first click will need: the demo countries
     whenIdle(() => {
-      void preloadPlotly();
       for (const c of ["TUR", "EGY", "BRA"]) {
         void getRegionSeries(c, null, "T2M").catch(() => {});
         void loadAdmin1(c).catch(() => {}); // demo countries' provinces, so their markers show early

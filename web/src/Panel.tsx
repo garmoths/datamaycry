@@ -41,17 +41,18 @@ import { NumberTicker } from "./NumberTicker.tsx";
 import type { AreaSummary } from "./continentStats.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
-import { Provenance, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
+import { Provenance, References, type ProvinceItem } from "./Evidence.tsx";
 import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
 import { Fingerprint, FingerprintTable, SimilarPlaces } from "./Fingerprint.tsx";
 import { useFingerprint, type PlaceCells } from "./useFingerprint.ts";
-import { Ring, RingSlices, SideMenu, type MenuItem } from "./SideMenu.tsx";
+import { FlowingMenu, type FlowItem } from "./reactbits/FlowingMenu.tsx";
+import { TrendPlot } from "./TrendPlot.tsx";
+import "./sidemenu.css";
 import { AnimatedTabs } from "./uilab/AnimatedTabs.tsx";
 import { monthlyTrends, MONTHS } from "./monthly.ts";
 import { standing } from "./ranking.ts";
-import { trendColor } from "./trendField.ts";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
 import { MonthStrip } from "./MonthStrip.tsx";
@@ -164,10 +165,11 @@ export function Panel(p: Props) {
   const [season, setSeason] = useState<Season>("all");
   const [printing, setPrinting] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // the menu row that is open (its details expand in place)
+  const [openRow, setOpenRow] = useState<string | null>(null);
   // phones: the nine trend maps (~15 MB) only load when a row that needs them is opened,
   // and the menu starts closed so every row fits on the bottom sheet
   const [isPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches);
-  const [openRow, setOpenRow] = useState<string | null>(null);
   const { years, onYears: setYears } = p;
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
@@ -452,7 +454,8 @@ export function Panel(p: Props) {
     </Card>
   );
 
-  // ── side menu (SideMenu.tsx): one row per topic, the answer visible on the right ──
+  // ── side menu (React Bits FlowingMenu): one row per topic, the answer on the right; ──
+  // ── a row opens its details in the drawer on the left                                ──
   const wantsMaps = !isPhone || openRow === "fingerprint" || openRow === "similar";
   const fp = useFingerprint(
     { lang, variables: variables.variables, target: p.target, opts: cardOpts, place: p.place, countryGrid: p.countryGrid, countries: p.countryRows, countryId: p.countryId, provinceFeatures: p.provinceFeatures },
@@ -464,11 +467,10 @@ export function Panel(p: Props) {
   );
   const rankData = useRankRows(rankScope, rankInputs);
   const rankStand = rankScope && rankData.ready ? standing(rankData.rows, (p.admin1Id ?? p.countryId)!, lang) : null;
-  const rgb = (c: number[]) => `rgb(${c.map(Math.round).join(",")})`;
+  const fmtS = (x: number, d: number) => (tr ? smartSigned(x, d).replace(".", ",") : smartSigned(x, d));
 
   const trendTitle = tr ? `${v.name[lang]} trendi` : `${v.name[lang]} trend`;
-  const LEVEL_FILL = { none: 0.22, possible: 0.6, strong: 1 } as const;
-  const menuItems: MenuItem[] = [];
+  const menuItems: FlowItem[] = [];
   if (hasAnswer || p.area) {
     const slope = hasAnswer ? (ok ? result!.slopePerDecade : NaN) : p.area!.summary.meanSlope;
     const level = hasAnswer ? (ok ? result!.level : "none") : "possible";
@@ -478,38 +480,41 @@ export function Panel(p: Props) {
       : t(lang, p.area!.kind === "world" ? "meanTrendAll" : "meanTrend");
     const showNum = Number.isFinite(slope) && (level !== "none" || !hasAnswer);
     menuItems.push({
-      id: "trend",
+      id: "chart",
       icon: VAR_ICONS[v.id],
       title: trendTitle,
       feature: (
         <span className="feat">
-          <span className={`feat-word ${dir}`}>{word}</span>
+          <span className="feat-head">
+            <span className={`feat-word ${dir}`}>{word}</span>
+            {hasAnswer && ok && <span className={`feat-level ${result!.level}`}>{t(lang, result!.level)}</span>}
+          </span>
           {showNum && (
             <span className="feat-num">
               <NumberTicker className="big" value={slope} decimals={decimalsFor(slope, v.decimals + 1)} signed comma={tr} />
               <small>{per}</small>
             </span>
           )}
+          {hasAnswer && ok && openRow !== "chart" && (
+            <TrendPlot compact series={shown!} result={result!} view="anomaly" unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} height={72} />
+          )}
         </span>
       ),
-      indicator: hasAnswer && ok ? (
-        <Ring value={LEVEL_FILL[result!.level]} color={dir === "flat" ? "var(--muted)" : dir === "up" ? "var(--up)" : "var(--down)"} title={`${t(lang, "evidence")}: ${t(lang, result!.level)}`}>
-          {dir === "up" ? "↑" : dir === "down" ? "↓" : "–"}
-        </Ring>
-      ) : undefined,
       content: (
         <>
           {answer}
-          {hasAnswer && ok && <Sparkline result={result!} unit={unit} lang={lang} bendYear={bend?.year} />}
           {hasAnswer && ok && (
-            <div className="menu-actions">
+            <>
+              <AnimatedTabs size="sm" tabs={(["anomaly", "raw", "seasons"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={view} onChange={setView} />
+              <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
               <button className="link-btn" onClick={() => p.onDrawer("chart")}>
-                <Icon name="chart" size={14} /> {tr ? "Ayrıntılı grafiği aç" : "Open the full chart"}
+                <Icon name="expand" size={14} /> {tr ? "Dönem ve mevsim ayarlarıyla aç" : "Open with period and season controls"}
               </button>
-            </div>
+            </>
           )}
         </>
       ),
+      onClick: () => setOpenRow(openRow === "chart" ? null : "chart"),
     });
   }
   if (p.place) {
@@ -519,46 +524,51 @@ export function Panel(p: Props) {
       id: "fingerprint",
       icon: "grid",
       title: tr ? "İklim parmak izi" : "Climate fingerprint",
-      hint: fp.ready ? (
-        tr ? <><b>{tested.length} değişkenden {clear}</b> tanesinde net değişim</> : <><b>{clear} of {tested.length}</b> variables clearly changing</>
+      sub: fp.ready && fp.insights[0] ? fp.insights[0].text[lang] : tr ? "9 değişken bir arada" : "All 9 variables together",
+      value: fp.ready ? (
+        <>
+          <b>
+            {clear}/{tested.length}
+          </b>
+          <small>{tr ? "net değişen" : "clearly changing"}</small>
+        </>
       ) : (
-        tr ? "9 değişken bir arada" : "All 9 variables together"
+        <>
+          <b>—</b>
+          <small>{tr ? "aç ve hesapla" : "open to compute"}</small>
+        </>
       ),
-      indicator: fp.ready ? (
-        <RingSlices
-          items={tested.map((r) => ({
-            color: rgb(trendColor((r.relative ?? 0) / 1.5)),
-            strength: r.level === "strong" ? 1 : r.level === "possible" ? 0.6 : 0.15,
-            title: variables.variables.find((x) => x.id === r.var)?.name[lang] ?? r.var,
-          }))}
-        >
-          {clear}
-        </RingSlices>
-      ) : undefined,
       content: <FingerprintTable data={fp} lang={lang} variables={variables.variables} current={v.id} onVariable={p.onVariable} />,
+      onClick: () => setOpenRow(openRow === "fingerprint" ? null : "fingerprint"),
     });
-    const top = fp.similar.world[0] ?? fp.similar.near[0];
+    const top = fp.similar.near[0] ?? fp.similar.world[0];
     menuItems.push({
       id: "similar",
       icon: "globe",
       title: tr ? "Benzer yerler" : "Similar places",
-      hint: top ? (
-        <>{tr ? "En yakın: " : "Closest: "}<b>{top.name[lang]}</b></>
+      sub: top ? (
+        <>
+          {tr ? "En yakın: " : "Closest: "}
+          <b>{top.name[lang]}</b>
+        </>
       ) : fp.ready ? (
         tr ? "Yeterince benzeyen yer yok" : "No close match"
+      ) : tr ? (
+        "Aynı şekilde değişen yerler"
       ) : (
-        tr ? "Aynı şekilde değişen yerler" : "Places changing the same way"
+        "Places changing the same way"
       ),
-      indicator: top ? (
-        <Ring value={top.score} color="var(--accent, #8ab4ff)" title={tr ? "Benzerlik" : "Similarity"}>
-          {Math.round(top.score * 100)}
-        </Ring>
+      value: top ? (
+        <>
+          <b>%{Math.min(99, Math.round(top.score * 100))}</b>
+          <small>{tr ? "benzerlik" : "alike"}</small>
+        </>
       ) : undefined,
       content: <SimilarPlaces data={fp} lang={lang} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />,
+      onClick: () => setOpenRow(openRow === "similar" ? null : "similar"),
     });
   }
   if (months) {
-    const max = Math.max(1e-12, ...months.filter((m) => Number.isFinite(m.slope)).map((m) => Math.abs(m.slope)));
     const fastest = months
       .filter((m) => Number.isFinite(m.slope) && (m.level === "strong" || m.level === "possible"))
       .sort((a, b) => Math.abs(b.slope) - Math.abs(a.slope))[0];
@@ -566,21 +576,22 @@ export function Panel(p: Props) {
       id: "months",
       icon: "clock",
       title: tr ? "Aylara göre" : "By month",
-      hint: fastest ? (
-        <>{tr ? "En hızlı değişen ay: " : "Fastest change: "}<b>{MONTHS[lang][fastest.month - 1]}</b></>
+      sub: fastest ? (tr ? "En hızlı değişen ay" : "The fastest-changing month") : tr ? "Hiçbir ayda net değişim yok" : "No month changes clearly",
+      value: fastest ? (
+        <>
+          <b className={fastest.slope >= 0 ? "up" : "down"}>{MONTHS[lang][fastest.month - 1]}</b>
+          <small>
+            {fmtS(fastest.slope, v.decimals + 1)} {unit}
+          </small>
+        </>
       ) : (
-        tr ? "Hiçbir ayda net değişim yok" : "No month changes clearly"
-      ),
-      indicator: (
-        <RingSlices
-          items={months.map((m) => ({
-            color: Number.isFinite(m.slope) ? rgb(trendColor(m.slope / max)) : "rgba(255,255,255,0.15)",
-            strength: m.level === "strong" ? 1 : m.level === "possible" ? 0.7 : 0.2,
-            title: MONTHS[lang][m.month - 1],
-          }))}
-        />
+        <>
+          <b>—</b>
+          <small>{tr ? "12 test" : "12 tests"}</small>
+        </>
       ),
       content: <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />,
+      onClick: () => setOpenRow(openRow === "months" ? null : "months"),
     });
   }
   if (rankScope) {
@@ -588,17 +599,25 @@ export function Panel(p: Props) {
       id: "rank",
       icon: "flag",
       title: tr ? "Sıralama" : "Ranking",
-      hint: rankStand ? (
-        tr ? <><b>{rankStand.of}</b> yer arasında {rankStand.dir === "up" ? "artışta" : "düşüşte"}</> : <>among <b>{rankStand.of}</b> places ({rankStand.dir === "up" ? "rising" : "falling"})</>
-      ) : (
-        tr ? "Komşularıyla karşılaştır" : "Compare with its neighbours"
-      ),
-      indicator: rankStand ? (
-        <Ring value={rankStand.of > 1 ? 1 - (rankStand.rank - 1) / (rankStand.of - 1) : 1} color="var(--text-2)">
-          {rankStand.rank}
-        </Ring>
+      sub: rankStand
+        ? tr
+          ? `${rankStand.of} yer arasında, ${rankStand.dir === "up" ? "en hızlı artanlardan" : "en hızlı azalanlardan"}`
+          : `among ${rankStand.of} places, by ${rankStand.dir === "up" ? "fastest rise" : "fastest fall"}`
+        : tr
+          ? "Komşularıyla karşılaştır"
+          : "Compare with its neighbours",
+      value: rankStand ? (
+        <>
+          <b>#{rankStand.rank}</b>
+          <small>/ {rankStand.of}</small>
+        </>
       ) : undefined,
-      onClick: () => p.onDrawer("rank"),
+      content: (
+        <>
+          <RankingPane {...rankInputs} countryId={p.countryId} continent={p.continent} selected={p.admin1Id ?? p.countryId} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
+        </>
+      ),
+      onClick: () => setOpenRow(openRow === "rank" ? null : "rank"),
     });
   }
 
@@ -742,7 +761,7 @@ export function Panel(p: Props) {
           )}
         </header>
         {menuItems.length ? (
-          <SideMenu items={menuItems} open={openRow} onOpen={setOpenRow} lang={lang} />
+          <FlowingMenu items={menuItems} active={openRow} label={tr ? "Analiz" : "Analysis"} />
         ) : (
           <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
             {answer}
