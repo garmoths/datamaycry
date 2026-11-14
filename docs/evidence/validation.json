@@ -1,0 +1,42 @@
+{
+  "gpcp": {
+    "agree": 2793,
+    "disagree": 811,
+    "inconclusive": 1257
+  },
+  "ghcn": {
+    "agree": 954,
+    "disagree": 58,
+    "inconclusive": 1
+  },
+  "ghcn_stations": {
+    "stations_total": 23505,
+    "stations_qualifying": 3383,
+    "stations_in_province": 3195
+  },
+  "gistemp": {
+    "source": "NASA GISTEMP v4 (GLB.Ts+dSST)",
+    "years": [
+      1980,
+      2025
+    ],
+    "status": "agree",
+    "ours": {
+      "slopePerDecade": 0.16179,
+      "ci95": [
+        0.10872,
+        0.21993
+      ],
+      "pValue": 0.0
+    },
+    "ref": {
+      "slopePerDecade": 0.20667,
+      "ci95": [
+        0.1625,
+        0.24762
+      ],
+      "pValue": 0.0
+    },
+    "annual_correlation": 0.968
+  }
+}

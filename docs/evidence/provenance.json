@@ -1,0 +1,123 @@
+{
+  "generated": "2026-11-14",
+  "datasets": [
+    {
+      "dataset": "NASA MERRA-2 M2TMNXSLV",
+      "provider": "NASA GMAO / GES DISC",
+      "version": "5.12.4",
+      "doi": "https://doi.org/10.5067/AP1B0BA5PD2K",
+      "title": "MERRA-2 tavgM_2d_slv_Nx: 2d,Monthly mean,Time-Averaged,Single-Level,Assimilation,Single-Level Diagnostics 0.625 x 0.5 degree V5.12.4 (M2TMNXSLV) ",
+      "variables": "T2M, QV2M",
+      "period": "1980-01 → 2026-09",
+      "files": 561,
+      "bytes": 636333696,
+      "sha256_all": "50132405057220fd9502b8cf266d06b112c3891a75126de0633bbb38e48a1ac0",
+      "licence": "NASA open data",
+      "use": "main data"
+    },
+    {
+      "dataset": "NASA MERRA-2 M2TMNXFLX",
+      "provider": "NASA GMAO / GES DISC",
+      "version": "5.12.4",
+      "doi": "https://doi.org/10.5067/0JRLVL8YV2Y4",
+      "title": "MERRA-2 tavgM_2d_flx_Nx: 2d,Monthly mean,Time-Averaged,Single-Level,Assimilation,Surface Flux Diagnostics 0.625 x 0.5 degree V5.12.4 (M2TMNXFLX) ",
+      "variables": "SPEED, PRECTOT, PRECTOTCORR, EVAP",
+      "period": "1980-01 → 2026-09",
+      "files": 561,
+      "bytes": 1496070856,
+      "sha256_all": "47da299200079a8d7b0a7ea75c7dcc08b811417f21993bec8954f77ea7b53848",
+      "licence": "NASA open data",
+      "use": "main data"
+    },
+    {
+      "dataset": "NASA MERRA-2 M2TMNXLND",
+      "provider": "NASA GMAO / GES DISC",
+      "version": "5.12.4",
+      "doi": "https://doi.org/10.5067/8S35XF81C28F",
+      "title": "MERRA-2 tavgM_2d_lnd_Nx: 2d,Monthly mean,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics 0.625 x 0.5 degree V5.12.4 (M2TMNXLND) ",
+      "variables": "GWETROOT, RUNOFF, SNOMAS",
+      "period": "1980-01 → 2026-09",
+      "files": 561,
+      "bytes": 332414036,
+      "sha256_all": "99609949c0ff08939f48d65181fa2be4c18a57a9ce5e6a809fc8a7bf1bc79462",
+      "licence": "NASA open data",
+      "use": "main data"
+    },
+    {
+      "dataset": "NASA MERRA-2 M2TMNXAER",
+      "provider": "NASA GMAO / GES DISC",
+      "version": "5.12.4",
+      "doi": "https://doi.org/10.5067/FH9A0MLJPC7N",
+      "title": "MERRA-2 tavgM_2d_aer_Nx: 2d,Monthly mean,Time-averaged,Single-Level,Assimilation,Aerosol Diagnostics 0.625 x 0.5 degree V5.12.4 (M2TMNXAER) ",
+      "variables": "TOTEXTTAU",
+      "period": "1980-01 → 2026-09",
+      "files": 561,
+      "bytes": 361648993,
+      "sha256_all": "04b51f51bd0a7ae20445e68d1be9c0cf3d5bb022b0cbbd1f89a8e6b20668c686",
+      "licence": "NASA open data",
+      "use": "main data"
+    },
+    {
+      "dataset": "NASA MERRA-2 M2C0NXASM (constants)",
+      "provider": "NASA GMAO / GES DISC",
+      "version": "5.12.4",
+      "doi": "https://doi.org/10.5067/ME5QX6Q5IGGU",
+      "title": "MERRA-2 const_2d_asm_Nx: 2d, constants 0.625 x 0.5 degree V5.12.4 (M2C0NXASM)",
+      "variables": "FRLAND, FROCEAN, FRLAKE, FRLANDICE, PHIS",
+      "files": 1,
+      "bytes": 916164,
+      "sha256_all": "685b335e98b38ec0cf63f357396d7f02f0c43057987fead751ecc84a54515a20",
+      "licence": "NASA open data",
+      "use": "land/ocean masks"
+    },
+    {
+      "dataset": "NASA GPCP v3.3 monthly (GPCPMON)",
+      "provider": "NASA GES DISC",
+      "version": "3.3",
+      "doi": "https://doi.org/10.5067/MEASURES/GPCP/DATA306",
+      "title": "GPCP Precipitation Level 3 Monthly 0.5-Degree V3.3 (GPCPMON)",
+      "variables": "sat_gauge_precip",
+      "period": "1983-01 → 2025-12",
+      "files": 516,
+      "bytes": 488546892,
+      "sha256_all": "2e3d9607618e63dccd0e704d0ada4b757e62a4b63f7deca7f4699c80d3827e9f",
+      "licence": "NASA open data",
+      "use": "independent precipitation check (badges)"
+    },
+    {
+      "dataset": "NOAA GHCN-Monthly v4 TAVG, QC-adjusted (qcf)",
+      "provider": "NOAA NCEI",
+      "version": "v4.0.1.20261113",
+      "doi": "https://doi.org/10.7289/V5XW4GTH",
+      "url": "https://www.ncei.noaa.gov/pub/data/ghcn/v4/",
+      "files": 2,
+      "bytes": 174774187,
+      "sha256_all": "cc6c2b12e0ead09f271938677f52bc7f38d0c0eed9551d1a1b5821f3e01cf1eb",
+      "licence": "US Government public domain",
+      "use": "station temperature check (badges)"
+    },
+    {
+      "dataset": "NASA GISTEMP v4 global land-ocean index",
+      "provider": "NASA GISS",
+      "version": "v4",
+      "url": "https://data.giss.nasa.gov/gistemp/",
+      "citation": "GISTEMP Team; Lenssen et al. (2019), JGR Atmospheres 124",
+      "files": 1,
+      "bytes": 12887,
+      "sha256_all": "2995ffcfbda952268030df8f7e309cd4f626f077e9ff112509ff7d96cfb0e4c4",
+      "licence": "NASA open data",
+      "use": "global temperature check"
+    },
+    {
+      "dataset": "Natural Earth 1:10m admin-0 countries + admin-1 provinces",
+      "provider": "Natural Earth",
+      "version": "5.1.1",
+      "url": "https://www.naturalearthdata.com/",
+      "files": 2,
+      "bytes": 29805004,
+      "sha256_all": "8f2c037d25d533e36fb01ed2bd216e31fd534e3818241c35f3388ec6d1f12825",
+      "licence": "Public domain",
+      "use": "region boundaries and cell overlap"
+    }
+  ]
+}
