@@ -14,6 +14,11 @@ One PR per change: `types.ts` + `schema/` + `worker/mock.py` + `web/src/data.ts`
   PRECTOTCORR, and its trends were 2.5× closer (`worker/compare_precip.py`).
 - `TrendResult.capped?: boolean` — true when "strong" was lowered because of `experimental`.
 - UI to do (Rumet): when `capped` or `experimental`, show the caveat under the card.
+- Behaviour (no type change): `analyzeTrend` gives "possible" or "strong" only when the
+  autocorrelation-corrected 95% CI excludes 0. Real data had "strong" cards whose CI
+  included 0 (Amazon precipitation, CI −0.70…+0.02). Calibration after the change
+  (trend-free AR(1) φ=0.6, 1,500 runs): possible-or-strong 5.0%, strong 0.47%.
+  Same rule in `worker/protocol.py`; 80-case Python↔JS parity test passes.
 
 ## 1.0 — 2026-11-14 (draft, waiting for Rumet's approval)
 - `variables.json`, `regions/index.json` (JSON)
