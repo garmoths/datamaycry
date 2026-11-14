@@ -651,16 +651,19 @@ export default function App() {
         </div>
       </motion.header>
 
-      <PeriodScale
-        lang={lang}
-        min={fullYears[0]}
-        max={fullYears[1]}
-        value={years}
-        means={stripes}
-        busy={rangeBusy}
-        onChange={setYears}
-        onReset={() => setPeriod(null)}
-      />
+      {/* while time travel plays, the big year label takes this place: one date at the top left */}
+      {!animOn && (
+        <PeriodScale
+          lang={lang}
+          min={fullYears[0]}
+          max={fullYears[1]}
+          value={years}
+          means={stripes}
+          busy={rangeBusy}
+          onChange={setYears}
+          onReset={() => setPeriod(null)}
+        />
+      )}
 
       <CommandPalette
         lang={lang}

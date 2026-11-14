@@ -1939,7 +1939,7 @@ dialog.method::backdrop {
 
 .yearbadge {
   position: absolute;
-  top: calc(var(--top-h) + 108px);
+  top: calc(var(--top-h) + 10px);
   left: calc(var(--edge) + 8px);
   z-index: 3;
   pointer-events: none;
@@ -2144,7 +2144,8 @@ dialog.method::backdrop {
 .brand,
 .cmdbar,
 .actions,
-.period {
+.period,
+.timebar {
   position: relative;
   isolation: isolate;
   background: var(--glass-sheen), var(--glass-tint);
@@ -2162,7 +2163,8 @@ dialog.method::backdrop {
 .brand::before,
 .cmdbar::before,
 .actions::before,
-.period::before {
+.period::before,
+.timebar::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -2180,7 +2182,8 @@ dialog.method::backdrop {
 .brand::after,
 .cmdbar::after,
 .actions::after,
-.period::after {
+.period::after,
+.timebar::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -2195,7 +2198,8 @@ dialog.method::backdrop {
 .brand:hover::after,
 .cmdbar:hover::after,
 .actions:hover::after,
-.period:hover::after {
+.period:hover::after,
+.timebar:hover::after {
   opacity: 1;
 }
 
@@ -2238,3 +2242,20 @@ dialog.method::backdrop {
 }
 /* the period pill uses the glass recipe but stays pinned under the view switch */
 .period { position: absolute; }
+
+/* ── time travel bar: centred play button, same liquid glass as the other bars ── */
+.timebar {
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 20px;
+}
+.tb-play { margin-top: 0; width: 48px; height: 48px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.12); }
+.tb-head { min-height: 24px; }
+.tb-close { align-self: center; }
+.timebar { position: relative; }
+.yearbadge small,
+.yearbadge span,
+.yearbadge em { font-family: var(--display); }
+.yearbadge em { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.tb-ticks i { font-family: var(--display); }
