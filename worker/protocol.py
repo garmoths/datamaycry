@@ -179,11 +179,14 @@ def analyze(values, start: str, var: str = "", start_year: int = TEST_YEARS[0],
     n_years = end_year - start_year + 1
     anom = anomalies(values, start)
     yr, mo = month_index(start, len(values))
-    sel = (yr >= start_year) & (yr <= end_year) & np.isin(mo, months)
+    # Winter (Dec–Feb) crosses the new year: December counts towards the next year's winter.
+    wraps = 12 in months and 1 in months and len(months) < 12
+    syr = np.where(wraps & (mo == 12), yr + 1, yr)
+    sel = (syr >= start_year) & (syr <= end_year) & np.isin(mo, months)
     monthly = anom[sel]
     years, annual = [], []
     for y in range(start_year, end_year + 1):
-        a = anom[(yr == y) & np.isin(mo, months)]
+        a = anom[(syr == y) & np.isin(mo, months)]
         if len(a) == len(months) and not np.isnan(a).any():
             years.append(y)
             annual.append(float(a.mean()))

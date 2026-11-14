@@ -19,6 +19,8 @@ import {
   DMC_MAGIC,
   MISSING_INT16,
   SCHEMA_VERSION,
+  type AnomalyFrames,
+  type AnomalyFramesHeader,
   type ContinentId,
   type Packing,
   type RegionHeader,
@@ -319,4 +321,69 @@ export function getTrendMap(varId: VarId): Promise<TrendMap> {
       fdr: toU8(field("fdr")),
     };
   });
+}
+
+// ─── 1.4: yearly anomaly maps for the "time travel" animation ──────────────
+
+/** One map per year (1980–2025) of the difference from the 1991–2020 normal. */
+const framesOrder: string[] = [];
+export function getAnomalyFrames(varId: VarId): Promise<AnomalyFrames> {
+  // ~10 MB per variable once unpacked: keep the last two in memory (phones)
+  const key = `frames:${varId}`;
+  const at = framesOrder.indexOf(key);
+  if (at >= 0) framesOrder.splice(at, 1);
+  framesOrder.push(key);
+  while (framesOrder.length > 2) cache.delete(framesOrder.shift()!);
+  return cached(key, async () => {
+    const { header, data } = await fetchDmc<AnomalyFramesHeader>(`${DATA_URL}anomaly_frames/${varId}.bin`);
+    const years = Array.from({ length: header.years.end - header.years.start + 1 }, (_, k) => header.years.start + k);
+    return {
+      var: header.var,
+      grid: header.grid,
+      years,
+      values: Float32Array.from(unpack(data, header.packing)),
+      colorMax: header.color_max,
+    };
+  });
+}
+
+/** Area-weighted (cos latitude) mean of frame k over cells with data. */
+export function frameMean(f: AnomalyFrames, k: number): number {
+  const { nlat, nlon, lat0, dlat } = f.grid;
+  const off = k * nlat * nlon;
+  let s = 0, w = 0;
+  for (let i = 0; i < nlat; i++) {
+    const wi = Math.cos(((lat0 + i * dlat) * Math.PI) / 180);
+    if (wi <= 0) continue;
+    for (let j = 0; j < nlon; j++) {
+      const v = f.values[off + i * nlon + j];
+      if (Number.isFinite(v)) {
+        s += wi * v;
+        w += wi;
+      }
+    }
+  }
+  return w > 0 ? s / w : NaN;
+}
+
+/** Centred running mean over `window` years for every cell (NaN-aware; edges use the years available). */
+export function runningFrames(f: AnomalyFrames, window = 5): AnomalyFrames {
+  const n = f.grid.nlat * f.grid.nlon;
+  const ny = f.years.length;
+  const half = Math.floor(window / 2);
+  const out = new Float32Array(f.values.length);
+  for (let c = 0; c < n; c++) {
+    for (let k = 0; k < ny; k++) {
+      let s = 0, m = 0;
+      for (let q = Math.max(0, k - half); q <= Math.min(ny - 1, k + half); q++) {
+        const v = f.values[q * n + c];
+        if (Number.isFinite(v)) {
+          s += v;
+          m++;
+        }
+      }
+      out[k * n + c] = m ? s / m : NaN;
+    }
+  }
+  return { ...f, values: out };
 }

@@ -1667,3 +1667,223 @@ dialog.method::backdrop {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── plain-language card (PR #7), in the instrument style ─────────────── */
+.meaning {
+  margin: 6px 0 0;
+  font: 600 17px/1.25 var(--sans);
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.verdict.strong .meaning { color: var(--tone); }
+.verdict.possible .meaning { color: var(--warn); }
+/* "No clear change": the number is noise, so it must not look like a result */
+.verdict.none .headline .big {
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.emerged {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font: 11.5px/1.4 var(--sans);
+  color: var(--muted);
+}
+.emerged span {
+  padding: 3px 8px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  transition: color 0.3s, border-color 0.3s;
+}
+.emerged b { font-family: var(--mono); font-weight: 500; }
+.emerged span.on { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.emerged span.strong.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+
+/* chart: climate stripes above the yearly bars, same inset as the plot area */
+.stripes {
+  display: flex;
+  height: 18px;
+  margin: 0 10px 6px 50px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.stripes span { flex: 1; }
+
+/* ── 1.4 time travel ─────────────────────────────────────────────────── */
+.legend[hidden] { display: none; }
+
+/* top-right action next to share / explore / sources / info / language */
+.tt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 11px 0 6px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 500 12px/1 var(--sans);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tt-pill:hover { border-color: var(--text-2); }
+.tt-dot {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--bg);
+}
+.tt-pill.on { background: var(--surface-3); border-color: var(--text-2); }
+
+/* control bar: in the bottom deck, where the legend sits when the animation is off */
+.deck-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.timebar {
+  width: min(760px, 100%);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 14px 10px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  color: var(--text-2);
+  font: 11.5px/1.4 var(--sans);
+}
+.tb-play {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+.tb-play:hover { transform: scale(1.04); }
+.tb-play:disabled { cursor: progress; transform: none; }
+.tb-ring { width: 30px; height: 30px; transform: rotate(-90deg); }
+.tb-ring circle { fill: none; stroke-width: 3.5; stroke: color-mix(in srgb, var(--bg) 25%, transparent); }
+.tb-ring circle + circle { stroke: var(--bg); stroke-linecap: round; transition: stroke-dasharray 0.15s; }
+
+.tb-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.tb-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.tb-year { font: 500 22px/1 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+.tb-mean { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
+.tb-chip {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-2);
+  font: 500 11px/1 var(--sans);
+  cursor: pointer;
+}
+.tb-chip.on { background: var(--surface-3); border-color: var(--text-2); color: var(--text); }
+
+/* the scrubber track is a climate-stripes strip (data, not decoration) */
+.tb-track { position: relative; height: 24px; }
+.tb-stripes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  outline: 1px solid var(--line);
+}
+.tb-stripes span { flex: 1; transition: opacity 0.2s; }
+.tb-cursor {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--bg);
+  pointer-events: none;
+  transition: left 0.12s linear;
+}
+.tb-track input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: grab; }
+.tb-foot { position: relative; height: 12px; }
+.tb-ticks i {
+  position: absolute;
+  transform: translateX(-50%);
+  font: 9.5px/1 var(--mono);
+  font-style: normal;
+  color: var(--muted);
+}
+.tb-ticks i:first-child { transform: none; }
+.tb-ticks i:last-child { transform: translateX(-100%); }
+.tb-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tb-range { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+.tb-range select {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  color: var(--text);
+  font: 11px var(--mono);
+  padding: 2px 4px;
+}
+.tb-legend { display: flex; align-items: center; gap: 6px; color: var(--muted); font-family: var(--mono); }
+.tb-legend .bar { width: 110px; height: 6px; border-radius: 2px; }
+.tb-close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.tb-close:hover { color: var(--text); border-color: var(--line-strong); }
+
+.yearbadge {
+  position: absolute;
+  top: calc(var(--edge) + 58px);
+  left: calc(var(--edge) + 4px);
+  z-index: 3;
+  pointer-events: none;
+  display: grid;
+  gap: 3px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+.yearbadge b { font: 500 56px/0.95 var(--mono); letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+.yearbadge small { color: var(--text-2); font: 11px var(--mono); }
+.yearbadge span { color: var(--text-2); font-size: 12px; }
+.yearbadge em { font: 500 18px var(--mono); font-style: normal; }
+.yearbadge em.warm { color: var(--up); }
+.yearbadge em.cold { color: var(--down); }
+
+@media (prefers-reduced-motion: reduce) {
+  .emerged span, .tb-cursor, .tb-stripes span { transition: none; }
+}
+@media (max-width: 900px) {
+  .tt-pill { padding: 0 6px; }
+  .tt-label { display: none; }
+  .timebar { gap: 10px; padding: 10px; }
+  .tb-play { width: 40px; height: 40px; }
+  .tb-tools .seg { display: none; }
+}

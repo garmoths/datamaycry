@@ -28,8 +28,11 @@ for k in range(80):
     opts = {}
     if k % 4 == 1:
         opts = {"startYear": int(rng.integers(1980, 2000)), "endYear": int(rng.integers(2010, 2026))}
+    seasons = [[6, 7, 8], [12, 1, 2], [3, 4, 5], [9, 10, 11]]
     if k % 6 == 3:
-        opts["months"] = [6, 7, 8]
+        opts["months"] = seasons[(k // 6) % 4]
+    if k % 10 == 7:
+        opts["months"] = [12, 1, 2]
     r = P.analyze(v, "1980-01", var="T2M",
                   start_year=opts.get("startYear", 1980), end_year=opts.get("endYear", 2025),
                   months=opts.get("months"))

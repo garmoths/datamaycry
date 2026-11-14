@@ -53,8 +53,10 @@ VARS = [
      (1.4, 1.0, 0.02, 0.3, None)),
     ("GWETROOT", "M2TMNXLND", "%", "1", 100, 0, 0.01, 1, True,
      ("Soil moisture", "Toprak nemi"),
-     ("How wet the soil is where plant roots are (0% dry, 100% saturated).",
-      "Bitki köklerinin olduğu topraktaki ıslaklık (%0 kuru, %100 doygun)."),
+     ("How wet the soil is where plant roots are, from the driest this soil gets to fully soaked. "
+      "Even deserts stay around 30%, so compare places by their change, not their level.",
+      "Bitki köklerinin olduğu toprağın ıslaklığı: o toprağın en kuru halinden tamamen doygun haline kadar. "
+      "Çöller bile %30 civarında kalır; yerleri seviyesiyle değil değişimiyle karşılaştır."),
      (45, 12, -1.0, 3, 0)),
     ("RUNOFF", "M2TMNXLND", "mm/day", "kg m-2 s-1", 86400, 0, 0.02, 2, True,
      ("Surface runoff", "Yüzey akışı"),
@@ -77,6 +79,10 @@ CAVEAT = {
                 "Reanaliz yağış verisi, uydu gözlemleri değiştiğinde sıçrama yapabilir."),
     "TOTEXTTAU": ("Aerosol data can jump in years when new satellite observations were added.",
                   "Aerosol verisi yeni uydu gözlemlerinin eklendiği yıllarda sıçrama yapabilir."),
+    "SNOMAS": ("In mountains snow is shown lower than it really is: each grid square (about 50 km) averages "
+               "peaks and valleys together. Use it for the direction of change, not the amount.",
+               "Dağlık bölgelerde kar gerçekte olduğundan az görünür: her ızgara karesi (yaklaşık 50 km) dağları ve "
+               "ovaları birlikte ortalar. Miktar için değil, değişimin yönü için kullan."),
     "RUNOFF": ("Experimental: in some places the model's runoff is far larger than the rain that fell, "
                "more often in recent years. Trends are never marked as strong evidence.",
                "Deneysel: bazı yerlerde modelin akış değeri düşen yağıştan çok daha büyük ve bu son yıllarda "
@@ -252,6 +258,21 @@ def write_trend_maps() -> None:
         write_dmc(OUT / "trend_map" / f"{v[0]}.bin", header, payload)
 
 
+def write_frames_mock() -> None:
+    """Fake yearly anomaly maps on a coarse 4° × 5° grid (contract 1.4), every variable."""
+    from frames import write_frames
+    lat = np.arange(-88, 89, 4.0)
+    lon = np.arange(-177.5, 180, 5.0)
+    grid = {"nlat": len(lat), "nlon": len(lon), "lat0": float(lat[0]), "lon0": float(lon[0]), "dlat": 4.0, "dlon": 5.0}
+    years = np.arange(1980, 2026)
+    for k, v in enumerate(VARS):
+        mean, amp, trend, sd, lo = v[11]
+        base = trend * (1 + np.abs(lat)[None, :, None] / 45) * (0.6 + 0.6 * np.sin(np.radians(lon)[None, None, :] * 2 + k))
+        t = (years - 2005.5)[:, None, None] / 10
+        frames = base * t + rng.normal(0, sd * 0.4, (len(years), len(lat), len(lon)))
+        write_frames(OUT, v[0], frames.astype(np.float32), grid, (1980, 2025))
+
+
 def write_tiles() -> None:
     for ty, tx in MOCK_TILES:
         i0, j0 = ty * 20, tx * 16
@@ -269,14 +290,18 @@ def write_tiles() -> None:
 
 
 if __name__ == "__main__":
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir(parents=True)
+    # Remove only what this script writes: web/public/data/boundaries (map borders) lives here too.
+    OUT.mkdir(parents=True, exist_ok=True)
+    for sub in ("regions", "trend_map", "tiles", "anomaly_frames"):
+        if (OUT / sub).exists():
+            shutil.rmtree(OUT / sub)
+    (OUT / "variables.json").unlink(missing_ok=True)
     write_variables()
     write_regions()
     write_badges()
     write_trend_maps()
     write_tiles()
+    write_frames_mock()
     n = check(OUT)
     size = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
     print(f"Mock data: {n} files, {size / 1e6:.1f} MB in {OUT} — all match contract v{SCHEMA_VERSION}")

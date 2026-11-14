@@ -206,3 +206,38 @@ def test_fast_mk_equals_mk():
         a, b = P.fast_mk(x), P.mann_kendall(x)
         assert a.s == b.s and a.var_s == pytest.approx(b.var_s) and abs(a.p - b.p) < 1e-12
         assert abs(P.fast_prewhitened_mk(x).p - P.prewhitened_mk(x).p) < 1e-12
+
+
+def test_winter_counts_december_to_next_year():
+    """Winter 1990 = Dec 1989 + Jan 1990 + Feb 1990 (meteorological seasons)."""
+    v = np.zeros(N)
+    yr, mo = P.month_index(START, N)
+    v[(yr == 1989) & (mo == 12)] = 30.0   # only December 1989 is special
+    r = P.analyze(v, START, months=[12, 1, 2])
+    a = dict(zip(r.years, r.annual))
+    assert a[1990] > a[1989] + 5          # Dec 1989 lifts winter 1990, not winter 1989
+    assert 1980 not in a                  # winter 1980 needs Dec 1979: not in the data
+
+
+def test_coarsen2x2_nan_aware_and_matches_protocol():
+    """A coarse cell = mean of its 2×2 fine cells' yearly anomalies (the trend test's numbers)."""
+    from frames import coarsen2x2, color_max
+    rng = np.random.default_rng(12)
+    fine = rng.normal(0, 1, (3, 361 * 576)).astype(np.float32)
+    fine[:, 0] = np.nan                       # one NaN fine cell
+    c, g = coarsen2x2(fine)
+    assert c.shape == (3, 181, 288) and g["dlat"] == 1.0 and g["dlon"] == 1.25
+    f = fine.reshape(3, 361, 576)
+    assert c[1, 0, 0] == pytest.approx(np.nanmean(f[1, 0:2, 0:2]))     # NaN ignored
+    assert c[2, 50, 100] == pytest.approx(f[2, 100:102, 200:202].mean())
+    assert c[0, 180, 7] == pytest.approx(f[0, 360, 14:16].mean())      # pole row has one fine row
+    allnan = np.full((1, 361 * 576), np.nan, dtype=np.float32)
+    assert np.isnan(coarsen2x2(allnan)[0]).all()
+    assert color_max(c) > 0
+
+    # the fine values are exactly the protocol's annual anomalies for a cell
+    v = 10 + 8 * np.cos(2 * np.pi * (np.arange(N) % 12 - 6.5) / 12) + rng.normal(0, 1, N)
+    r = P.analyze(v, START)
+    a = P.anomalies(v, START)
+    ours = [a[k * 12:(k + 1) * 12].mean() for k in range(46)]
+    assert np.allclose(ours, r.annual)

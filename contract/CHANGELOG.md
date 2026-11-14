@@ -3,6 +3,12 @@
 Rules: adding a field → minor (1.x). Removing/renaming → major (2.0), Enes + Rumet agree.
 One PR per change: `types.ts` + `schema/` + `worker/mock.py` + `web/src/data.ts` + this file.
 
+## 1.4 — 2026-11-14 (additions only)
+- `anomaly_frames/{VAR}.bin` (`AnomalyFramesHeader`): one map per year (1980–2025) of the yearly mean
+  anomaly vs the 1991–2020 normal, for the "time travel" animation. Grid in the header
+  (real data 1° × 1.25° = 2×2 MERRA cells; mock data coarser). Fixed colour scale `color_max`.
+- `data.ts`: `getAnomalyFrames(var)` → `AnomalyFrames`.
+
 ## 1.3 — 2026-11-14 (additions only)
 - `regions/badges.json` (`BadgesFile`): independent-source checks per region.
   `GPCP` = NASA GPCP v3.3 precipitation (1983–2025), `GHCN` = NOAA GHCN-M v4 station

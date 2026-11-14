@@ -19,3 +19,22 @@ describe("analyzeTrend parity with worker/protocol.py", () => {
     }
   });
 });
+
+describe("emergence", () => {
+  it("finds when a growing trend becomes possible, then strong", async () => {
+    const { emergence } = await import("./trend.ts");
+    // steady rise of 0.04/yr in realistic noise (seeded): no evidence early on,
+    // evidence later, and once it appears it stays until the end
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648) - 0.5;
+    const values = Float64Array.from({ length: 561 }, (_, k) =>
+      8 * Math.cos((2 * Math.PI * ((k % 12) - 6.5)) / 12) + 0.04 * (k / 12) + 2.4 * rnd());
+    const series = { var: "T2M" as const, unit: "°C", start: "1980-01", values, label: { en: "", tr: "" } };
+    const e = emergence(series, {}, 1980, 2025);
+    expect(e.possible).not.toBeNull();
+    expect(e.possible!).toBeGreaterThan(1990);
+    expect(e.strong).not.toBeNull();
+    expect(e.strong!).toBeGreaterThanOrEqual(e.possible!);
+    expect(e.levels.get(1989)).toBe("none");
+  });
+});
