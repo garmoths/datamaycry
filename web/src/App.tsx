@@ -11,7 +11,6 @@ import {
   frameMean,
   getAnomalyFrames,
   getTrendMap,
-  runningFrames,
   type AnomalyFrames,
   listCountries,
   loadVariables,
@@ -53,6 +52,19 @@ function whenIdle(fn: () => void): void {
   if (ric) ric(fn, { timeout: 4000 });
   else window.setTimeout(fn, 1500);
 }
+/** Centred 5-point running mean that uses the points available at the ends (same rule as the map). */
+function runningMean5(a: number[]): number[] {
+  return a.map((_, k) => {
+    let s = 0, m = 0;
+    for (let q = Math.max(0, k - 2); q <= Math.min(a.length - 1, k + 2); q++)
+      if (Number.isFinite(a[q])) {
+        s += a[q];
+        m++;
+      }
+    return m ? s / m : NaN;
+  });
+}
+
 const savedLang = (): Lang => {
   try {
     return localStorage.getItem("dmc-lang") === "tr" ? "tr" : "en";
@@ -252,9 +264,11 @@ export default function App() {
         : [],
     [animOn, frames, urlFor, tl.year, tl.to, smooth],
   );
-  const smoothed = useMemo(() => (frames && smooth ? runningFrames(frames, 5) : frames), [frames, smooth]);
-  const animMeans = useMemo(() => (smoothed ? smoothed.years.map((_, k) => frameMean(smoothed, k)) : []), [smoothed]);
-  const animMean = smoothed ? (animMeans[tl.year - smoothed.years[0]] ?? NaN) : NaN;
+  // world mean per year: computed once per variable (46 means), the 5-year option smooths
+  // those 46 numbers instead of all 2.4 million cell values on the main thread
+  const yearlyMeans = useMemo(() => (frames ? frames.years.map((_, k) => frameMean(frames, k)) : []), [frames]);
+  const animMeans = useMemo(() => (smooth ? runningMean5(yearlyMeans) : yearlyMeans), [yearlyMeans, smooth]);
+  const animMean = frames ? (animMeans[tl.year - frames.years[0]] ?? NaN) : NaN;
 
   // playback: the next year is scheduled only after the current one is on screen
   const [shownUrl, setShownUrl] = useState<string | null>(null);

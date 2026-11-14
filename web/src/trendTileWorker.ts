@@ -19,8 +19,32 @@ interface Frames {
 }
 const frames = new Map<string, Frames>();
 const frameFields = new Map<string, TrendField>(); // `${varId}/${frame}`
-const pngCache = new Map<string, ArrayBuffer>(); // `${varId}/${frame}/${z}/${x}/${y}`
-const MAX_PNG = 1500;
+// PNG tiles, least recently used first. ~1 000 tiles ≈ 20–40 MB: enough for a whole
+// animation at globe zoom plus panning, small enough for phones.
+const pngCache = new Map<string, ArrayBuffer>(); // `${kind}/${varId}/${frame}/${z}/${x}/${y}`
+const MAX_PNG = 1000;
+// keep the yearly maps of the last two variables only (each ~20 MB with its 5-year version)
+const MAX_FRAME_VARS = 2;
+const frameOrder: string[] = [];
+
+function cacheGet(key: string): ArrayBuffer | undefined {
+  const hit = pngCache.get(key);
+  if (hit) {
+    pngCache.delete(key); // refresh its place in the LRU order
+    pngCache.set(key, hit);
+  }
+  return hit;
+}
+function cachePut(key: string, png: ArrayBuffer) {
+  if (pngCache.size >= MAX_PNG) pngCache.delete(pngCache.keys().next().value!);
+  pngCache.set(key, png);
+}
+function dropVar(varId: string) {
+  frames.delete(varId);
+  frames.delete(`${varId}#s`);
+  for (const k of [...frameFields.keys()]) if (k.startsWith(`${varId}/`)) frameFields.delete(k);
+  for (const k of [...pngCache.keys()]) if (k.startsWith(`a/${varId}/`)) pngCache.delete(k);
+}
 
 type Msg =
   | { kind: "field"; varId: string; field: TrendField }
@@ -92,20 +116,20 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
     const fr = { grid: m.grid, values: m.values, colorMax: m.colorMax };
     frames.set(m.varId, fr);
     frames.set(`${m.varId}#s`, smooth5(fr));
+    const at = frameOrder.indexOf(m.varId);
+    if (at >= 0) frameOrder.splice(at, 1);
+    frameOrder.push(m.varId);
+    while (frameOrder.length > MAX_FRAME_VARS) dropVar(frameOrder.shift()!);
     return;
   }
-  let png: ArrayBuffer;
-  if (m.kind === "atile") {
-    const key = `${m.varId}/${m.frame}/${m.z}/${m.x}/${m.y}`;
-    const hit = pngCache.get(key);
-    png = hit ?? (await toPng(frameField(m.varId, m.frame), m.z, m.x, m.y));
-    if (!hit) {
-      if (pngCache.size >= MAX_PNG) pngCache.delete(pngCache.keys().next().value!);
-      pngCache.set(key, png);
-    }
-    png = png.slice(0); // keep the cached copy, transfer a clone
-  } else {
-    png = await toPng(fields.get(m.varId), m.z, m.x, m.y);
+  // trend tiles are cached too: panning back or switching back to a variable is instant
+  const key = m.kind === "atile" ? `a/${m.varId}/${m.frame}/${m.z}/${m.x}/${m.y}` : `t/${m.varId}/${m.z}/${m.x}/${m.y}`;
+  let png = cacheGet(key);
+  if (!png) {
+    const field = m.kind === "atile" ? frameField(m.varId, m.frame) : fields.get(m.varId);
+    png = await toPng(field, m.z, m.x, m.y);
+    if (field) cachePut(key, png); // never cache an empty tile painted before the data arrived
   }
+  png = png.slice(0); // keep the cached copy, transfer a clone
   (self as unknown as Worker).postMessage({ id: m.id, png }, [png]);
 };

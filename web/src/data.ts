@@ -326,8 +326,15 @@ export function getTrendMap(varId: VarId): Promise<TrendMap> {
 // ─── 1.4: yearly anomaly maps for the "time travel" animation ──────────────
 
 /** One map per year (1980–2025) of the difference from the 1991–2020 normal. */
+const framesOrder: string[] = [];
 export function getAnomalyFrames(varId: VarId): Promise<AnomalyFrames> {
-  return cached(`frames:${varId}`, async () => {
+  // ~10 MB per variable once unpacked: keep the last two in memory (phones)
+  const key = `frames:${varId}`;
+  const at = framesOrder.indexOf(key);
+  if (at >= 0) framesOrder.splice(at, 1);
+  framesOrder.push(key);
+  while (framesOrder.length > 2) cache.delete(framesOrder.shift()!);
+  return cached(key, async () => {
     const { header, data } = await fetchDmc<AnomalyFramesHeader>(`${DATA_URL}anomaly_frames/${varId}.bin`);
     const years = Array.from({ length: header.years.end - header.years.start + 1 }, (_, k) => header.years.start + k);
     return {

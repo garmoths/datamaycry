@@ -21,10 +21,7 @@ export interface MKResult {
 export function mannKendall(input: ArrayLike<number>): MKResult {
   const x = Array.from(input).filter((v) => !Number.isNaN(v));
   const n = x.length;
-  let s = 0;
-  for (let i = 0; i < n - 1; i++) {
-    for (let j = i + 1; j < n; j++) s += Math.sign(x[j] - x[i]);
-  }
+  const s = n > 64 ? mkScoreFast(x) : mkScoreDirect(x);
   const varS = mkVariance(x);
   let z = 0;
   if (varS > 0) {
@@ -33,6 +30,39 @@ export function mannKendall(input: ArrayLike<number>): MKResult {
   }
   const p = 2 * (1 - normCdf(Math.abs(z)));
   return { n, s, varS, z, p };
+}
+
+/** S = Σ_{i<j} sign(x_j − x_i), the direct O(n²) sum. */
+function mkScoreDirect(x: number[]): number {
+  let s = 0;
+  for (let i = 0; i < x.length - 1; i++) for (let j = i + 1; j < x.length; j++) s += Math.sign(x[j] - x[i]);
+  return s;
+}
+
+/**
+ * The same S in O(n log n) with a Fenwick tree over value ranks: for each j, add the
+ * number of earlier values below x_j and subtract those above it. Exact integers, so the
+ * result is identical to mkScoreDirect (ties count 0 in both). Used for the ~550-point
+ * monthly series, where the direct sum costs ~150 000 steps per test.
+ */
+function mkScoreFast(x: number[]): number {
+  const sorted = [...new Set(x)].sort((a, b) => a - b);
+  const rank = new Map(sorted.map((v, k) => [v, k + 1]));
+  const tree = new Int32Array(sorted.length + 1);
+  const upTo = (r: number) => {
+    let c = 0;
+    for (; r > 0; r -= r & -r) c += tree[r];
+    return c;
+  };
+  let s = 0;
+  for (let j = 0; j < x.length; j++) {
+    const r = rank.get(x[j])!;
+    const below = upTo(r - 1);
+    const above = j - upTo(r);
+    s += below - above;
+    for (let q = r; q < tree.length; q += q & -q) tree[q]++;
+  }
+  return s;
 }
 
 /** Var(S) with tie correction. */

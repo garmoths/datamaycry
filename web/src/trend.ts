@@ -35,22 +35,45 @@ export function monthLabels(series: Series): string[] {
   });
 }
 
+/** Year and month of every index, computed once per (start, length). */
+const calendars = new Map<string, { years: Int16Array; months: Int8Array }>();
+function calendar(series: Series): { years: Int16Array; months: Int8Array } {
+  const key = `${series.start}|${series.values.length}`;
+  let c = calendars.get(key);
+  if (!c) {
+    const n = series.values.length;
+    const s = parseYM(series.start);
+    const years = new Int16Array(n), months = new Int8Array(n);
+    for (let k = 0; k < n; k++) {
+      const total = s.month - 1 + k;
+      years[k] = s.year + Math.floor(total / 12);
+      months[k] = (total % 12) + 1;
+    }
+    calendars.set(key, (c = { years, months }));
+  }
+  return c;
+}
+
+/** Anomalies are the same for every period and season of a series: computed once per values array. */
+const anomalyCache = new WeakMap<Float64Array, Float64Array>();
+
 /** Monthly anomalies vs the 1991–2020 normal of each calendar month. NaN stays NaN. */
 export function anomalies(series: Series): Float64Array {
+  const hit = anomalyCache.get(series.values);
+  if (hit) return hit;
+  const { years, months } = calendar(series);
   const sum = new Array(13).fill(0);
   const cnt = new Array(13).fill(0);
-  series.values.forEach((v, k) => {
-    const { year, month } = monthAt(series, k);
-    if (year >= BASELINE.start && year <= BASELINE.end && !Number.isNaN(v)) {
-      sum[month] += v;
-      cnt[month] += 1;
+  const v = series.values;
+  for (let k = 0; k < v.length; k++) {
+    if (years[k] >= BASELINE.start && years[k] <= BASELINE.end && !Number.isNaN(v[k])) {
+      sum[months[k]] += v[k];
+      cnt[months[k]] += 1;
     }
-  });
-  const out = new Float64Array(series.values.length);
-  series.values.forEach((v, k) => {
-    const { month } = monthAt(series, k);
-    out[k] = cnt[month] ? v - sum[month] / cnt[month] : NaN;
-  });
+  }
+  const out = new Float64Array(v.length);
+  for (let k = 0; k < v.length; k++) out[k] = cnt[months[k]] ? v[k] - sum[months[k]] / cnt[months[k]] : NaN;
+  anomalyCache.set(series.values, out);
   return out;
 }
 
@@ -68,15 +91,20 @@ export function analyzeTrend(series: Series, opts: TrendOptions = {}): TrendResu
   // Winter (Dec–Feb) crosses the new year: December counts towards the NEXT year's winter,
   // so "winter 1990" = Dec 1989 + Jan 1990 + Feb 1990 (standard meteorological seasons).
   const wraps = months.includes(12) && months.includes(1) && months.length < 12;
-  anom.forEach((v, k) => {
-    const { year, month } = monthAt(series, k);
-    const sy = wraps && month === 12 ? year + 1 : year;
-    if (sy < startYear || sy > endYear || !months.includes(month)) return;
+  const cal = calendar(series);
+  const pick = new Uint8Array(13);
+  for (const m of months) pick[m] = 1;
+  for (let k = 0; k < anom.length; k++) {
+    const month = cal.months[k];
+    if (!pick[month]) continue;
+    const sy = wraps && month === 12 ? cal.years[k] + 1 : cal.years[k];
+    if (sy < startYear || sy > endYear) continue;
+    const v = anom[k];
     monthly.push(v);
     const arr = byYear.get(sy) ?? [];
     arr.push(v);
     byYear.set(sy, arr);
-  });
+  }
   const years: number[] = [];
   const annual: number[] = [];
   for (let y = startYear; y <= endYear; y++) {

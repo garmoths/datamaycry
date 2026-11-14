@@ -50,3 +50,17 @@ describe("display smoothers", () => {
     expect(Number.isNaN(runningMean(v, 12)[18])).toBe(true);
   });
 });
+
+describe("fast Mann-Kendall score", () => {
+  it("gives exactly the direct O(n²) sum, ties included", () => {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    for (let k = 0; k < 60; k++) {
+      const n = 65 + Math.floor(rnd() * 600);
+      const x = Array.from({ length: n }, (_, i) => (k % 3 === 0 ? Math.round(rnd() * 6) : rnd() + i * 0.001 * (k % 5)));
+      let direct = 0;
+      for (let i = 0; i < n - 1; i++) for (let j = i + 1; j < n; j++) direct += Math.sign(x[j] - x[i]);
+      expect(mannKendall(x).s).toBe(direct);
+    }
+  });
+});

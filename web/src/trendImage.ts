@@ -87,7 +87,8 @@ export function trendTileUrl(varId: VarId, map: TrendMap): string {
 // ── 1.4: yearly anomaly tiles for the animation: anom://{VAR}/{FRAME}/{z}/{x}/{y} ──
 // FRAME = year index ("12") or "12s" for the 5-year running mean. PNGs are cached in the worker.
 
-const frameData = new Map<VarId, AnomalyFrames>();
+const frameData = new Map<VarId, AnomalyFrames>(); // main-thread fallback, last two variables
+const sentFrames: string[] = []; // variables whose frames the worker holds, oldest first
 let anomRegistered = false;
 
 function requestTile(msg: Record<string, unknown>): Promise<ArrayBuffer | null> {
@@ -115,9 +116,16 @@ async function paintFrameHere(varId: VarId, frame: string, z: number, x: number,
 
 /** Hand a variable's yearly maps to the tile worker; returns a URL builder for one frame. */
 export function anomalyTileUrl(f: AnomalyFrames): (frame: number, smooth: boolean) => string {
-  if (!frameData.has(f.var)) {
-    frameData.set(f.var, f);
-    tileWorker()?.postMessage({ kind: "frames", varId: f.var, grid: f.grid, values: f.values, colorMax: f.colorMax });
+  frameData.set(f.var, f);
+  // the worker keeps the last two variables (same rule as here): send again if it may have dropped this one
+  if (sentFrames.at(-1) !== f.var) {
+    const at = sentFrames.indexOf(f.var);
+    if (at >= 0) sentFrames.splice(at, 1);
+    if (at < 0 || sentFrames.length >= 1) {
+      tileWorker()?.postMessage({ kind: "frames", varId: f.var, grid: f.grid, values: f.values, colorMax: f.colorMax });
+    }
+    sentFrames.push(f.var);
+    while (sentFrames.length > 2) frameData.delete(sentFrames.shift()! as VarId);
   }
   if (!anomRegistered) {
     anomRegistered = true;
