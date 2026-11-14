@@ -13,7 +13,7 @@
  * Written with AI assistance (Claude).
  */
 
-export const SCHEMA_VERSION = "1.0" as const;
+export const SCHEMA_VERSION = "1.1" as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared
@@ -89,6 +89,14 @@ export interface VariableInfo {
   land_only: boolean;
   /** Permanent footnote, e.g. observing-system changes (PLAN.md L5). */
   caveat?: I18nText;
+  /**
+   * 1.1: known data-quality problems. The variable is shown, but analyzeTrend
+   * never gives it the "strong" level and the card must show `caveat`.
+   * (RUNOFF: monthly runoff far above precipitation in ~1,200 cells, more often after 2016.)
+   */
+  experimental?: boolean;
+  /** 1.1: the MERRA-2 field actually used, when it differs from `id` (PRECTOT ← "PRECTOTCORR"). */
+  source_field?: string;
 }
 
 export interface VariablesFile {
@@ -237,6 +245,8 @@ export interface TrendResult {
   /** Mann-Kendall two-sided p on annual mean anomalies. */
   pValue: number;
   level: TrendLevel;
+  /** 1.1: true when the variable is experimental and "strong" was lowered to "possible". */
+  capped?: boolean;
   /** slopePerDecade × (nYears − 1) / 10 */
   totalChange: number;
   /** Annual mean anomalies used for the test (for the chart). */

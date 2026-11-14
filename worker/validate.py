@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from dmc import read_dmc, validate
+from dmc import SCHEMA_VERSION, read_dmc, validate
 
 
 def check(data_dir: Path) -> int:
@@ -60,4 +60,4 @@ def check(data_dir: Path) -> int:
 if __name__ == "__main__":
     folder = Path(sys.argv[1] if len(sys.argv) > 1 else "../web/public/data")
     count = check(folder)
-    print(f"OK: {count} files match contract v1.0 in {folder}")
+    print(f"OK: {count} files match contract v{SCHEMA_VERSION} in {folder}")

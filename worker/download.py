@@ -41,7 +41,8 @@ VERSION = "5.12.4"
 # collection → variables. Order of collections = download order.
 COLLECTIONS: dict[str, list[str]] = {
     "M2TMNXSLV": ["T2M", "QV2M"],
-    "M2TMNXFLX": ["SPEED", "PRECTOT", "EVAP"],
+    # PRECTOTCORR = precipitation bias-corrected with observations over land.
+    "M2TMNXFLX": ["SPEED", "PRECTOT", "PRECTOTCORR", "EVAP"],
     "M2TMNXLND": ["GWETROOT", "RUNOFF", "SNOMAS"],
     "M2TMNXAER": ["TOTEXTTAU"],
 }
@@ -52,6 +53,7 @@ RANGES: dict[str, tuple[float, float]] = {
     "QV2M": (0, 0.05),            # kg/kg
     "SPEED": (0, 60),             # m/s
     "PRECTOT": (0, 0.01),         # kg m-2 s-1  (0.01 = 864 mm/day)
+    "PRECTOTCORR": (0, 0.01),     # kg m-2 s-1
     "EVAP": (-0.001, 0.001),      # kg m-2 s-1  (can be slightly negative: dew)
     "GWETROOT": (0, 1),
     "RUNOFF": (0, 0.01),          # kg m-2 s-1
@@ -157,6 +159,25 @@ def fetch(collection: str, granule, variables: list[str], retries: int = 5) -> s
     raise RuntimeError(f"{collection} {month}: gave up after {retries} attempts")
 
 
+def fetch_constants() -> None:
+    """Time-invariant surface fractions (FRLAND etc.) for area weights and coastal cells."""
+    out = RAW / "const" / "M2C0NXASM.nc4"
+    if out.exists():
+        return
+    g = earthaccess.search_data(short_name="M2C0NXASM", version=VERSION)[0]
+    url = f"{opendap_url(g)}.dap.nc4?dap4.ce=/FRLAND;/FROCEAN;/FRLAKE;/FRLANDICE;/PHIS;/lat;/lon"
+    r = session().get(url, timeout=300)
+    r.raise_for_status()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(r.content)
+    with xr.open_dataset(out) as ds:
+        total = (ds.FRLAND + ds.FROCEAN + ds.FRLAKE + ds.FRLANDICE).values
+        if ds.sizes.get("lat") != 361 or not np.allclose(total, 1, atol=1e-3):
+            out.unlink()
+            raise ValueError("M2C0NXASM: grid wrong or surface fractions do not sum to 1")
+    log.info("constants saved: %s", out.relative_to(ROOT))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=6)
@@ -174,6 +195,7 @@ def main() -> int:
     if not auth.authenticated:
         log.error("Earthdata login failed: check ~/.netrc")
         return 2
+    fetch_constants()
 
     jobs = []
     for coll in args.collections:

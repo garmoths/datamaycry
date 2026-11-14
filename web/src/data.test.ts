@@ -77,6 +77,19 @@ describe("data.ts on mock data", () => {
     expect(tileOf(359, 575)).toEqual({ ty: 17, tx: 35 });
   });
 
+  it("experimental variables never get the strong level", async () => {
+    const v = await loadVariables();
+    expect(v.variables.find((x) => x.id === "RUNOFF")?.experimental).toBe(true);
+    // A clean synthetic upward trend is "strong" for normal variables...
+    const base = await getRegionSeries("TUR", "TR-21", "T2M");
+    const values = Float64Array.from(base.values, (_, k) => k * 0.01 + Math.sin(k) * 0.05);
+    expect(analyzeTrend({ ...base, values }).level).toBe("strong");
+    // ...but capped for RUNOFF.
+    const r = analyzeTrend({ ...base, var: "RUNOFF", values });
+    expect(r.level).toBe("possible");
+    expect(r.capped).toBe(true);
+  });
+
   it("trend map has one value per grid cell", async () => {
     const m = await getTrendMap("T2M");
     expect(m.slopePerDecade).toHaveLength(361 * 576);

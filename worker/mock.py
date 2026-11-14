@@ -77,7 +77,14 @@ CAVEAT = {
                 "Reanaliz yağış verisi, uydu gözlemleri değiştiğinde sıçrama yapabilir."),
     "TOTEXTTAU": ("Aerosol data can jump in years when new satellite observations were added.",
                   "Aerosol verisi yeni uydu gözlemlerinin eklendiği yıllarda sıçrama yapabilir."),
+    "RUNOFF": ("Experimental: in some places the model's runoff is far larger than the rain that fell, "
+               "more often in recent years. Trends are never marked as strong evidence.",
+               "Deneysel: bazı yerlerde modelin akış değeri düşen yağıştan çok daha büyük ve bu son yıllarda "
+               "daha sık. Trendler hiçbir zaman güçlü kanıt olarak işaretlenmez."),
 }
+# Contract 1.1: data-quality flags (see check_raw.py findings, 2026-11-14).
+EXPERIMENTAL = {"RUNOFF"}
+SOURCE_FIELD: dict[str, str] = {}  # e.g. {"PRECTOT": "PRECTOTCORR"} once chosen
 
 # Mock countries: a handful of provinces each (real ids from Natural Earth / ISO 3166-2).
 COUNTRIES = [
@@ -133,6 +140,10 @@ def write_variables() -> None:
         }
         if vid in CAVEAT:
             v["caveat"] = {"en": CAVEAT[vid][0], "tr": CAVEAT[vid][1]}
+        if vid in EXPERIMENTAL:
+            v["experimental"] = True
+        if vid in SOURCE_FIELD:
+            v["source_field"] = SOURCE_FIELD[vid]
         out.append(v)
     doc = {
         "schema_version": SCHEMA_VERSION, "kind": "variables",

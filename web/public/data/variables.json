@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "kind": "variables",
   "dataset": "MOCK DATA (not real) — MERRA-2 v5.12.4 layout",
   "processed_at": "mock",
@@ -196,7 +196,12 @@
         "offset": 0
       },
       "decimals": 2,
-      "land_only": true
+      "land_only": true,
+      "caveat": {
+        "en": "Experimental: in some places the model's runoff is far larger than the rain that fell, more often in recent years. Trends are never marked as strong evidence.",
+        "tr": "Deneysel: bazı yerlerde modelin akış değeri düşen yağıştan çok daha büyük ve bu son yıllarda daha sık. Trendler hiçbir zaman güçlü kanıt olarak işaretlenmez."
+      },
+      "experimental": true
     },
     {
       "id": "SNOMAS",

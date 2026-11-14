@@ -31,8 +31,27 @@ import {
   type VariablesFile,
 } from "../../contract/types.ts";
 
-export { analyzeTrend, anomalies, monthLabels } from "./trend.ts";
+import { analyzeTrend as analyzeRaw } from "./trend.ts";
+import type { TrendOptions, TrendResult } from "../../contract/types.ts";
+
+export { anomalies, monthLabels } from "./trend.ts";
 export type * from "../../contract/types.ts";
+
+/** Variables flagged `experimental` in variables.json (filled by loadVariables). */
+const experimental = new Set<VarId>();
+
+/**
+ * Result card numbers for a series. For experimental variables (data-quality
+ * problems, see VariableInfo.experimental) "strong" is lowered to "possible"
+ * and `capped` is set, so the card can explain why.
+ */
+export function analyzeTrend(series: Series, opts?: TrendOptions): TrendResult {
+  const r = analyzeRaw(series, opts);
+  if (experimental.has(series.var) && r.level === "strong") {
+    return { ...r, level: "possible", capped: true };
+  }
+  return r;
+}
 
 const DATA_URL = `${import.meta.env.BASE_URL}data/`;
 /** Point-mode tiles live on Cloudflare R2 in production (set VITE_TILES_URL). */
@@ -105,7 +124,11 @@ function unpack(raw: Int16Array, p: Packing): Float64Array {
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export function loadVariables(): Promise<VariablesFile> {
-  return cached("variables", () => fetchJson<VariablesFile>(`${DATA_URL}variables.json`));
+  return cached("variables", async () => {
+    const v = await fetchJson<VariablesFile>(`${DATA_URL}variables.json`);
+    for (const x of v.variables) if (x.experimental) experimental.add(x.id);
+    return v;
+  });
 }
 
 export async function getVariable(id: VarId): Promise<VariableInfo> {
