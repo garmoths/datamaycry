@@ -45,6 +45,7 @@ import { QUESTIONS, VAR_ICONS, monthLabel, type Question } from "./content.ts";
 import { BadgeList, Provenance, ProvinceSelect, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
 import { CiBar, Gates, Histogram, StatGrid, ZCurve } from "./MathViz.tsx";
 import { Spotlight } from "./Spotlight.tsx";
+import { Disclosure } from "./Disclosure.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
 
@@ -379,11 +380,8 @@ export function Panel(p: Props) {
   // ── the calculation ────────────────────────────────────────────────────────
   const math =
     hasAnswer && ok && diag ? (
-      <Card className="math">
-        <header className="card-head">
-          <h3>{tr ? "Hesap adımları" : "The calculation"}</h3>
-          <span className="pill">Mann-Kendall · Sen</span>
-        </header>
+      <Card className="math disclosure">
+        <Disclosure title={tr ? "Nasıl hesaplandı?" : "How was this calculated?"} hint="Mann-Kendall · Sen">
         <ZCurve z={diag.z} p={diag.p} lang={lang} />
         <StatGrid
           items={[
@@ -410,15 +408,14 @@ export function Panel(p: Props) {
         <h4>{tr ? "Etikete giden kontroller" : "Checks behind the label"}</h4>
         <Gates d={diag} lang={lang} />
         {result!.capped && <p className="fine">{tr ? "Dört kontrol de geçti, ama etiket bilerek “olası”da tutuldu (yukarıdaki nota bak)." : "All four checks pass, but the label is deliberately kept at “possible” (see the note above)."}</p>}
+        </Disclosure>
       </Card>
     ) : p.area ? (
-      <Card className="math">
-        <header className="card-head">
-          <h3>{tr ? "Hücre eğimlerinin dağılımı" : "Spread of the cell slopes"}</h3>
-          <span className="pill">
-            {p.area.summary.cells.toLocaleString(lang)} {tr ? "hücre" : p.area.summary.cells === 1 ? "cell" : "cells"}
-          </span>
-        </header>
+      <Card className="math disclosure">
+        <Disclosure
+          title={tr ? "Hücre eğimlerinin dağılımı" : "Spread of the cell slopes"}
+          hint={`${p.area.summary.cells.toLocaleString(lang)} ${tr ? "hücre" : p.area.summary.cells === 1 ? "cell" : "cells"}`}
+        >
         {p.area.summary.cells > 1 && <Histogram s={p.area.summary} unit={per} decimals={v.decimals} lang={lang} />}
         <StatGrid
           items={[
@@ -436,6 +433,7 @@ export function Panel(p: Props) {
             ? `Her hücrede ${variables.test_years.start}–${variables.test_years.end} yıllık anomalilerine Mann-Kendall testi ve Sen eğimi uygulandı; birim ${per}.`
             : `Each cell: Mann-Kendall test and Sen's slope on its ${variables.test_years.start}–${variables.test_years.end} annual anomalies; unit ${per}.`}
         </p>
+        </Disclosure>
       </Card>
     ) : null;
 
@@ -503,12 +501,11 @@ export function Panel(p: Props) {
   const checks = (
     <Card className="checks">
       {hasAnswer && ok && result!.badges && result!.badges.length > 0 && (
-        <>
-          <header className="card-head">
-            <h3>{t(lang, "checksTitle")}</h3>
-          </header>
-          <BadgeList badges={result!.badges} lang={lang} decimals={v.decimals} />
-        </>
+        <div className="checks-fold">
+          <Disclosure title={t(lang, "checksTitle")} hint={`${result!.badges.length}`}>
+            <BadgeList badges={result!.badges} lang={lang} decimals={v.decimals} />
+          </Disclosure>
+        </div>
       )}
       <p className="prov-line">
         <Icon name="book" size={14} />
@@ -653,8 +650,8 @@ export function Panel(p: Props) {
         </header>
         <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
           {answer}
-          {math}
           {shape}
+          {math}
         </motion.div>
         {/* not re-keyed: the province filter and its scroll position survive a selection */}
         <motion.div className="side-body" variants={scene} initial="hidden" animate="show">
