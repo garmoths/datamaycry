@@ -50,8 +50,12 @@ import {
 } from "./geo.ts";
 import { t, type Lang } from "./i18n.ts";
 import { cellsInside, countryCode, rasterizeContinents, rasterizeCountries, summarize, summarizeCells } from "./continentStats.ts";
+import { cellsOfGrid } from "./areaStats.ts";
+import { RANK_TAB_LABEL } from "./useRankRows.ts";
+import type { PlaceCells } from "./Fingerprint.tsx";
 import "./reactbits/reactbits.css";
 import "./App.css";
+import "./responsive.css";
 
 
 
@@ -504,6 +508,33 @@ export default function App() {
     return { type: "region", country: countryId, admin1: admin1Id };
   }, [mode, point, continent, countryId, admin1Id, index, variables]);
 
+  // fingerprint (docs/FEATURE_PLAN.md §2): the selected place as grid cells of the trend map
+  const placeCells: PlaceCells | null = useMemo(() => {
+    if (!bounds) return null;
+    if (mode === "point") return cell ? { id: `cell:${cell.i0}:${cell.j0}`, cells: [cell.i0 * 576 + cell.j0] } : null;
+    if (admin1Id) {
+      const f = bounds.admin1.features.find((x) => x.properties.id === admin1Id);
+      if (!f) return null;
+      const inside = cellsInside(f);
+      return { id: admin1Id, cells: inside.length ? inside : cellsInside(f, province ?? undefined) };
+    }
+    if (countryId) {
+      const code = countryCode(bounds, countryId);
+      return countryGrid && code ? { id: countryId, cells: cellsOfGrid(countryGrid, code) } : null;
+    }
+    if (continent) {
+      const idx = CONTINENTS.findIndex((c) => c.id === continent);
+      return continentGrid && idx >= 0 ? { id: `cont:${continent}`, cells: cellsOfGrid(continentGrid, idx + 1) } : null;
+    }
+    return { id: "world", cells: null };
+  }, [bounds, mode, cell, admin1Id, countryId, continent, province, countryGrid, continentGrid]);
+  const provinceFeatures = useMemo(
+    () => (bounds && countryId ? bounds.admin1.features.filter((f) => f.properties.country === countryId) : []),
+    // admin1Version: bounds.admin1 is replaced as country files arrive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bounds, countryId, admin1Version],
+  );
+
   const trail = useMemo(() => {
     const out: { label: string; go: () => void }[] = [{ label: t(lang, "world"), go: reset }];
     if (mode === "region") {
@@ -663,6 +694,9 @@ export default function App() {
           <button className="icon-btn" onClick={copyLink} aria-label={t(lang, "share")} data-tip={t(lang, copied ? "copied" : "share")}>
             <Icon name="link" size={16} />
           </button>
+          <button className={`icon-btn ${drawer === "rank" ? "on" : ""}`} onClick={() => setDrawer(drawer === "rank" ? null : "rank")} aria-label={RANK_TAB_LABEL[lang]} data-tip={RANK_TAB_LABEL[lang]}>
+            <Icon name="flag" size={16} />
+          </button>
           <button className={`icon-btn ${drawer === "explore" ? "on" : ""}`} onClick={() => setDrawer(drawer === "explore" ? null : "explore")} aria-label={t(lang, "tabExplore")} data-tip={t(lang, "tabExplore")}>
             <Icon name="sun" size={16} />
           </button>
@@ -811,6 +845,11 @@ export default function App() {
         }}
         drawer={drawer}
         onDrawer={setDrawer}
+        place={placeCells}
+        countryGrid={countryGrid}
+        provinceFeatures={provinceFeatures}
+        onVariable={(id) => startTransition(() => setVarId(id))}
+        trendMap={trendMap}
       />
     </div>
   );

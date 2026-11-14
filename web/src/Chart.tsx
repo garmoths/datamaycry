@@ -28,6 +28,8 @@ interface Props {
   startYear: number;
   endYear: number;
   lang: Lang;
+  /** first year of a new pace (changepoint.ts): dashed vertical line on the anomaly view */
+  bendYear?: number | null;
 }
 
 const L = {
@@ -69,7 +71,7 @@ function monthlyClimate(series: Series, y0: number, y1: number): number[] {
 
 export function Chart(props: Props) {
   // Dragging the period slider re-runs the test instantly; the chart catches up a frame later.
-  const { series, result, view, unit, decimals, startYear, endYear, lang } = useDeferredValue(props);
+  const { series, result, view, unit, decimals, startYear, endYear, lang, bendYear } = useDeferredValue(props);
   const el = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const drawn = useRef<ChartView | null>(null);
@@ -170,6 +172,11 @@ export function Chart(props: Props) {
         shapes.push(period);
       }
 
+      // the bend (changepoint.ts): a dashed line where the new pace starts
+      if (view === "anomaly" && bendYear != null)
+        shapes.push({ type: "line", xref: "x", yref: "paper", x0: `${bendYear}-01`, x1: `${bendYear}-01`, y0: 0, y1: 1,
+          line: { color: "rgba(255,255,255,0.55)", width: 1, dash: "dash" } });
+
       const layout = {
         margin: { l: 50, r: 10, t: 6, b: 30 },
         paper_bgcolor: "rgba(0,0,0,0)",
@@ -205,7 +212,7 @@ export function Chart(props: Props) {
     return () => {
       dead = true;
     };
-  }, [series, result, view, unit, decimals, startYear, endYear, lang, ok]);
+  }, [series, result, view, unit, decimals, startYear, endYear, lang, ok, bendYear]);
 
   useEffect(() => {
     const node = el.current;

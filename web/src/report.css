@@ -1,0 +1,208 @@
+/*
+ * PDF report (Report.tsx). Never visible on screen; when printing, the app is hidden and only
+ * the report is printed, on white A4 paper. The panel parts reused inside it (fingerprint,
+ * change by month, ranking badge) read their colours from the same tokens, so the tokens
+ * are switched to a light "paper" set here.
+ */
+.report-root {
+  display: none;
+}
+
+/* the button on the result card */
+.report-btn {
+  display: flex;
+  margin-top: 10px;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm;
+  }
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  #root {
+    display: none !important;
+  }
+  .report-root {
+    display: block;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+.report {
+  --text: #111;
+  --text-2: #333;
+  --muted: #666;
+  --line: #d4d4d4;
+  --line-strong: #a8a8a8;
+  --surface: #fff;
+  --surface-2: #f4f4f4;
+  --surface-3: #e8e8e8;
+  --accent: #2d5bd2;
+  --link: #2d5bd2;
+  position: relative;
+  color: var(--text);
+  background: #fff;
+  font: 10pt/1.45 var(--sans);
+}
+.report-watermark {
+  position: fixed;
+  top: 42%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: 600 64pt var(--sans);
+  letter-spacing: 0.1em;
+  color: rgba(200, 40, 40, 0.08);
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+.report-head {
+  padding-bottom: 8pt;
+  margin-bottom: 10pt;
+  border-bottom: 1.5pt solid #111;
+}
+.report-kicker {
+  margin: 0;
+  font-size: 8.5pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.report h1 {
+  margin: 4pt 0 2pt;
+  font-size: 20pt;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.report-sub {
+  margin: 0;
+  font-size: 9.5pt;
+  color: var(--text-2);
+}
+.report-demo {
+  margin: 6pt 0 0;
+  font-size: 9pt;
+  color: #b23;
+}
+.report section {
+  margin: 0 0 10pt;
+  break-inside: avoid;
+}
+.report section.report-extras,
+.report section.report-method {
+  break-inside: auto;
+}
+.report h2 {
+  margin: 10pt 0 4pt;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.report-finding {
+  margin: 0;
+  font-size: 11pt;
+  line-height: 1.5;
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+.report-table th,
+.report-table td {
+  padding: 3pt 6pt;
+  border-bottom: 0.5pt solid var(--line);
+  text-align: left;
+}
+.report-table th {
+  width: 55%;
+  font-weight: 400;
+  color: var(--text-2);
+}
+.report-table td {
+  font-family: var(--mono);
+}
+.report-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.report-tick {
+  font: 7.5pt var(--mono);
+  fill: #555;
+}
+.report-method ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+  display: grid;
+  gap: 3pt;
+  font-size: 9pt;
+}
+.report-method p {
+  margin: 0;
+  font-size: 9pt;
+}
+.report .refs ol,
+.report .prov {
+  font-size: 8.5pt;
+}
+.report a {
+  color: var(--link);
+  word-break: break-all;
+}
+.report-foot {
+  margin-top: 12pt;
+  padding-top: 6pt;
+  border-top: 0.5pt solid var(--line);
+  font-size: 8pt;
+  color: var(--muted);
+}
+
+/* panel parts on paper: no hover states, no buttons look */
+.report button {
+  cursor: default;
+}
+.report .card-head .link-btn,
+.report .fp-row svg {
+  display: none;
+}
+/* without the icon column the names get the room */
+.report .fp-row {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 130px 48px;
+}
+.report .fp-rows,
+.report .fp-similar,
+.report .month-strip {
+  break-inside: avoid;
+}
+.report .fine {
+  font-size: 8.5pt;
+  color: var(--muted);
+}
+.report .card-head {
+  margin: 8pt 0 4pt;
+}
+.report h3 {
+  margin: 0;
+  font-size: 9pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.report h4 {
+  margin: 8pt 0 3pt;
+  font-size: 9pt;
+}

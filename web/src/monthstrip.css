@@ -1,0 +1,47 @@
+/* Change by month (MonthStrip.tsx). Uses the tokens in index.css. */
+.month-strip {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+}
+.month-strip li {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+}
+.month-cell {
+  display: block;
+  width: 100%;
+  height: 26px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.month-strip li.lvl-constant .month-cell,
+.month-strip li.lvl-untested .month-cell {
+  background: repeating-linear-gradient(135deg, var(--surface-3) 0 3px, transparent 3px 6px) !important;
+}
+.month-strip small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.month-strip li.lvl-strong small,
+.month-strip li.lvl-possible small {
+  color: var(--text);
+}
+.month-summary {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.month-summary b {
+  font-weight: 600;
+  color: var(--text);
+}

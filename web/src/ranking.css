@@ -1,0 +1,133 @@
+/* Rankings (Ranking.tsx). Uses the tokens in index.css. */
+.rank-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.rank-controls .seg button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ranking h2 {
+  margin: 0 0 4px;
+}
+.rank-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rank-list li + li {
+  border-top: 1px solid var(--line);
+}
+.rank-list button {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 90px 74px 44px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.rank-list button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.rank-list button.on {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.rank-n {
+  font: 400 11px var(--mono);
+  color: var(--muted);
+  text-align: right;
+}
+.rank-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-name small {
+  margin-left: 6px;
+  font-size: 10.5px;
+  color: var(--warn);
+}
+.rank-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+.rank-bar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+}
+.rank-bar i.pos {
+  background: var(--up);
+}
+.rank-bar i.neg {
+  background: var(--down);
+}
+.rank-val {
+  font: 400 12px var(--mono);
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+}
+.rank-lvl {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
+.rank-lvl.lvl-strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* badge on the result card */
+.rank-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  text-align: left;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: none;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.rank-badge b {
+  font: 500 12px var(--mono);
+  color: var(--text);
+}
+.rank-badge small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.rank-badge:hover {
+  color: var(--text);
+  border-color: var(--text-2);
+}
+
+@media (max-width: 520px) {
+  .rank-list button {
+    grid-template-columns: 24px minmax(0, 1fr) 70px 40px;
+  }
+  .rank-bar {
+    display: none;
+  }
+}

@@ -25,7 +25,7 @@
   inset: 0;
   overflow: hidden;
   z-index: 0;
-  background: radial-gradient(ellipse at 40% 45%, #0b1230 0%, #050816 55%, #02030a 100%);
+  background: radial-gradient(ellipse at 42% 50%, #0c0e13 0%, #07080b 55%, #040506 100%);
 }
 .sky-slide {
   position: absolute;
@@ -36,52 +36,6 @@
 .sky-slide canvas {
   display: block;
 }
-.twinkle {
-  position: absolute;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 5px rgba(190, 220, 255, 0.7);
-  animation: twinkle 4s ease-in-out infinite;
-}
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.15;
-    transform: scale(0.6);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-.meteor {
-  position: absolute;
-  width: 130px;
-  height: 1.5px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(140, 220, 255, 0.5) 30%, transparent);
-  transform-origin: left center;
-  opacity: 0;
-  animation: meteor 22s linear infinite;
-}
-@keyframes meteor {
-  0% {
-    opacity: 0;
-    transform: rotate(152deg) translateX(0) scaleX(0.3);
-  }
-  1.5% {
-    opacity: 1;
-  }
-  6% {
-    opacity: 0;
-    transform: rotate(152deg) translateX(-520px) scaleX(1);
-  }
-  100% {
-    opacity: 0;
-    transform: rotate(152deg) translateX(-520px) scaleX(1);
-  }
-}
-
 /* .app > .globe beats maplibre-gl.css (.maplibregl-map { position: relative }) */
 .app > .globe {
   position: absolute;
@@ -1725,15 +1679,10 @@ dialog.method::backdrop {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .twinkle,
-  .meteor,
   .app > .globe,
   .meter-step.on,
   dialog.method[open] {
     animation: none;
-  }
-  .meteor {
-    display: none;
   }
   * {
     transition-duration: 0.01ms !important;

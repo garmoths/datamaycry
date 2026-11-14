@@ -1,0 +1,161 @@
+/*
+ * Phone and tablet adjustments for the parts added after the main layout (top-bar
+ * actions, fingerprint, ranking, month strip, report button). Kept apart from App.css so
+ * edits on both sides do not collide. Breakpoints match App.css: 1180 (small laptop /
+ * tablet landscape), 900 (tablet portrait and phones: bottom sheet), 520 and 400 (phones).
+ * Written with AI assistance (Claude).
+ */
+
+/* "How it works" → extra analyses: same list look as the steps, without step numbers */
+.steps.extras {
+  margin-bottom: 4px;
+}
+.steps.extras li {
+  padding-left: 12px;
+}
+.steps.extras li::before {
+  display: none;
+}
+
+/* the sheet handle only exists on phones and tablets */
+.sheet-grab {
+  display: none;
+}
+
+/* tablet landscape / small laptop: the analysis column is narrower */
+@media (max-width: 1180px) and (min-width: 901px) {
+  .fp-row {
+    grid-template-columns: 16px minmax(0, 1.3fr) minmax(0, 0.8fr) 100px 40px;
+  }
+}
+
+/* tablet portrait and phones: bottom sheet */
+@media (max-width: 900px) {
+  /* seven action buttons must fit beside the view switch */
+  .actions {
+    gap: 0;
+  }
+  .actions .icon-btn,
+  .actions .tt-pill {
+    width: 30px;
+    height: 30px;
+  }
+  .actions .tt-pill {
+    justify-content: center;
+    padding: 0;
+  }
+  /* the sheet: a handle at the top; tapping it makes the sheet tall or short again */
+  .sheet-grab {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    flex: none;
+    width: 100%;
+    height: 18px;
+    margin-bottom: -18px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .sheet-grab::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 7px auto 0;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
+  .side {
+    transition: height 0.3s var(--ease);
+  }
+  .side.sheet-open {
+    height: calc(100% - var(--top-h) - 8px);
+  }
+  .side-body:last-child {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+  /* rankings and charts open full width above the sheet */
+  .drawer {
+    box-shadow: none;
+  }
+  .rank-controls .seg {
+    flex: 1 1 auto;
+  }
+  .rank-controls .seg button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* phones */
+@media (max-width: 520px) {
+  /* drawer tabs (chart · ranking · explore · sources): text only, and they may scroll,
+     so the close button always stays on screen */
+  .drawer-head .seg {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .drawer-head .seg button {
+    padding: 5px 9px;
+  }
+  .drawer-head .seg button svg {
+    display: none;
+  }
+  .drawer-head .icon-btn {
+    flex: none;
+  }
+  /* fingerprint: name, value and evidence on one line, the bar under them */
+  .fp-row {
+    grid-template-columns: 16px minmax(0, 1fr) auto 40px;
+    grid-template-areas:
+      "icon name val lvl"
+      ". bar bar bar";
+    row-gap: 4px;
+  }
+  .fp-row > svg {
+    grid-area: icon;
+  }
+  .fp-name {
+    grid-area: name;
+  }
+  .fp-bar {
+    grid-area: bar;
+  }
+  .fp-val {
+    grid-area: val;
+  }
+  .fp-lvl {
+    grid-area: lvl;
+  }
+  /* time travel: on a phone the decade ticks collide with the last year; keep first and last */
+  .tb-ticks i:not(:first-child):not(:last-child) {
+    display: none;
+  }
+  /* month strip: three-letter labels get tight */
+  .month-strip {
+    gap: 2px;
+  }
+  .month-strip small {
+    font-size: 9px;
+  }
+  .rank-badge {
+    flex-wrap: wrap;
+  }
+  .big {
+    font-size: 30px;
+  }
+}
+
+/* narrow phones (≤ 400 px, e.g. 360-wide Android): drop the logo, keep every action */
+@media (max-width: 400px) {
+  .brand > svg {
+    display: none;
+  }
+  .side-head h1 {
+    font-size: 18px;
+  }
+}

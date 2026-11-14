@@ -14,7 +14,8 @@ import { COLD, WARM } from "./trendField.ts";
 const rgb = (c: readonly number[]) => `rgb(${c.join(",")})`;
 
 /** Annual mean anomalies as bars + the Sen trend line; the "shape" of the answer. */
-export function Sparkline({ result, unit, lang }: { result: TrendResult; unit: string; lang: Lang }) {
+/** `bendYear`: first year of a new pace (changepoint.ts), drawn as a dashed line. */
+export function Sparkline({ result, unit, lang, bendYear }: { result: TrendResult; unit: string; lang: Lang; bendYear?: number | null }) {
   const reduce = useReducedMotion();
   const { years, anomalies } = result.annual;
   const pts = years.map((y, k) => [y, anomalies[k]] as const).filter(([, a]) => Number.isFinite(a));
@@ -49,6 +50,9 @@ export function Sparkline({ result, unit, lang }: { result: TrendResult; unit: s
           />
         ))}
         <line x1={P} x2={W - P} y1={yy(0)} y2={yy(0)} className="spark-zero" />
+        {bendYear != null && bendYear > first && bendYear <= last && (
+          <line x1={x(bendYear - 0.5)} x2={x(bendYear - 0.5)} y1={P / 2} y2={H - P / 2} className="spark-bend" />
+        )}
         <motion.line
           x1={x(first)}
           y1={yy(line(first))}

@@ -1,0 +1,20 @@
+/* Change of pace (Bend.tsx, changepoint.ts). Uses the tokens in index.css. */
+.bend-note {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.bend-note b {
+  font-weight: 600;
+  color: var(--text);
+}
+.spark-bend {
+  stroke: var(--text-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
