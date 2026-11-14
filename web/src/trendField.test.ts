@@ -27,3 +27,39 @@ describe("renderTile grid", () => {
     expect(f.rgba[15]).toBeLessThan(0.01);         // tiny change fades out
   });
 });
+
+describe("zooming does not change the colours", () => {
+  // a smooth field: what a tile shows must depend on the place, not on the zoom level
+  const nlat = 361, nlon = 576;
+  const rgba = new Float32Array(nlat * nlon * 4);
+  for (let i = 0; i < nlat; i++)
+    for (let j = 0; j < nlon; j++) {
+      const a = 0.5 + 0.3 * Math.sin(i / 25) * Math.cos(j / 30);
+      rgba.set([220 * a, (100 + 80 * Math.cos(i / 40)) * a, 60 * a, a], (i * nlon + j) * 4);
+    }
+  const f: TrendField = { nlat, nlon, rgba, capN: [0, 0, 0, 0], capS: [0, 0, 0, 0] };
+  const px = (t: Uint8ClampedArray, r: number, c: number, size: number) => Array.from(t.slice((r * size + c) * 4, (r * size + c) * 4 + 4));
+
+  it("a parent tile and its four children agree at the same places", () => {
+    const size = 64;
+    const parent = renderTile(f, 3, 4, 2, size);
+    let worst = 0;
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      const child = renderTile(f, 4, 8 + dx, 4 + dy, size);
+      // child pixel (2r+1, 2c+1) sits right next to parent pixel (r + dy·size/2, c + dx·size/2)
+      for (let r = 2; r < size / 2 - 2; r += 5)
+        for (let c = 2; c < size / 2 - 2; c += 5) {
+          const p = px(parent, r + (dy * size) / 2, c + (dx * size) / 2, size);
+          const k = px(child, 2 * r + 1, 2 * c + 1, size);
+          for (let m = 0; m < 4; m++) worst = Math.max(worst, Math.abs(p[m] - k[m]));
+        }
+    }
+    expect(worst).toBeLessThanOrEqual(3); // out of 255: no visible jump between zoom levels
+  });
+
+  it("the same tile is painted the same way every time (cached tiles match fresh ones)", () => {
+    const a = renderTile(f, 5, 17, 11, 32);
+    const b = renderTile(f, 5, 17, 11, 32);
+    expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true);
+  });
+});

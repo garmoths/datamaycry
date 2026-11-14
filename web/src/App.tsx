@@ -26,6 +26,8 @@ import { Starfield } from "./Starfield.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
 import { anomalyTileUrl, preloadFrames, rangeTrendUrl, trendTileUrl, PALETTE_CSS } from "./trendImage.ts";
 import { PeriodScale } from "./PeriodScale.tsx";
+import { onGlassPointer } from "./glassLight.ts";
+import { escapeStep, isTyping } from "./escape.ts";
 import { TimeBar } from "./TimeBar.tsx";
 import { clampTimeline, frameMs, nextYear, playFrom, type Timeline } from "./timeline.ts";
 import {
@@ -108,6 +110,8 @@ export default function App() {
   const [period, setPeriod] = useState<[number, number] | null>(null);
   const [rangeTiles, setRangeTiles] = useState<{ varId: VarId; url: string } | null>(null);
   const [rangeBusy, setRangeBusy] = useState(false);
+  // world mean per year of the chosen variable: the colours of the period scale's stripes
+  const [stripes, setStripes] = useState<number[]>([]);
   const [tl, setTl] = useState<Timeline>({ min: 1980, max: 2025, from: 1980, to: 2025, year: 1980 });
   const [frames, setFrames] = useState<AnomalyFrames | null>(null);
   const [animError, setAnimError] = useState<string | null>(null);
@@ -165,6 +169,16 @@ export default function App() {
         setTrendMap(null);
         setTrendTiles(null);
       });
+    return () => {
+      dead = true;
+    };
+  }, [varId]);
+
+  useEffect(() => {
+    let dead = false;
+    getAnomalyFrames(varId)
+      .then((f) => !dead && setStripes(f.years.map((_, k) => frameMean(f, k))))
+      .catch(() => !dead && setStripes([]));
     return () => {
       dead = true;
     };
@@ -505,6 +519,32 @@ export default function App() {
     return out;
   }, [lang, mode, continent, countryId, province, point, index, countryRows, reset, pickContinent, pickCountry, pickAdmin1]);
 
+  // Esc closes one thing per press (escape.ts): drawer → time travel → one place level → period
+  const esc = useRef<() => void>(() => {});
+  useEffect(() => {
+    esc.current = () => {
+      const step = escapeStep({
+        overlay: paletteOpen || methodOpen,
+        typing: isTyping(document.activeElement),
+        drawer: !!drawer,
+        timeTravel: animOn,
+        depth: trail.length,
+        customPeriod: !!period,
+      });
+      if (step === "drawer") setDrawer(null);
+      else if (step === "timeTravel") closeAnim();
+      else if (step === "up") trail[trail.length - 2].go();
+      else if (step === "period") setPeriod(null);
+    };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) esc.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const demos = useMemo(() => {
     const regionDemo = (label: string, country: string, admin1: string, v: VarId) => ({
       label,
@@ -553,7 +593,7 @@ export default function App() {
   const setYears = (y: [number, number]) => setPeriod(y[0] === fullYears[0] && y[1] === fullYears[1] ? null : y);
 
   return (
-    <div className={`app ${sideOpen ? "" : "side-closed"}`}>
+    <div className={`app ${sideOpen ? "" : "side-closed"}`} onPointerMove={onGlassPointer}>
       <Starfield />
       {!noGl && (
         <Globe
@@ -638,15 +678,19 @@ export default function App() {
         </div>
       </motion.header>
 
-      <PeriodScale
-        lang={lang}
-        min={fullYears[0]}
-        max={fullYears[1]}
-        value={years}
-        busy={rangeBusy}
-        onChange={setYears}
-        onReset={() => setPeriod(null)}
-      />
+      {/* while time travel plays, the big year label takes this place: one date at the top left */}
+      {!animOn && (
+        <PeriodScale
+          lang={lang}
+          min={fullYears[0]}
+          max={fullYears[1]}
+          value={years}
+          means={stripes}
+          busy={rangeBusy}
+          onChange={setYears}
+          onReset={() => setPeriod(null)}
+        />
+      )}
 
       <CommandPalette
         lang={lang}
@@ -668,7 +712,7 @@ export default function App() {
         }}
       />
 
-      {/* bottom: the map legend and the variable dock */}
+      {/* bottom: the map legend and the time travel bar */}
       <motion.div className="deck" initial={reduce ? false : { y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
         <div className="legend" hidden={animOn}>
           <label>
@@ -712,8 +756,12 @@ export default function App() {
               onClose={closeAnim}
             />
           )}
-          <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
         </div>
+      </motion.div>
+
+      {/* the variables: a vertical rail on the left edge (a bar above the sheet on phones) */}
+      <motion.div className="rail" initial={reduce ? false : { x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
+        <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
       </motion.div>
 
       <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />

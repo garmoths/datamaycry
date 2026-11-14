@@ -129,7 +129,6 @@
 
 /* every floating surface: one solid panel recipe */
 .dock,
-.legend,
 .palette,
 .app .maplibregl-ctrl-group {
   background: var(--surface);
@@ -453,39 +452,63 @@ kbd {
 }
 .legend {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 190px;
-  padding: 12px 14px;
-  border-radius: var(--radius-m);
-  font-size: 12.5px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  left: 4px;
+  bottom: 6px;
+  width: 210px;
+  font-family: var(--display);
+  /* no panel: the text sits on the map, a soft shadow keeps it readable on any background */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.6);
 }
 .legend label {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: var(--text-2);
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
   cursor: pointer;
 }
 .legend input {
-  accent-color: var(--accent);
+  /* a small switch instead of a checkbox */
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: background 0.2s;
 }
+.legend input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: translate 0.2s var(--ease);
+}
+.legend input:checked { background: var(--accent); }
+.legend input:checked::after { translate: 12px 0; }
 .legend .bar {
-  height: 6px;
-  margin-top: 8px;
-  border-radius: 2px;
+  height: 7px;
+  margin-top: 10px;
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .legend .ends {
   display: flex;
   justify-content: space-between;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--muted);
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-2);
 }
 
 .dock {
@@ -1916,7 +1939,7 @@ dialog.method::backdrop {
 
 .yearbadge {
   position: absolute;
-  top: calc(var(--top-h) + 60px);
+  top: calc(var(--top-h) + 10px);
   left: calc(var(--edge) + 8px);
   z-index: 3;
   pointer-events: none;
@@ -1989,94 +2012,101 @@ dialog.method::backdrop {
   .app.side-closed { --sheet: 0px; }
 }
 
-/* ── period scale (under the view switch) ───────────────────────────────── */
+/* ── period scale: climate stripes in a glass pill (under the view switch) ── */
 .period {
   position: absolute;
-  top: var(--top-h);
+  top: calc(var(--top-h) + 2px);
   left: var(--edge);
   z-index: 6;
-  width: 400px;
+  width: 380px;
   max-width: calc(100vw - 2 * var(--edge));
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 44px;
-  padding: 0 8px 0 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  padding: 12px 14px 10px;
+  border-radius: 16px;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--display);
 }
-.period { user-select: none; -webkit-user-select: none; }
-.period-label { font-size: 13px; color: var(--muted); }
-.period-slot { flex: none; width: 26px; height: 26px; display: grid; place-items: center; }
-.period-track { position: relative; flex: 1; height: 24px; }
-.period-rail,
-.period-fill {
+.period-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.period-label { font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.62); }
+.period-years {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.period-years i { font-style: normal; margin: 0 5px; color: rgba(255, 255, 255, 0.45); font-weight: 400; }
+.period-slot { flex: none; width: 26px; height: 26px; margin-left: auto; align-self: center; display: grid; place-items: center; }
+
+/* the strip: one stripe per year */
+.period-strip { position: relative; height: 34px; cursor: ew-resize; touch-action: none; }
+.period-stripes {
+  position: absolute;
+  inset: 4px 0;
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+.period-stripes span { flex: 1; transition: opacity 0.25s var(--ease), filter 0.25s var(--ease); }
+.period-stripes span.out { opacity: 0.22; filter: saturate(0.4); }
+
+/* the chosen years: a bright frame with a grip at each end */
+.period-box {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: left 0.08s linear, width 0.08s linear;
+}
+.period.dragging .period-box { transition: none; }
+.period-grip {
   position: absolute;
   top: 50%;
-  height: 4px;
-  margin-top: -2px;
-  border-radius: 2px;
+  width: 10px;
+  height: 22px;
+  margin-top: -11px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
-.period-rail { left: 0; right: 0; background: var(--surface-3); }
-.period-fill { background: var(--text-2); }
-.period.on .period-fill { background: var(--accent); }
-.period-track input {
+.period-grip::after {
+  content: "";
   position: absolute;
-  inset: 0;
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  background: none;
-  pointer-events: none;
-  appearance: none;
-  -webkit-appearance: none;
+  inset: 6px 3px;
+  border-left: 1px solid rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
 }
-.period-track input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  pointer-events: auto;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--text);
-  border: 3px solid var(--surface-solid);
-  box-shadow: 0 0 0 1px var(--line-strong);
-  cursor: grab;
-}
-.period-track input::-moz-range-thumb {
-  pointer-events: auto;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--text);
-  border: 3px solid var(--surface-solid);
-  cursor: grab;
-}
-.period-track input::-webkit-slider-runnable-track { background: none; }
-.period-track input::-moz-range-track { background: none; }
-.period-years { min-width: 84px; font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.period-grip.start { left: -5px; }
+.period-grip.end { right: -5px; }
+.period-grip.focus { box-shadow: 0 0 0 3px var(--accent), 0 1px 4px rgba(0, 0, 0, 0.5); }
+/* keyboard sliders: there for focus and arrow keys, the pointer uses the strip */
+.period-key { position: absolute; inset: 0; width: 100%; margin: 0; opacity: 0; pointer-events: none; }
+.period-ticks { position: relative; height: 14px; margin-top: 4px; font-size: 11px; color: rgba(255, 255, 255, 0.5); font-variant-numeric: tabular-nums; }
+.period-ticks span { position: absolute; transform: translateX(-50%); }
+.period-ticks span:first-child { transform: none; left: 0 !important; }
+.period-ticks span:last-child { transform: none; left: auto !important; right: 0; }
 .period-reset {
-  flex: none;
   width: 26px;
   height: 26px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  background: none;
-  color: var(--muted);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
-.period-reset:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.period-reset:hover { background: rgba(255, 255, 255, 0.24); }
 .period-spin {
-  flex: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid var(--line-strong);
-  border-top-color: var(--text);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { rotate: 360deg; } }
@@ -2086,4 +2116,204 @@ dialog.method::backdrop {
 /* the panel is as tall as its content (never past the bottom edge) */
 @media (min-width: 901px) {
   .side { bottom: auto; max-height: calc(100% - var(--top-h) - var(--edge)); }
+}
+
+/* headings and big numbers in the display face (Outfit), body text stays in Geist */
+.side-head h1,
+.meaning,
+.big,
+.tb-year,
+.yearbadge b,
+.drawer-body h2,
+.dock-name {
+  font-family: var(--display);
+}
+.big { letter-spacing: -0.035em; }
+
+/* ── liquid glass: the variable bar and the top bar groups ─────────────────
+ * Clear glass over the globe: strong blur + saturation behind, a faint top-down sheen,
+ * a light-catching rim (bright at the top-left, fading round the sides), an inner top
+ * highlight, and a soft light that follows the pointer (--mx/--my, set by useGlassLight).
+ */
+:root {
+  --glass-tint: rgba(16, 16, 20, 0.32);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.04));
+  --glass-rim: linear-gradient(140deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.08) 32%, rgba(255, 255, 255, 0.03) 60%, rgba(255, 255, 255, 0.28));
+}
+.dock,
+.brand,
+.cmdbar,
+.actions,
+.period,
+.timebar {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-sheen), var(--glass-tint);
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 1px rgba(0, 0, 0, 0.12),
+    0 14px 40px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(24px) saturate(150%) brightness(1.02);
+  -webkit-backdrop-filter: blur(24px) saturate(150%) brightness(1.02);
+}
+/* the rim: a 1 px gradient ring drawn with a mask */
+.dock::before,
+.brand::before,
+.cmdbar::before,
+.actions::before,
+.period::before,
+.timebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* the light under the pointer */
+.dock::after,
+.brand::after,
+.cmdbar::after,
+.actions::after,
+.period::after,
+.timebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(160px circle at var(--mx, 50%) var(--my, -40%), rgba(255, 255, 255, 0.13), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+  pointer-events: none;
+}
+.dock:hover::after,
+.brand:hover::after,
+.cmdbar:hover::after,
+.actions:hover::after,
+.period:hover::after,
+.timebar:hover::after {
+  opacity: 1;
+}
+
+/* the selected variable / view: a raised drop of brighter glass */
+.dock-bg,
+.tab-pill {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.28);
+}
+.tabs { background: rgba(0, 0, 0, 0.14); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25); }
+.dock-item,
+.tab { color: rgba(255, 255, 255, 0.64); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.dock-item.on,
+.tab.on { color: #fff; }
+.dock-item:hover,
+.tab:hover { color: #fff; }
+/* icons rise a little under the pointer */
+.dock-item svg { transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.dock-item:hover svg { transform: translateY(-2px) scale(1.14); }
+.dock-item:active svg { transform: scale(0.94); transition-duration: 0.1s; }
+.dock-sep { width: 1px; background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.22), transparent); }
+.cmdbar { color: rgba(255, 255, 255, 0.62); }
+.cmdbar:hover { color: #fff; }
+.cmdbar kbd { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.75); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+.actions .icon-btn { color: rgba(255, 255, 255, 0.75); }
+.actions .icon-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+/* hover labels of the dock in the same glass */
+.dock-label {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)), rgba(16, 16, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock-item svg { transition: none; }
+  .dock-item:hover svg { transform: none; }
+}
+/* the period pill uses the glass recipe but stays pinned under the view switch */
+.period { position: absolute; }
+
+/* ── time travel bar: centred play button, same liquid glass as the other bars ── */
+.timebar {
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 20px;
+}
+.tb-play { margin-top: 0; width: 48px; height: 48px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.12); }
+.tb-head { min-height: 24px; }
+.tb-close { align-self: center; }
+.timebar { position: relative; }
+.yearbadge small,
+.yearbadge span,
+.yearbadge em { font-family: var(--display); }
+.yearbadge em { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.tb-ticks i { font-family: var(--display); }
+
+/* ── variable rail: vertical, centred on the left edge ──────────────────── */
+.rail {
+  position: absolute;
+  left: var(--edge);
+  top: 50%;
+  z-index: 5;
+  translate: 0 -50%;
+}
+.rail .dock {
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 18px;
+}
+.rail .dock-item { justify-content: flex-start; padding: 0 11px; }
+.rail .dock-sep {
+  align-self: center;
+  width: 22px;
+  height: 1px;
+  margin: 4px 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+}
+/* hover labels open to the right of the rail */
+.rail .dock-label {
+  left: calc(100% + 14px);
+  bottom: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+/* the bottom deck now only holds the legend and the time travel bar, centred under the globe
+   (same side room as the globe's padding in Globe.tsx: 84 px left, 408 px right) */
+@media (min-width: 901px) {
+  .deck { left: 84px; right: 408px; }
+  .app.side-closed .deck { right: 84px; }
+  .legend { left: calc(var(--edge) - 84px); }
+}
+@media (min-width: 901px) and (max-height: 760px) {
+  .rail .dock-item { height: 34px; }
+}
+@media (max-width: 900px) {
+  .rail {
+    top: auto;
+    left: var(--edge);
+    right: var(--edge);
+    bottom: calc(var(--sheet) + var(--edge));
+    translate: none;
+    display: flex;
+    justify-content: center;
+  }
+  .rail .dock { flex-direction: row; align-items: center; height: 52px; border-radius: var(--radius-m); }
+  .rail .dock-item { justify-content: center; padding: 0 10px; }
+  .rail .dock-sep { width: 1px; height: 20px; margin: 0 4px; background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.22), transparent); }
+  .rail .dock-label { left: 50%; top: auto; bottom: calc(100% + 12px); translate: -50% 0; }
+  .deck { bottom: calc(var(--sheet) + var(--edge) + 62px); }
 }
