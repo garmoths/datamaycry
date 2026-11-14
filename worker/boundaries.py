@@ -23,6 +23,11 @@ OUT = ROOT / "web" / "public" / "data" / "boundaries" / "admin1"
 TOLERANCE = 0.01  # degrees (~1 km)
 
 
+
+def first_name(*vals) -> str:
+    """First non-empty string; NaN / None / "" are skipped."""
+    return next(v.strip() for v in vals if isinstance(v, str) and v.strip())
+
 def rounded(geom: dict) -> dict:
     def r(c):
         return [round(c[0], 2), round(c[1], 2)] if isinstance(c[0], (int, float)) else [r(x) for x in c]
@@ -50,10 +55,11 @@ def main() -> None:
                 if not polys:
                     continue
                 geom = shapely.geometry.mapping(shapely.unary_union(polys))
-            en = p.get("name_en") if isinstance(p.get("name_en"), str) else p.get("name")
-            tr = p.get("name_tr") if isinstance(p.get("name_tr"), str) else en
+            # Natural Earth leaves some names empty (NaN, which is truthy): fall back in order
+            en = first_name(p.get("name_en"), p.get("name"), p.rid)
+            tr = first_name(p.get("name_tr"), en)
             feats.append({"type": "Feature",
-                          "properties": {"id": p.rid, "country": cid, "name_en": en or p.rid, "name_tr": tr or p.rid},
+                          "properties": {"id": p.rid, "country": cid, "name_en": en, "name_tr": tr},
                           "geometry": rounded(geom)})
         path = OUT / f"{cid}.geojson"
         path.write_text(json.dumps({"type": "FeatureCollection", "features": feats},
