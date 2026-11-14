@@ -1,0 +1,15 @@
+[project]
+name = "data-may-cry-worker"
+version = "0.1.0"
+description = "Data May Cry worker: MERRA-2 download, trend tests, packaging"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2",
+    "jsonschema>=4",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pymannkendall>=1.4"]
+
+[tool.uv]
+package = false

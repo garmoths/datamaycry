@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "kind": "region_index",
+  "countries": [
+    {
+      "id": "TUR",
+      "name": {
+        "en": "Turkey",
+        "tr": "Türkiye"
+      },
+      "bbox": [
+        25.6,
+        35.8,
+        44.8,
+        42.1
+      ],
+      "admin1": [
+        {
+          "id": "TR-21",
+          "name": {
+            "en": "Diyarbakır",
+            "tr": "Diyarbakır"
+          }
+        },
+        {
+          "id": "TR-42",
+          "name": {
+            "en": "Konya",
+            "tr": "Konya"
+          }
+        },
+        {
+          "id": "TR-06",
+          "name": {
+            "en": "Ankara",
+            "tr": "Ankara"
+          }
+        },
+        {
+          "id": "TR-34",
+          "name": {
+            "en": "Istanbul",
+            "tr": "İstanbul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "EGY",
+      "name": {
+        "en": "Egypt",
+        "tr": "Mısır"
+      },
+      "bbox": [
+        24.7,
+        22.0,
+        36.9,
+        31.7
+      ],
+      "admin1": [
+        {
+          "id": "EG-C",
+          "name": {
+            "en": "Cairo",
+            "tr": "Kahire"
+          }
+        },
+        {
+          "id": "EG-ASN",
+          "name": {
+            "en": "Aswan",
+            "tr": "Asvan"
+          }
+        }
+      ]
+    },
+    {
+      "id": "BRA",
+      "name": {
+        "en": "Brazil",
+        "tr": "Brezilya"
+      },
+      "bbox": [
+        -74.0,
+        -33.8,
+        -34.8,
+        5.3
+      ],
+      "admin1": [
+        {
+          "id": "BR-AM",
+          "name": {
+            "en": "Amazonas",
+            "tr": "Amazonas"
+          }
+        },
+        {
+          "id": "BR-SP",
+          "name": {
+            "en": "São Paulo",
+            "tr": "São Paulo"
+          }
+        }
+      ]
+    }
+  ]
+}
