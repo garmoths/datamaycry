@@ -42,6 +42,14 @@ interface Props {
   /** tile URL template of the trend layer (trendImage.ts), null = none */
   trendTiles: string | null;
   showTrend: boolean;
+  /** 1.4 animation: tile URL of the year to show; null = animation off (trend map back) */
+  animTiles?: string | null;
+  /** the year's tiles are on screen (double-buffered swap done) */
+  onAnimShown?: (url: string) => void;
+  /** tile URLs of the next year(s), loaded ahead in hidden layers */
+  animAhead?: string[];
+  /** tiles in view at the current zoom, reported after every move while animating (for preloading) */
+  onViewTiles?: (tiles: { z: number; x: number; y: number }[]) => void;
   continent: string | null;
   countryId: string | null;
   admin1Id: string | null;
@@ -62,6 +70,39 @@ const NONE = ["==", ["get", "id"], ""] as never;
 const HOVER = (on: number) => ["case", ["boolean", ["feature-state", "hover"], false], on, 0];
 const REGION_LAYERS = ["admin1-fill", "countries-fill"];
 const EMPTY = { type: "FeatureCollection", features: [] } as const;
+const ANOM_LAYERS = ["anomA", "anomB", "anomC"];
+const TREND_LAYERS = ["trendA", "trendB"];
+const TREND_OPACITY = ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.72, 7, 0.45] as never;
+const ANOM_MAXZOOM = 3;
+const ANOM_OPACITY = ["interpolate", ["linear"], ["zoom"], 0, 0.9, 4, 0.78, 7, 0.5] as never;
+
+interface Ring {
+  front: string | null;
+  url: Record<string, string | null>;
+  loaded: Record<string, boolean>;
+  want: string | null;
+}
+
+/** Make one ring layer the visible one and report its year as shown. */
+function showLayer(map: MapLibreMap, r: Ring, id: string, shown?: (url: string) => void) {
+  for (const l of ANOM_LAYERS) map.setPaintProperty(l, "raster-opacity", l === id ? ANOM_OPACITY : 0);
+  r.front = id;
+  r.want = null;
+  const url = r.url[id];
+  if (url) shown?.(url);
+}
+
+/** The ring layer holding `url`, or a free one (not in `avoid`) that starts loading it. */
+function loadLayer(map: MapLibreMap, r: Ring, url: string, avoid: (string | null)[]): string | null {
+  const have = ANOM_LAYERS.find((l) => r.url[l] === url);
+  if (have) return have;
+  const free = ANOM_LAYERS.find((l) => !avoid.includes(l));
+  if (!free) return null; // every layer is busy: skip this prefetch
+  r.url[free] = url;
+  r.loaded[free] = false;
+  (map.getSource(free) as RasterTileSource).setTiles([url]);
+  return free;
+}
 
 /**
  * Web-Mercator tiles end at ±85°, and the globe fills the pole caps by stretching the last
@@ -491,32 +532,135 @@ export function Globe(props: Props) {
     return () => window.clearTimeout(id);
   }, [ready, mode, markers, countryId, admin1Id]);
 
-  // ── trend raster ──
+  // ── trend raster: two layers, the new variable loads hidden and cross-fades in when ready ──
   const { trendTiles, showTrend } = props;
+  const animShown = !!props.animTiles;
+  const trendFront = useRef<string | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !trendTiles) return;
-    const src = map.getSource("trend") as RasterTileSource | undefined;
-    if (src) src.setTiles([trendTiles]);
-    else {
+    if (!map.getSource(TREND_LAYERS[0])) {
       // a tiled source is subdivided properly on the globe (no seam) and each tile is
       // computed for its own zoom (no pixelation); beyond z6 MapLibre scales smoothly
-      map.addSource("trend", { type: "raster", tiles: [trendTiles], tileSize: 256, maxzoom: 6 });
-      map.addLayer(
-        {
-          id: "trend",
-          type: "raster",
-          source: "trend",
-          paint: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.85, 4, 0.72, 7, 0.45], "raster-fade-duration": 300, "raster-resampling": "linear" },
-        } as never,
-        "continent-fill",
-      );
+      for (const id of TREND_LAYERS) {
+        map.addSource(id, { type: "raster", tiles: [trendTiles], tileSize: 256, maxzoom: 6 });
+        map.addLayer(
+          {
+            id,
+            type: "raster",
+            source: id,
+            paint: {
+              "raster-opacity": 0,
+              "raster-opacity-transition": { duration: 450, delay: 0 },
+              "raster-fade-duration": 0,
+              "raster-resampling": "linear",
+            },
+          } as never,
+          "continent-fill",
+        );
+      }
     }
+    // the old map stays on screen until every tile of the new one is ready
+    const back = TREND_LAYERS.find((l) => l !== trendFront.current)!;
+    (map.getSource(back) as RasterTileSource).setTiles([trendTiles]);
+    let done = false;
+    const swap = () => {
+      if (done) return;
+      done = true;
+      map.setPaintProperty(back, "raster-opacity", TREND_OPACITY);
+      if (trendFront.current) map.setPaintProperty(trendFront.current, "raster-opacity", 0);
+      trendFront.current = back;
+      map.off("sourcedata", onData);
+      clearTimeout(timer);
+    };
+    const onData = (e: { sourceId?: string; sourceDataType?: string }) => {
+      if (e.sourceId === back && e.sourceDataType !== "metadata" && map.isSourceLoaded(back)) swap();
+    };
+    map.on("sourcedata", onData);
+    const timer = setTimeout(swap, 2000); // never keep the old variable forever
+    return () => {
+      done = true;
+      map.off("sourcedata", onData);
+      clearTimeout(timer);
+    };
   }, [ready, trendTiles]);
   useEffect(() => {
     const map = mapRef.current;
-    if (map && ready && map.getLayer("trend")) map.setLayoutProperty("trend", "visibility", showTrend ? "visible" : "none");
-  }, [ready, showTrend, trendTiles]);
+    if (!map || !ready) return;
+    for (const id of TREND_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", showTrend && !animShown ? "visible" : "none");
+  }, [ready, showTrend, trendTiles, animShown]);
+
+  // ── 1.4 animation: a ring of three raster layers ──
+  // The year on screen sits in one layer; the next year(s) load ahead in the others, so a
+  // step is usually an instant opacity swap. A year is only shown once its tiles are loaded.
+  const { animTiles, animAhead, onAnimShown, onViewTiles } = props;
+  const ring = useRef<Ring>({ front: null, url: {}, loaded: {}, want: null });
+  const shownCb = useRef(onAnimShown);
+  useEffect(() => {
+    shownCb.current = onAnimShown;
+  }, [onAnimShown]);
+
+  // create the layers once and keep "loaded" up to date
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !animTiles || map.getSource(ANOM_LAYERS[0])) return;
+    for (const id of ANOM_LAYERS) {
+      // 1° data: tiles above z3 add nothing, MapLibre scales them up smoothly
+      map.addSource(id, { type: "raster", tiles: [animTiles], tileSize: 256, maxzoom: ANOM_MAXZOOM });
+      map.addLayer(
+        { id, type: "raster", source: id, paint: { "raster-opacity": 0, "raster-fade-duration": 0, "raster-resampling": "linear" } } as never,
+        "continent-fill",
+      );
+      ring.current.url[id] = null;
+      ring.current.loaded[id] = false;
+    }
+    const onData = (e: { sourceId?: string; sourceDataType?: string }) => {
+      const r = ring.current;
+      const id = e.sourceId;
+      if (!id || !(id in r.url) || e.sourceDataType === "metadata" || !map.isSourceLoaded(id)) return;
+      r.loaded[id] = true;
+      if (r.want === id) showLayer(map, r, id, shownCb.current);
+    };
+    map.on("sourcedata", onData);
+  }, [ready, animTiles]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (!animTiles) {
+      for (const id of ANOM_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+      ring.current.want = null;
+      return;
+    }
+    if (!map.getSource(ANOM_LAYERS[0])) return; // created by the effect above, runs again on next change
+    for (const id of ANOM_LAYERS) map.setLayoutProperty(id, "visibility", "visible");
+    spin.current = false; // a spinning globe needs new tiles every frame: hold still while playing
+    const r = ring.current;
+    const target = loadLayer(map, r, animTiles, [r.front]) ?? ANOM_LAYERS.find((l) => l !== r.front)!;
+    if (r.loaded[target]) showLayer(map, r, target, shownCb.current);
+    else r.want = target;
+    // start loading what comes next, without touching what is on screen or awaited
+    for (const next of animAhead ?? []) loadLayer(map, r, next, [r.front, target, ...ANOM_LAYERS.filter((l) => r.url[l] && (animAhead ?? []).includes(r.url[l]!))]);
+    const timer = setTimeout(() => r.want === target && showLayer(map, r, target, shownCb.current), 1500); // never stall
+    return () => clearTimeout(timer);
+  }, [ready, animTiles, animAhead, showTrend]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // tiles in view, for preloading every year of the animation
+  const tilesCb = useRef(onViewTiles);
+  useEffect(() => {
+    tilesCb.current = onViewTiles;
+  }, [onViewTiles]);
+  const animOn = !!animTiles;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !animOn) return;
+    const report = () => tilesCb.current?.(visibleTiles(map, ANOM_MAXZOOM));
+    report();
+    map.on("moveend", report);
+    return () => {
+      map.off("moveend", report);
+    };
+  }, [ready, animOn]);
 
   // ── camera ──
   const { view } = props;
@@ -536,4 +680,23 @@ export function Globe(props: Props) {
   }, [ready, view.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div ref={box} className="globe" />;
+}
+
+/** Web-Mercator tiles covering the current view at the current (integer) zoom, max 32. */
+function visibleTiles(map: MapLibreMap, maxZoom = 6): { z: number; x: number; y: number }[] {
+  const z = Math.max(0, Math.min(maxZoom, Math.floor(map.getZoom())));
+  const n = 2 ** z;
+  const b = map.getBounds();
+  const tx = (lon: number) => Math.floor(((lon + 180) / 360) * n);
+  const ty = (lat: number) => {
+    const r = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
+    return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n);
+  };
+  const y0 = Math.max(0, ty(b.getNorth())), y1 = Math.min(n - 1, ty(b.getSouth()));
+  let x0 = tx(b.getWest()), x1 = tx(b.getEast());
+  if (x1 < x0 || b.getEast() - b.getWest() >= 360) [x0, x1] = [0, n - 1];
+  const out: { z: number; x: number; y: number }[] = [];
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) if (out.length < 32) out.push({ z, x: ((x % n) + n) % n, y });
+  return out;
 }

@@ -21,10 +21,7 @@ export interface MKResult {
 export function mannKendall(input: ArrayLike<number>): MKResult {
   const x = Array.from(input).filter((v) => !Number.isNaN(v));
   const n = x.length;
-  let s = 0;
-  for (let i = 0; i < n - 1; i++) {
-    for (let j = i + 1; j < n; j++) s += Math.sign(x[j] - x[i]);
-  }
+  const s = n > 64 ? mkScoreFast(x) : mkScoreDirect(x);
   const varS = mkVariance(x);
   let z = 0;
   if (varS > 0) {
@@ -33,6 +30,39 @@ export function mannKendall(input: ArrayLike<number>): MKResult {
   }
   const p = 2 * (1 - normCdf(Math.abs(z)));
   return { n, s, varS, z, p };
+}
+
+/** S = Σ_{i<j} sign(x_j − x_i), the direct O(n²) sum. */
+function mkScoreDirect(x: number[]): number {
+  let s = 0;
+  for (let i = 0; i < x.length - 1; i++) for (let j = i + 1; j < x.length; j++) s += Math.sign(x[j] - x[i]);
+  return s;
+}
+
+/**
+ * The same S in O(n log n) with a Fenwick tree over value ranks: for each j, add the
+ * number of earlier values below x_j and subtract those above it. Exact integers, so the
+ * result is identical to mkScoreDirect (ties count 0 in both). Used for the ~550-point
+ * monthly series, where the direct sum costs ~150 000 steps per test.
+ */
+function mkScoreFast(x: number[]): number {
+  const sorted = [...new Set(x)].sort((a, b) => a - b);
+  const rank = new Map(sorted.map((v, k) => [v, k + 1]));
+  const tree = new Int32Array(sorted.length + 1);
+  const upTo = (r: number) => {
+    let c = 0;
+    for (; r > 0; r -= r & -r) c += tree[r];
+    return c;
+  };
+  let s = 0;
+  for (let j = 0; j < x.length; j++) {
+    const r = rank.get(x[j])!;
+    const below = upTo(r - 1);
+    const above = j - upTo(r);
+    s += below - above;
+    for (let q = r; q < tree.length; q += q & -q) tree[q]++;
+  }
+  return s;
 }
 
 /** Var(S) with tie correction. */
@@ -155,4 +185,48 @@ function erfSeries(x: number): number {
     if (Math.abs(add) < 1e-17 * Math.abs(sum)) break;
   }
   return (2 / Math.sqrt(Math.PI)) * sum;
+}
+
+// ─── Display-only smoothers (charts). Not used by any test or label. ────────
+
+/**
+ * LOESS (Cleveland 1979): for every x, a straight line fitted to the nearest
+ * `span` share of the points with tricube weights. Shows bends and humps that
+ * a single straight trend line hides. x must be sorted ascending.
+ */
+export function loess(x: number[], y: number[], span = 0.5): number[] {
+  const n = x.length;
+  const k = Math.max(3, Math.min(n, Math.ceil(span * n)));
+  return x.map((x0) => {
+    const d = x.map((v) => Math.abs(v - x0));
+    const h = [...d].sort((a, b) => a - b)[k - 1] || 1;
+    let sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (let i = 0; i < n; i++) {
+      const u = d[i] / h;
+      if (u >= 1) continue;
+      const w = (1 - u ** 3) ** 3;
+      sw += w;
+      sx += w * x[i];
+      sy += w * y[i];
+      sxx += w * x[i] * x[i];
+      sxy += w * x[i] * y[i];
+    }
+    const den = sw * sxx - sx * sx;
+    if (Math.abs(den) < 1e-12) return sy / sw;
+    const b = (sw * sxy - sx * sy) / den;
+    return (sy - b * sx) / sw + b * x0;
+  });
+}
+
+/** Centred running mean over `window` points; NaN where the window is incomplete or has gaps. */
+export function runningMean(values: ArrayLike<number>, window = 12): number[] {
+  const n = values.length;
+  const before = Math.floor(window / 2);
+  const out = new Array<number>(n).fill(NaN);
+  for (let i = before; i + (window - before) <= n; i++) {
+    let s = 0;
+    for (let j = i - before; j < i - before + window; j++) s += values[j];
+    out[i] = s / window; // NaN propagates: a gap inside the window gives NaN
+  }
+  return out;
 }

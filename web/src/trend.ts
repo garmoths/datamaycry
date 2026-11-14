@@ -35,22 +35,45 @@ export function monthLabels(series: Series): string[] {
   });
 }
 
+/** Year and month of every index, computed once per (start, length). */
+const calendars = new Map<string, { years: Int16Array; months: Int8Array }>();
+function calendar(series: Series): { years: Int16Array; months: Int8Array } {
+  const key = `${series.start}|${series.values.length}`;
+  let c = calendars.get(key);
+  if (!c) {
+    const n = series.values.length;
+    const s = parseYM(series.start);
+    const years = new Int16Array(n), months = new Int8Array(n);
+    for (let k = 0; k < n; k++) {
+      const total = s.month - 1 + k;
+      years[k] = s.year + Math.floor(total / 12);
+      months[k] = (total % 12) + 1;
+    }
+    calendars.set(key, (c = { years, months }));
+  }
+  return c;
+}
+
+/** Anomalies are the same for every period and season of a series: computed once per values array. */
+const anomalyCache = new WeakMap<Float64Array, Float64Array>();
+
 /** Monthly anomalies vs the 1991–2020 normal of each calendar month. NaN stays NaN. */
 export function anomalies(series: Series): Float64Array {
+  const hit = anomalyCache.get(series.values);
+  if (hit) return hit;
+  const { years, months } = calendar(series);
   const sum = new Array(13).fill(0);
   const cnt = new Array(13).fill(0);
-  series.values.forEach((v, k) => {
-    const { year, month } = monthAt(series, k);
-    if (year >= BASELINE.start && year <= BASELINE.end && !Number.isNaN(v)) {
-      sum[month] += v;
-      cnt[month] += 1;
+  const v = series.values;
+  for (let k = 0; k < v.length; k++) {
+    if (years[k] >= BASELINE.start && years[k] <= BASELINE.end && !Number.isNaN(v[k])) {
+      sum[months[k]] += v[k];
+      cnt[months[k]] += 1;
     }
-  });
-  const out = new Float64Array(series.values.length);
-  series.values.forEach((v, k) => {
-    const { month } = monthAt(series, k);
-    out[k] = cnt[month] ? v - sum[month] / cnt[month] : NaN;
-  });
+  }
+  const out = new Float64Array(v.length);
+  for (let k = 0; k < v.length; k++) out[k] = cnt[months[k]] ? v[k] - sum[months[k]] / cnt[months[k]] : NaN;
+  anomalyCache.set(series.values, out);
   return out;
 }
 
@@ -65,14 +88,23 @@ export function analyzeTrend(series: Series, opts: TrendOptions = {}): TrendResu
   // Annual means: a year counts only if every selected month is present.
   const byYear = new Map<number, number[]>();
   const monthly: number[] = []; // selected months in time order (for pre-whitening)
-  anom.forEach((v, k) => {
-    const { year, month } = monthAt(series, k);
-    if (year < startYear || year > endYear || !months.includes(month)) return;
+  // Winter (Dec–Feb) crosses the new year: December counts towards the NEXT year's winter,
+  // so "winter 1990" = Dec 1989 + Jan 1990 + Feb 1990 (standard meteorological seasons).
+  const wraps = months.includes(12) && months.includes(1) && months.length < 12;
+  const cal = calendar(series);
+  const pick = new Uint8Array(13);
+  for (const m of months) pick[m] = 1;
+  for (let k = 0; k < anom.length; k++) {
+    const month = cal.months[k];
+    if (!pick[month]) continue;
+    const sy = wraps && month === 12 ? cal.years[k] + 1 : cal.years[k];
+    if (sy < startYear || sy > endYear) continue;
+    const v = anom[k];
     monthly.push(v);
-    const arr = byYear.get(year) ?? [];
+    const arr = byYear.get(sy) ?? [];
     arr.push(v);
-    byYear.set(year, arr);
-  });
+    byYear.set(sy, arr);
+  }
   const years: number[] = [];
   const annual: number[] = [];
   for (let y = startYear; y <= endYear; y++) {
@@ -144,4 +176,82 @@ export function analyzeTrend(series: Series, opts: TrendOptions = {}): TrendResu
     totalChange: (slopePerDecade * (nYears - 1)) / 10,
     line: { intercept, slopePerYear: sen.slope },
   };
+}
+
+/** Meteorological seasons (months 1–12). Winter crosses the new year. */
+export const SEASONS = {
+  all: undefined,
+  winter: [12, 1, 2],
+  spring: [3, 4, 5],
+  summer: [6, 7, 8],
+  autumn: [9, 10, 11],
+} as const;
+export type Season = keyof typeof SEASONS;
+
+export interface Robustness {
+  /** windows that could be tested (at least MIN_YEARS long, inside the data) */
+  windows: { startYear: number; endYear: number; level: TrendResult["level"]; slopePerDecade: number }[];
+  /** how many give the same answer as the chosen period: same level AND same direction */
+  same: number;
+}
+
+/**
+ * Start/end-year sensitivity: the same test with the period moved by `shift` years
+ * (later start, earlier end, earlier start, later end — where the data allows).
+ * Display only; the level itself already requires a trimmed check for "strong".
+ */
+export function robustness(
+  series: Series,
+  opts: TrendOptions,
+  ref: TrendResult,
+  limits: { start: number; end: number } = DEFAULT_TEST_YEARS,
+  shift = 5,
+): Robustness {
+  const s0 = ref.startYear;
+  const e0 = ref.endYear;
+  const cands: [number, number][] = [
+    [s0 + shift, e0],
+    [s0, e0 - shift],
+    [s0 - shift, e0],
+    [s0, e0 + shift],
+  ];
+  const windows = cands
+    .filter(([a, b]) => a >= limits.start && b <= limits.end && b - a + 1 >= MIN_YEARS)
+    .map(([a, b]) => {
+      const r = analyzeTrend(series, { ...opts, startYear: a, endYear: b });
+      return { startYear: a, endYear: b, level: r.status === "ok" ? r.level : ("none" as const), slopePerDecade: r.slopePerDecade };
+    });
+  const dir = Math.sign(ref.slopePerDecade);
+  const same = windows.filter(
+    (w) => w.level === ref.level && (ref.level === "none" || Math.sign(w.slopePerDecade) === dir),
+  ).length;
+  return { windows, same };
+}
+
+/**
+ * When did the evidence appear? Runs the test for every end year from start+MIN_YEARS−1
+ * to `endYear` and returns the first end year from which the level stays at least
+ * "possible" / "strong" until the end (null if never). Used by the animation.
+ */
+export function emergence(
+  series: Series,
+  opts: TrendOptions,
+  startYear: number,
+  endYear: number,
+): { possible: number | null; strong: number | null; levels: Map<number, TrendResult["level"]> } {
+  const levels = new Map<number, TrendResult["level"]>();
+  for (let e = startYear + MIN_YEARS - 1; e <= endYear; e++) {
+    const r = analyzeTrend(series, { ...opts, startYear, endYear: e });
+    levels.set(e, r.status === "ok" ? r.level : "none");
+  }
+  const rank = { none: 0, possible: 1, strong: 2 } as const;
+  const since = (min: number): number | null => {
+    let first: number | null = null;
+    for (let e = endYear; e >= startYear + MIN_YEARS - 1; e--) {
+      if (rank[levels.get(e) ?? "none"] >= min) first = e;
+      else break;
+    }
+    return first;
+  };
+  return { possible: since(1), strong: since(2), levels };
 }

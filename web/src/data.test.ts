@@ -6,7 +6,10 @@ import {
   analyzeTrend,
   anomalies,
   cellOf,
+  frameMean,
+  getAnomalyFrames,
   getBadges,
+  runningFrames,
   getContinentSeries,
   getPointSeries,
   getRegionSeries,
@@ -121,6 +124,18 @@ describe("data.ts on mock data", () => {
     // Diyarbakır precipitation badge agrees → no cap
     const d = await getRegionSeries("TUR", "TR-21", "PRECTOT");
     expect(analyzeTrend({ ...d, values }).level).toBe("strong");
+  });
+
+  it("anomaly frames: one map per year, mean and 5-year smoothing (1.4)", async () => {
+    const f = await getAnomalyFrames("T2M");
+    expect(f.years[0]).toBe(1980);
+    expect(f.years.at(-1)).toBe(2025);
+    expect(f.values.length).toBe(f.years.length * f.grid.nlat * f.grid.nlon);
+    expect(f.colorMax).toBeGreaterThan(0);
+    // mock pattern warms over time: last frame mean above first
+    expect(frameMean(f, f.years.length - 1)).toBeGreaterThan(frameMean(f, 0));
+    const flat = { ...f, values: new Float32Array(f.values.length).fill(2) };
+    expect(runningFrames(flat, 5).values.every((v) => Math.abs(v - 2) < 1e-6)).toBe(true);
   });
 
   it("trend map has one value per grid cell", async () => {

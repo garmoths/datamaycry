@@ -24,3 +24,43 @@ describe("normCdf", () => {
     expect(Math.abs(1 - normCdf(5) - 2.866515718791939e-7)).toBeLessThan(1e-15);
   });
 });
+
+describe("display smoothers", () => {
+  it("loess reproduces a straight line exactly", async () => {
+    const { loess } = await import("./stats.ts");
+    const x = Array.from({ length: 46 }, (_, i) => 1980 + i);
+    const y = x.map((v) => 0.04 * (v - 1980) - 1);
+    loess(x, y, 0.5).forEach((v, i) => expect(v).toBeCloseTo(y[i], 9));
+  });
+  it("loess follows a hump that a straight line misses", async () => {
+    const { loess } = await import("./stats.ts");
+    const x = Array.from({ length: 46 }, (_, i) => i);
+    const y = x.map((v) => Math.exp(-((v - 23) ** 2) / 50));
+    const s = loess(x, y, 0.4);
+    expect(s[23]).toBeGreaterThan(0.6);
+    expect(s[0]).toBeLessThan(0.2);
+  });
+  it("running mean: constant stays constant, gaps and edges are NaN", async () => {
+    const { runningMean } = await import("./stats.ts");
+    const v = new Array(36).fill(5);
+    const r = runningMean(v, 12);
+    expect(r[6]).toBe(5);
+    expect(Number.isNaN(r[0])).toBe(true);
+    v[20] = NaN;
+    expect(Number.isNaN(runningMean(v, 12)[18])).toBe(true);
+  });
+});
+
+describe("fast Mann-Kendall score", () => {
+  it("gives exactly the direct O(n²) sum, ties included", () => {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    for (let k = 0; k < 60; k++) {
+      const n = 65 + Math.floor(rnd() * 600);
+      const x = Array.from({ length: n }, (_, i) => (k % 3 === 0 ? Math.round(rnd() * 6) : rnd() + i * 0.001 * (k % 5)));
+      let direct = 0;
+      for (let i = 0; i < n - 1; i++) for (let j = i + 1; j < n; j++) direct += Math.sign(x[j] - x[i]);
+      expect(mannKendall(x).s).toBe(direct);
+    }
+  });
+});

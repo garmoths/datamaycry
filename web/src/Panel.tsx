@@ -28,8 +28,13 @@ import {
   type VariablesFile,
   type VariableInfo,
 } from "./data.ts";
-import { Chart } from "./Chart.tsx";
-import { cardText, decimalsFor, noTrendText, smartFixed, smartSigned, t, unitLabel, type Lang } from "./i18n.ts";
+import { Chart, type ChartView } from "./Chart.tsx";
+import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartFixed, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
+import { emergence, robustness, SEASONS, type Season } from "./trend.ts";
+
+const SEASON_LABEL: Record<Season, StringKey> = {
+  all: "seasonAll", winter: "seasonWinter", spring: "seasonSpring", summer: "seasonSummer", autumn: "seasonAutumn",
+};
 import { CONTINENTS, type Node } from "./geo.ts";
 import { ScaleLadder } from "./ScaleLadder.tsx";
 import { NumberTicker } from "./NumberTicker.tsx";
@@ -42,6 +47,12 @@ import { CiBar, Gates, Histogram, StatGrid, ZCurve } from "./MathViz.tsx";
 import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
+
+/** Signed number with the variable's decimals; Turkish uses a decimal comma. */
+const fmtSignedIn = (lang: Lang) => (x: number, d: number) => {
+  const s = smartSigned(x, d);
+  return lang === "tr" ? s.replace(".", ",") : s;
+};
 
 /** Summary of the world / a continent / a country / a province, from the per-cell trend map. */
 export interface AreaInfo {
@@ -75,6 +86,8 @@ export type DrawerTab = "chart" | "explore" | "sources";
 
 interface Props {
   lang: Lang;
+  /** 1.4 time travel: while playing, the card and chart cover [from, year] (null = off) */
+  anim?: { from: number; year: number; to: number } | null;
   mode: "region" | "point";
   variables: VariablesFile;
   variable: VariableInfo;
@@ -124,13 +137,20 @@ function Card({ className = "", children }: { className?: string; children: Reac
 export function Panel(p: Props) {
   const { lang, variable: v, variables } = p;
   const tr = lang === "tr";
+  const fmtSigned = fmtSignedIn(lang);
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<"raw" | "anomaly">("anomaly");
+  const [view, setView] = useState<ChartView>("anomaly");
   const reduce = useReducedMotion();
-  const [season, setSeason] = useState<"all" | "summer">("all");
+  const [season, setSeason] = useState<Season>("all");
   const [years, setYears] = useState<[number, number]>([variables.test_years.start, variables.test_years.end]);
+  // during time travel the analysed period follows the animation year
+  const animYear = p.anim?.year, animStart = p.anim?.from;
+  const eff = useMemo<[number, number]>(
+    () => (animYear !== undefined && animStart !== undefined ? [animStart, animYear] : years),
+    [animYear, animStart, years],
+  );
 
   const targetKey = JSON.stringify(p.target);
   useEffect(() => {
@@ -160,8 +180,28 @@ export function Panel(p: Props) {
   const shown = p.target ? series : null;
   const shownError = p.target ? error : null;
   const result = useMemo(
-    () => (shown ? analyzeTrend(shown, { startYear: years[0], endYear: years[1], months: season === "summer" ? [6, 7, 8] : undefined }) : null),
-    [shown, years, season],
+    () =>
+      shown
+        ? analyzeTrend(shown, { startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined })
+        : null,
+    [shown, eff, season],
+  );
+  // 1.4: when did the evidence appear in the animation's range? (one test per end year, ~46 ms)
+  const animFrom = p.anim?.from, animTo = p.anim?.to;
+  const emerged = useMemo(
+    () =>
+      shown && animFrom !== undefined && animTo !== undefined && animTo - animFrom + 1 >= 10
+        ? emergence(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, animFrom, animTo)
+        : null,
+    [shown, animFrom, animTo, season],
+  );
+  // Start/end-year sensitivity (display only): same test with the period moved by 5 years
+  const robust = useMemo(
+    () =>
+      shown && result && result.status === "ok"
+        ? robustness(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, result, variables.test_years)
+        : null,
+    [shown, result, season, variables.test_years],
   );
   const diag = useMemo(() => (result ? diagnose(result) : null), [result]);
   const ok = result?.status === "ok";
@@ -185,16 +225,20 @@ export function Panel(p: Props) {
           ? `${province?.name[lang] ?? ""}${countryName ? `, ${countryName}` : ""}`
           : countryName;
 
-  const verdict = (() => {
+  const verdict = ((): { cls: string; meaning?: string | null; body: string } | null => {
     if (!result) return null;
-    if (result.status === "too_short") return { cls: "none", body: t(lang, "tooShort") };
+    if (result.status === "too_short") return { cls: "none", body: t(lang, p.anim ? "animWait" : "tooShort") };
     if (result.status === "insufficient_data") return { cls: "none", body: t(lang, "insufficient") };
     if (result.status === "constant") return { cls: "none", body: t(lang, "constant") };
-    if (result.level === "none") return { cls: "none", body: noTrendText(lang, result.slopePerDecade, unit, v.decimals) };
+    // no clear change: no direction and no number (a non-significant slope is noise)
+    if (result.level === "none") return { cls: "none", body: noTrendText(lang, { start: result.startYear, end: result.endYear }) };
+    const dir = result.slopePerDecade >= 0 ? "up" : "down";
     return {
       cls: result.level,
+      meaning: meaningHead(lang, v.id, dir),
       body: cardText(lang, {
-        dir: result.slopePerDecade >= 0 ? "up" : "down",
+        varId: v.id,
+        dir,
         level: result.level,
         place,
         variable: v.name[lang],
@@ -204,6 +248,7 @@ export function Panel(p: Props) {
         p: result.pValue,
         total: result.totalChange,
         startYear: result.startYear,
+        endYear: result.endYear,
         decimals: v.decimals,
       }),
     };
@@ -225,7 +270,7 @@ export function Panel(p: Props) {
   const period = `${monthLabel(variables.period.start, lang)} – ${monthLabel(variables.period.end, lang)}`;
   const hasAnswer = !!(shown && result && !shownError && verdict);
   const title = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
-  const f1 = (x: number) => smartSigned(x, v.decimals + 1);
+  const f1 = (x: number) => fmtSigned(x, v.decimals + 1);
 
   // one entrance per selection: place, variable, and whether the answer is a series or a summary
   const sceneKey = `${p.mode}|${targetKey}|${p.area?.kind ?? ""}|${p.continent ?? ""}|${p.countryId ?? ""}|${p.admin1Id ?? ""}|${v.id}|${hasAnswer}`;
@@ -234,13 +279,6 @@ export function Panel(p: Props) {
   // ── the answer ─────────────────────────────────────────────────────────────
   const answer = hasAnswer ? (
     <Card className={`verdict ${verdict!.cls}`}>
-      <p className="label">{t(lang, "slopeLabel")}</p>
-      {ok && (
-        <div className="headline">
-          <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed />
-          <span className="unit">{per}</span>
-        </div>
-      )}
       {ok && (
         <div className="meter" role="img" aria-label={`${t(lang, "evidence")}: ${t(lang, result!.level)}`}>
           {(["none", "possible", "strong"] as const).map((lv) => (
@@ -250,18 +288,56 @@ export function Panel(p: Props) {
           ))}
         </div>
       )}
+      {ok && verdict!.meaning && <p className="meaning">{verdict!.meaning}</p>}
+      {ok && result!.level !== "none" && (
+        <>
+          <p className="label">{t(lang, "slopeLabel")}</p>
+          <div className="headline">
+            <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
+            <span className="unit">{per}</span>
+          </div>
+        </>
+      )}
       <p className="card-text">{verdict!.body}</p>
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
         </p>
       )}
+      {/* contract 1.1: experimental variables never reach "strong"; say why */}
       {(result!.cappedReason === "experimental" || v.experimental) && v.caveat && (
         <p className="warn">
           {result!.capped && result!.cappedReason !== "badge_disagree" && <b>{t(lang, "cappedTitle")}</b>} {v.caveat[lang]}
         </p>
       )}
+      {/* other known limits (precipitation, aerosol, mountain snow): a quiet note */}
+      {!v.experimental && result!.cappedReason !== "experimental" && v.caveat && <p className="note">{v.caveat[lang]}</p>}
       {province?.lowRes && <p className="warn">{t(lang, "lowResNote")}</p>}
+      {emerged && (
+        <p className="emerged">
+          {emerged.possible === null && emerged.strong === null ? (
+            t(lang, "emergedNever")
+          ) : (
+            <>
+              {emerged.possible !== null && (
+                <span className={animYear !== undefined && animYear >= emerged.possible ? "on" : ""}>
+                  {t(lang, "emergedPossible")} <b>{emerged.possible}</b> {t(lang, "emergedSuffix")}
+                </span>
+              )}
+              {emerged.strong !== null && (
+                <span className={`strong ${animYear !== undefined && animYear >= emerged.strong ? "on" : ""}`}>
+                  {t(lang, "emergedStrong")} <b>{emerged.strong}</b> {t(lang, "emergedSuffix")}
+                </span>
+              )}
+            </>
+          )}
+        </p>
+      )}
+      {ok && !p.anim && robust && robust.windows.length > 0 && (
+        <p className={robust.same === robust.windows.length ? "note" : "warn"} title={t(lang, "robustTitle")}>
+          {robustText(lang, robust.same, robust.windows.length)}
+        </p>
+      )}
     </Card>
   ) : p.area ? (
     <Card className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
@@ -269,7 +345,7 @@ export function Panel(p: Props) {
         {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")} · {t(lang, "slopeLabel").toLowerCase()}
       </p>
       <div className="headline">
-        <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed />
+        <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
         <span className="unit">{per}</span>
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
@@ -324,7 +400,7 @@ export function Panel(p: Props) {
         <StatGrid
           items={[
             { label: tr ? "Eğim / 10 yıl" : "Slope / decade", value: f1(diag.slopePerDecade), hint: tr ? "Tüm yıl çiftlerinin eğimlerinin ortancası" : "Median of the slopes of all year pairs" },
-            { label: tr ? "Toplam değişim" : "Total change", value: `${smartSigned(result!.totalChange, v.decimals)} ${unit}`, hint: `${result!.startYear}–${result!.endYear}` },
+            { label: tr ? "Toplam değişim" : "Total change", value: result!.level === "none" ? t(lang, "unclear") : `${fmtSigned(result!.totalChange, v.decimals)} ${unit}`, hint: `${result!.startYear}–${result!.endYear}` },
             { label: tr ? "Otokorelasyon r₁" : "Autocorrelation r₁", value: diag.r1.toFixed(2), hint: tr ? "Bir yılın bir sonrakine benzerliği; aralığı genişletir" : "How much one year resembles the next; widens the range" },
             { label: tr ? "Etkili yıl" : "Effective years", value: diag.nEff.toFixed(1), hint: "n·(1−r₁)/(1+r₁)" },
             { label: tr ? "Gürültü (σ)" : "Noise (σ)", value: `${smartFixed(diag.noise, v.decimals + 1)} ${unit}`, hint: tr ? "Yıllık değerlerin trend çizgisi etrafındaki yayılımı" : "Spread of the annual values around the trend line" },
@@ -452,13 +528,13 @@ export function Panel(p: Props) {
       <p className="eyebrow">{v.name[lang]}</p>
       <h2>{place}</h2>
       <div className="seg" role="group">
-        {(["anomaly", "raw"] as const).map((k) => (
+        {(["anomaly", "raw", "seasons"] as const).map((k) => (
           <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>
             {t(lang, k)}
           </button>
         ))}
       </div>
-      <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={years[0]} endYear={years[1]} />
+      <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} />
       <div className="controls">
         <label>
           {t(lang, "period")} <b>{years[0]}–{years[1]}</b>
@@ -470,12 +546,13 @@ export function Panel(p: Props) {
         <div>
           {t(lang, "season")}
           <div className="seg small" role="group">
-            {(["all", "summer"] as const).map((s) => (
+            {(["all", "winter", "spring", "summer", "autumn"] as const).map((s) => (
               <button key={s} className={season === s ? "on" : ""} onClick={() => setSeason(s)}>
-                {t(lang, s === "all" ? "seasonAll" : "seasonSummer")}
+                {t(lang, SEASON_LABEL[s])}
               </button>
             ))}
           </div>
+          <p className="fine">{t(lang, "seasonHint")}</p>
         </div>
       </div>
       {v.caveat && <p className="note">{v.caveat[lang]}</p>}

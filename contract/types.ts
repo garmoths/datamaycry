@@ -13,7 +13,7 @@
  * Written with AI assistance (Claude).
  */
 
-export const SCHEMA_VERSION = "1.3" as const;
+export const SCHEMA_VERSION = "1.4" as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared
@@ -270,6 +270,30 @@ export interface TileHeader {
   packing: Packing;
 }
 
+// 6) anomaly_frames/{VAR}.bin (1.4) — one map per year for the "time travel" animation
+//    Each value = that year's mean of the monthly anomalies vs the 1991–2020 normal
+//    (complete years only, same as the trend test). Real data: 1° × 1.25° (2×2 MERRA cells).
+//    payload layout: [year][cell], cell = i * nlon + j, lat = lat0 + i*dlat, lon = lon0 + j*dlon
+export interface FrameGrid {
+  nlat: number;
+  nlon: number;
+  lat0: number;
+  lon0: number;
+  dlat: number;
+  dlon: number;
+}
+export interface AnomalyFramesHeader {
+  schema_version: string;
+  kind: "anomaly_frames";
+  var: VarId;
+  grid: FrameGrid;
+  years: { start: number; end: number };
+  baseline: { start: 1991; end: 2020 };
+  packing: Packing;
+  /** Fixed colour scale for every frame: 98th percentile of |anomaly| over all cells and years. */
+  color_max: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // data.ts public API (what the UI calls). Rumet only uses these.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,4 +359,13 @@ export interface TrendMap {
   pValue: Float32Array;
   level: Uint8Array; // 0 none, 1 possible, 2 strong, 255 no data
   fdr: Uint8Array; // 1 passes FDR
+}
+
+/** 1.4: yearly anomaly maps for the animation. values[(k * nlat + i) * nlon + j], NaN = no data. */
+export interface AnomalyFrames {
+  var: VarId;
+  grid: FrameGrid;
+  years: number[];
+  values: Float32Array;
+  colorMax: number;
 }

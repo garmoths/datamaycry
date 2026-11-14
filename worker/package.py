@@ -31,6 +31,7 @@ import xarray as xr
 
 import protocol as P
 from dmc import SCHEMA_VERSION, pack, validate, write_dmc
+from frames import coarsen2x2, write_frames
 from download import COLLECTIONS, ROOT
 from mock import CAVEAT, EXPERIMENTAL, GRID, SOURCE_FIELD, VARS
 from validate import check
@@ -83,7 +84,9 @@ def region_means(W: sp.csr_matrix, cube: np.ndarray) -> np.ndarray:
 
 # ─── Trend map (steps 3–5 + L3 per cell) ────────────────────────────────────
 
-def trend_map(cube: np.ndarray, var: str) -> dict[str, np.ndarray]:
+def annual_anomalies(cube: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Monthly anomalies vs the 1991–2020 normal and their calendar-year means (cells, 46).
+    A year is NaN in a cell if any of its months is missing (same rule as the trend test)."""
     n = cube.shape[0]
     yr, mo = P.month_index(START, n)
     base = (yr >= P.BASELINE[0]) & (yr <= P.BASELINE[1])
@@ -92,7 +95,15 @@ def trend_map(cube: np.ndarray, var: str) -> dict[str, np.ndarray]:
         clim = np.stack([np.nanmean(cube[base & (mo == m)], axis=0) for m in range(1, 13)])
     anom = cube - clim[mo - 1]
     years = np.arange(P.TEST_YEARS[0], P.TEST_YEARS[1] + 1)
-    annual = np.stack([anom[yr == y].mean(0) for y in years]).T  # (cells, 46); NaN if any month NaN
+    annual = np.stack([anom[yr == y].mean(0) for y in years]).T
+    return anom, annual
+
+
+def trend_map(cube: np.ndarray, var: str) -> dict[str, np.ndarray]:
+    n = cube.shape[0]
+    yr, mo = P.month_index(START, n)
+    anom, annual = annual_anomalies(cube)
+    years = np.arange(P.TEST_YEARS[0], P.TEST_YEARS[1] + 1)
 
     slope = np.full(NCELL, np.nan)
     pval = np.full(NCELL, np.nan)
@@ -132,7 +143,14 @@ def trend_map(cube: np.ndarray, var: str) -> dict[str, np.ndarray]:
     fdr = P.fdr_bh(pval).astype(float)
     fdr[np.isnan(pval)] = np.nan
     return {"slope_per_decade": slope, "p_value": pval, "level": level, "fdr": fdr,
-            "n_candidates": len(cand)}
+            "n_candidates": len(cand), "annual": annual}
+
+
+def write_var_frames(var: str, annual: np.ndarray) -> None:
+    """Yearly anomaly maps for the animation (contract 1.4), 2×2-coarsened."""
+    frames, grid = coarsen2x2(annual.T)
+    h = write_frames(OUT, var, frames, grid, P.TEST_YEARS)
+    log(f"{var}: anomaly frames {frames.shape}, colour scale ±{h['color_max']:.4g}")
 
 
 def nice_scale(max_abs: float) -> float:
@@ -151,7 +169,18 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--vars", nargs="*", default=[v[0] for v in VARS])
     ap.add_argument("--no-tiles", action="store_true")
+    ap.add_argument("--frames-only", action="store_true",
+                    help="only (re)write anomaly_frames/ into the existing package")
     args = ap.parse_args()
+
+    if args.frames_only:
+        for var in args.vars:
+            cube, _, _ = load_cube(var)
+            _, annual = annual_anomalies(cube)
+            write_var_frames(var, annual)
+            del cube
+        log(f"DONE: {check(OUT)} files match contract v{SCHEMA_VERSION}")
+        return
 
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -190,6 +219,7 @@ def main() -> None:
         log(f"{var}: region series done")
 
         tm = trend_map(cube, var)
+        write_var_frames(var, tm["annual"])
         sscale = nice_scale(np.nanmax(np.abs(tm["slope_per_decade"])))
         fields = ["slope_per_decade", "p_value", "level", "fdr"]
         packs = [{"scale": sscale, "offset": 0}, {"scale": 1 / 32000, "offset": 0},
