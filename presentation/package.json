@@ -1,13 +1,15 @@
 {
-  "name": "data-may-cry-presentation",
+  "name": "aeolus-presentation",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Data May Cry presentation (reveal.js), runs on localhost",
+  "description": "Aeolus presentation (reveal.js) by team Data May Cry, runs on localhost",
   "scripts": {
     "dev": "vite --port 5180",
     "build": "vite build",
-    "preview": "vite preview --port 5180"
+    "preview": "vite preview --port 5180",
+    "shots": "node scripts/export.mjs shots",
+    "pdf": "node scripts/export.mjs pdf"
   },
   "dependencies": {
     "@fontsource/geist-mono": "5.3.0",
@@ -17,6 +19,7 @@
     "reveal.js": "5.2.1"
   },
   "devDependencies": {
+    "puppeteer-core": "25.16.0",
     "vite": "^8.3.6"
   }
 }

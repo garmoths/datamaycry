@@ -45,7 +45,7 @@ const T = {
   data: { tr: "Veri", en: "Data" },
   sources: { tr: "Kaynakça", en: "References" },
   link: { tr: "Bu görünümü açan bağlantı", en: "Link to this view" },
-  made: { tr: "Data May Cry ile oluşturuldu", en: "Made with Data May Cry" },
+  made: { tr: "Aeolus ile oluşturuldu · Data May Cry", en: "Made with Aeolus · Data May Cry" },
   demo: { tr: "DEMO VERİ", en: "DEMO DATA" },
   demoNote: {
     tr: "Bu rapor uydurma desenli demo veriyle üretildi; sayılar gerçek değildir.",
@@ -197,6 +197,7 @@ export function Report(p: ReportProps) {
               ) : area ? (
                 <>
                   <tr><th>{T.areaMean[lang]}</th><td>{fmt(lang, area.meanSlope, d)} {per}</td></tr>
+                  <tr><th>{T.total[lang]}</th><td>{fmt(lang, (area.meanSlope * (variables.test_years.end - variables.test_years.start)) / 10, v.decimals)} {unit} ({variables.test_years.start}–{variables.test_years.end})</td></tr>
                   <tr><th>{T.strongUp[lang]}</th><td>{pct(area.strongUp)}</td></tr>
                   <tr><th>{T.strongDown[lang]}</th><td>{pct(area.strongDown)}</td></tr>
                   <tr><th>{T.cells[lang]}</th><td>{area.cells}</td></tr>

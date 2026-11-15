@@ -10,7 +10,7 @@ import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { cellsInside, scanCells } from "./continentStats.ts";
 import { parseAdmin1, pointInFeature, polygonsOf } from "./geo.ts";
 
-const DIR = fileURLToPath(new URL("../public/data/boundaries/admin1/", import.meta.url));
+const DIR = fileURLToPath(new URL("../public/boundaries/admin1/", import.meta.url));
 const NLAT = 361, NLON = 576;
 
 /** the old version: test every cell centre inside each polygon's bounding box */

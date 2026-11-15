@@ -3,11 +3,11 @@
  *
  *   node scripts/build-boundaries.mjs <ne_50m_admin_0.geojson>
  *
- * Output → public/data/boundaries/countries.geojson
+ * Output → public/boundaries/countries.geojson
  *  (all countries, minimal properties: id, names, continent; coordinates rounded to 2 decimals)
  *
  * Provinces are NOT built here any more: worker/boundaries.py writes
- * public/data/boundaries/admin1/{COUNTRY}.geojson for all 4,596 provinces, with the same
+ * public/boundaries/admin1/{COUNTRY}.geojson for all 4,596 provinces, with the same
  * id rule as the data (ISO 3166-2 when valid and unique, else adm1_code).
  *
  * Written with AI assistance (Claude).
@@ -20,7 +20,7 @@ if (!countriesPath) {
   process.exit(1);
 }
 
-const out = new URL("../public/data/boundaries/", import.meta.url);
+const out = new URL("../public/boundaries/", import.meta.url);
 mkdirSync(out, { recursive: true });
 
 const round = (c) => (typeof c[0] === "number" ? [+c[0].toFixed(2), +c[1].toFixed(2)] : c.map(round));

@@ -1,6 +1,10 @@
-# Data May Cry 🌍🔍
+# Aeolus 🌍🔍
+
+*Data May Cry ekibinin projesi · a project by team Data May Cry*
 
 **NASA Space Apps Challenge 2026: _Be An Earth System Trend Detective!_**
+
+🌐 **Canlı site:** <https://aeolusclimate.vercel.app> · **API:** <https://aeolusclimate.vercel.app/#api>
 
 Kullanıcının dünyadan bir bölge ve bir değişken seçtiği, bu değişkenin 1980'den bugüne nasıl değiştiğini gördüğü ve bu değişimin **istatistiksel olarak anlamlı olup olmadığını** öğrendiği bir web aracı.
 

@@ -290,7 +290,7 @@ def write_tiles() -> None:
 
 
 if __name__ == "__main__":
-    # Remove only what this script writes: web/public/data/boundaries (map borders) lives here too.
+    # Remove only what this script writes (the map borders live in web/public/boundaries).
     OUT.mkdir(parents=True, exist_ok=True)
     for sub in ("regions", "trend_map", "tiles", "anomaly_frames"):
         if (OUT / sub).exists():

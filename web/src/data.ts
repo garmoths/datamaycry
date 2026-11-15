@@ -16,9 +16,7 @@
  * Written with AI assistance (Claude).
  */
 import {
-  DMC_MAGIC,
   MISSING_INT16,
-  SCHEMA_VERSION,
   type AnomalyFrames,
   type AnomalyFramesHeader,
   type ContinentId,
@@ -35,6 +33,9 @@ import {
 } from "../../contract/types.ts";
 
 import { analyzeTrend as analyzeRaw } from "./trend.ts";
+import { cellOf, checkVersion, DataError, parseDmc, tileOf, unpack } from "./dmc.ts";
+import { applyCaps } from "./caps.ts";
+export { cellOf, DataError, parseDmc, tileOf } from "./dmc.ts";
 import type { Badge, BadgesFile, TrendOptions, TrendResult } from "../../contract/types.ts";
 
 export { anomalies, monthLabels } from "./trend.ts";
@@ -45,33 +46,14 @@ const experimental = new Set<VarId>();
 /** Badges per region (filled by loadBadges; empty until loaded or if the file is missing). */
 let badgeIndex: Record<string, Badge[]> = {};
 
-/** Share of the badge's years that the analysed period covers. */
-function coverage(b: Badge, start: number, end: number): number {
-  const lo = Math.max(b.years.start, start);
-  const hi = Math.min(b.years.end, end);
-  return Math.max(0, hi - lo + 1) / (b.years.end - b.years.start + 1);
-}
-
 /**
- * Result card numbers for a series. "strong" is lowered to "possible" (and
- * `capped` + `cappedReason` set, so the card can explain why) when
- *  - the variable is experimental (VariableInfo.experimental), or
- *  - an independent source disagrees for this region (badge, contract 1.3).
+ * Result card numbers for a series, with the shared capping rules (caps.ts): "strong" is
+ * lowered to "possible" for experimental variables or when an independent source disagrees.
  * Region series also get their `badges` for this variable.
  */
 export function analyzeTrend(series: Series, opts?: TrendOptions): TrendResult {
-  let r = analyzeRaw(series, opts);
   const badges = series.region ? (badgeIndex[series.region] ?? []).filter((b) => b.var === series.var) : [];
-  if (badges.length) r = { ...r, badges };
-  if (r.level === "strong") {
-    if (experimental.has(series.var)) {
-      return { ...r, level: "possible", capped: true, cappedReason: "experimental" };
-    }
-    if (badges.some((b) => b.status === "disagree" && coverage(b, r.startYear, r.endYear) >= 0.8)) {
-      return { ...r, level: "possible", capped: true, cappedReason: "badge_disagree" };
-    }
-  }
-  return r;
+  return applyCaps(analyzeRaw(series, opts), experimental.has(series.var), badges);
 }
 
 /** 1.3: independent-source badges for all regions (GPCP precipitation, GHCN stations). */
@@ -105,7 +87,6 @@ const TILES_URL: string = withSlash(import.meta.env.VITE_TILES_URL || `${DATA_UR
 /** Base URL data is read from (shown in the About page / for debugging). */
 export const dataSource = { data: DATA_URL, tiles: TILES_URL };
 
-export class DataError extends Error {}
 
 // ─── Small caches so repeated clicks don't refetch ──────────────────────────
 const cache = new Map<string, Promise<unknown>>();
@@ -118,14 +99,6 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   return cache.get(key) as Promise<T>;
 }
 
-function checkVersion(v: string, what: string): void {
-  const major = (s: string) => s.split(".")[0];
-  if (major(v) !== major(SCHEMA_VERSION)) {
-    throw new DataError(
-      `${what}: schema ${v} is not compatible with this app (${SCHEMA_VERSION})`,
-    );
-  }
-}
 
 async function fetchOk(url: string): Promise<Response> {
   const res = await fetch(url);
@@ -139,35 +112,11 @@ async function fetchJson<T extends { schema_version: string }>(url: string): Pro
   return json;
 }
 
-/** Parse a "DMC1" binary file into its JSON header and int16 payload. */
-export function parseDmc<H extends { schema_version: string }>(
-  buf: ArrayBuffer,
-  what: string,
-): { header: H; data: Int16Array } {
-  const view = new DataView(buf);
-  const magic = String.fromCharCode(...new Uint8Array(buf, 0, 4));
-  if (magic !== DMC_MAGIC) throw new DataError(`${what}: not a DMC1 file`);
-  const hlen = view.getUint32(4, true);
-  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, hlen))) as H;
-  checkVersion(header.schema_version, what);
-  const offset = 8 + hlen;
-  if (offset % 8 !== 0) throw new DataError(`${what}: header not padded to 8 bytes`);
-  // Payload is little-endian int16; every Apple/Intel/ARM browser is little-endian.
-  const data = new Int16Array(buf, offset, (buf.byteLength - offset) / 2);
-  return { header, data };
-}
 
 async function fetchDmc<H extends { schema_version: string }>(url: string) {
   return parseDmc<H>(await (await fetchOk(url)).arrayBuffer(), url);
 }
 
-function unpack(raw: Int16Array, p: Packing): Float64Array {
-  const out = new Float64Array(raw.length);
-  for (let k = 0; k < raw.length; k++) {
-    out[k] = raw[k] === MISSING_INT16 ? NaN : raw[k] * p.scale + p.offset;
-  }
-  return out;
-}
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -258,17 +207,7 @@ export async function getContinentSeries(continent: ContinentId, varId: VarId): 
   };
 }
 
-/** Grid cell nearest to a coordinate. */
-export function cellOf(lat: number, lon: number): { i: number; j: number; lat: number; lon: number } {
-  const i = Math.min(360, Math.max(0, Math.round((lat + 90) / 0.5)));
-  const j = (((Math.round((lon + 180) / 0.625) % 576) + 576) % 576);
-  return { i, j, lat: -90 + i * 0.5, lon: -180 + j * 0.625 };
-}
 
-/** Tile that contains cell (i, j). The top tile row (ty = 17) holds 21 rows. */
-export function tileOf(i: number, j: number): { tx: number; ty: number } {
-  return { ty: Math.min(Math.floor(i / 20), 17), tx: Math.floor(j / 16) };
-}
 
 function fmtCoord(lat: number, lon: number): string {
   const ns = lat >= 0 ? "N" : "S";

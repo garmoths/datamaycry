@@ -14,6 +14,8 @@ import { VAR_GROUPS, VAR_ICONS } from "./content.ts";
 import { Icon } from "./icons.tsx";
 import { smartSigned, unitLabel, type Lang } from "./i18n.ts";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
+import { ChangeToggle } from "./ChangeToggle.tsx";
+import { asView, useChangeView, viewDecimals } from "./changeView.ts";
 import { useFingerprint, type FingerprintData, type FingerprintInputs } from "./useFingerprint.ts";
 import "./fingerprint.css";
 
@@ -40,6 +42,8 @@ const T = {
     tr: "Çubuk: değişimin, o değişkenin dünyadaki tipik büyük değişimine oranı.",
     en: "Bar: the change relative to a typical large change of that variable worldwide.",
   },
+  valDecade: { tr: "Değerler: 10 yıldaki değişim.", en: "Values: change per decade." },
+  valTotal: { tr: "Değerler: dönem boyunca toplam değişim.", en: "Values: total change over the period." },
   fromSeries: { tr: "aylık seriden, seçili dönem", en: "from the monthly series, selected period" },
   fromMap: { tr: "trend haritasından, 1980–2025", en: "from the trend map, 1980–2025" },
   level: {
@@ -51,6 +55,8 @@ const T = {
 
 
 interface Props extends FingerprintInputs {
+  /** the trend maps' period (map-based rows), for totals */
+  fullYears: [number, number];
   current: VarId;
   onVariable: (id: VarId) => void;
   onCountry: (id: string) => void;
@@ -69,9 +75,29 @@ const pctOf = (score: number) => (score >= 0.995 ? "99+" : String(Math.round(sco
 
 
 /** The nine rows and the "seen together" sentences. */
-export function FingerprintTable({ data, lang, variables, current, onVariable }: { data: FingerprintData; lang: Lang; variables: VariableInfo[]; current: VarId; onVariable: (id: VarId) => void }) {
+export function FingerprintTable({
+  data,
+  lang,
+  variables,
+  current,
+  onVariable,
+  years,
+  fullYears,
+}: {
+  data: FingerprintData;
+  lang: Lang;
+  variables: VariableInfo[];
+  current: VarId;
+  onVariable: (id: VarId) => void;
+  /** the card's period (series-based rows) and the trend maps' period (map-based rows), for totals */
+  years: [number, number];
+  fullYears: [number, number];
+}) {
+  const [view] = useChangeView();
   if (!data.ready) return <TextShimmer>{T.loading[lang]}</TextShimmer>;
   const { rows, insights } = data;
+  const anySeries = rows.some((r) => r.slope !== null && r.source === "series");
+  const anyMap = rows.some((r) => r.slope !== null && r.source === "map");
   const byId = new Map(variables.map((v) => [v.id, v]));
   return (
     <>
@@ -106,11 +132,21 @@ export function FingerprintTable({ data, lang, variables, current, onVariable }:
                 <span className="fp-bar" aria-hidden>
                   <i className={rel >= 0 ? "pos" : "neg"} style={{ width: `${(Math.abs(rel) / 1.5) * 50}%` }} />
                 </span>
-                <span className="fp-val">{r.slope === null ? T.noData[lang] : `${signed(lang, r.slope, v.decimals + 1)} ${unit}`}</span>
+                <span className="fp-val">
+                  {r.slope === null
+                    ? T.noData[lang]
+                    : `${signed(lang, asView(r.slope, view, r.source === "series" ? years : fullYears), viewDecimals(view, v.decimals))} ${unit}`}
+                </span>
                 <span className="fp-lvl">{r.slope === null ? "" : T.level[r.level][lang]}</span>
               </button>
             );
           })}
+      </div>
+      <div className="fp-foot">
+        <ChangeToggle lang={lang} />
+        <p className="fine">
+          {view === "total" ? T.valTotal[lang] : T.valDecade[lang]} {T.bar[lang]} {anySeries && anyMap ? `${T.fromSeries[lang]}; ${T.fromMap[lang]}` : anySeries ? T.fromSeries[lang] : T.fromMap[lang]}.
+        </p>
       </div>
     </>
   );
@@ -156,7 +192,15 @@ export function Fingerprint(p: Props) {
       <header className="card-head">
         <h3>{T.title[lang]}</h3>
       </header>
-      <FingerprintTable data={data} lang={lang} variables={p.variables} current={p.current} onVariable={p.onVariable} />
+      <FingerprintTable
+        data={data}
+        lang={lang}
+        variables={p.variables}
+        current={p.current}
+        onVariable={p.onVariable}
+        years={[p.opts.startYear ?? p.fullYears[0], p.opts.endYear ?? p.fullYears[1]]}
+        fullYears={p.fullYears}
+      />
       <h4>{T.similar[lang]}</h4>
       <SimilarPlaces data={data} lang={lang} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
     </>
