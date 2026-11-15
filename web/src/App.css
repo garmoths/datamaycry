@@ -2262,6 +2262,7 @@ dialog.method::backdrop {
   }
   .rail .dock { flex-direction: row; align-items: center; height: 52px; border-radius: var(--radius-m); }
   .rail .dock-item { justify-content: center; padding: 0 10px; }
+  .rail .dock-item:not(.on) .dock-name { display: none; }
   .rail .dock-sep { width: 1px; height: 20px; margin: 0 4px; background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.22), transparent); }
   .rail .dock-label { left: 50%; top: auto; bottom: calc(100% + 12px); translate: -50% 0; }
   .deck { bottom: calc(var(--sheet) + var(--edge) + 62px); }

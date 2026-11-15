@@ -1,12 +1,12 @@
 /**
  * Variable dock: the nine MERRA-2 variables in one floating bar along the bottom of the globe.
- * The chosen variable shows its name next to its icon and a soft background slides to it
- * (motion layoutId); the others are icons with a label on hover. Groups are split by thin
+ * Every variable shows its name next to its icon (on phones only the chosen one) and a soft
+ * background slides to the chosen one (motion layoutId); hover adds the unit. Groups are split by thin
  * separators. Started from Magic UI "Dock" (MIT), magnification removed so the bar stays calm.
  * Written with AI assistance (Claude).
  */
 import { Fragment, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { VarId, VariableInfo } from "./data.ts";
 import { VAR_GROUPS, VAR_ICONS } from "./content.ts";
 import { Icon } from "./icons.tsx";
@@ -77,19 +77,8 @@ function DockItem(p: {
     >
       {p.active && <motion.span layoutId="dock-bg" className="dock-bg" transition={spring} />}
       <Icon name={p.icon} size={18} />
-      <AnimatePresence initial={false}>
-        {p.active && (
-          <motion.span
-            className="dock-name"
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: "auto" }}
-            exit={{ opacity: 0, width: 0 }}
-            transition={p.reduce ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {p.name}
-          </motion.span>
-        )}
-      </AnimatePresence>
+      {/* every name stays on screen; on phones (row layout) CSS keeps only the chosen one */}
+      <span className="dock-name">{p.name}</span>
       {hover && !p.active && (
         <motion.span className="dock-label" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.12 }}>
           {p.label}

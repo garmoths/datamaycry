@@ -556,11 +556,7 @@ export function Panel(p: Props) {
           content: (
             <>
               <AnimatedTabs size="sm" tabs={(["anomaly", "raw"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={menuView} onChange={setView} />
-              <Chart series={shown!} result={result!} view={menuView} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
-              <button className="link-btn" onClick={() => p.onDrawer("chart")}>
-                <Icon name="expand" size={14} /> {tr ? "Dönem ve mevsim ayarlarıyla aç" : "Open with period and season controls"}
-              </button>
-            </>
+              <Chart series={shown!} result={result!} view={menuView} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />            </>
           ),
           onClick: () => setOpenRow(openRow === "graph" ? null : "graph"),
         }
