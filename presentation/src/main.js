@@ -95,7 +95,7 @@ if (/[?&]print-pdf\b/.test(location.search)) {
     img.className = "frame-shot";
     f.replaceWith(img);
   });
-  document.querySelectorAll(".frame-note").forEach((n) => (n.textContent = n.textContent.replace(" · tıklanabilir", "")));
+  document.querySelectorAll(".frame-note").forEach((n) => (n.innerHTML = n.innerHTML.replace(" · tıklanabilir", "")));
 }
 document.querySelectorAll("[data-live-label]").forEach((el) => (el.textContent = appUrl.replace(/^https?:\/\//, "")));
 document.querySelectorAll("[data-live-link]").forEach((a) => {
@@ -194,7 +194,8 @@ document.querySelectorAll(".tilt").forEach((el) => {
 
 const deck = new Reveal({
   hash: true,
-  slideNumber: "c/t",
+  // the NASA deck prints its own page footer
+  slideNumber: document.body.classList.contains("nasa") ? false : "c/t",
   controls: true,
   progress: true,
   center: true,
