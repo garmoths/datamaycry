@@ -546,3 +546,25 @@ body,
 .reveal .slides section .fragment {
   transition-duration: 0.45s;
 }
+
+/* ── logo ── */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  margin-bottom: 22px;
+}
+.brand-row h1 {
+  margin: 0;
+}
+.reveal img.logo {
+  margin: 0;
+  width: 150px;
+  height: 150px;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+}
+.reveal img.logo.small {
+  width: 84px;
+  height: 84px;
+  margin-bottom: 10px;
+}
