@@ -5,7 +5,7 @@
  * the pointer ("magnet"), and every row shows an inverted copy of itself where the band covers
  * it (clip-path). Changes from the original: no marquee, images or intro sweep; each row shows
  * our own content (index, title, a line, a value); a row with details opens them in place
- * under it (motion height), and the band rests on the open row when the pointer leaves; @hugeicons replaced by the project's Icon; plain CSS in reactbits.css
+ * under it (motion height) inside a thin see-through frame that marks the open row; @hugeicons replaced by the project's Icon; plain CSS in reactbits.css
  * (.fm-*). Reduced motion: the band jumps instead of gliding.
  */
 import { useEffect, useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
@@ -36,7 +36,7 @@ interface Metric {
   height: number;
 }
 
-export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.6, magnet = 0.22 }: {
+export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0.3, magnet = 0.08 }: {
   items: FlowItem[];
   /** the row whose details are open: the band rests there */
   active: string | null;
@@ -70,7 +70,9 @@ export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.
         return;
       }
       row.band.style.visibility = "visible";
-      row.band.style.clipPath = `inset(${(b.top - m.top).toFixed(2)}px 0px ${(m.top + m.height - b.bottom).toFixed(2)}px 0px round 12px)`;
+      const topR = b.top >= m.top - 0.5 ? 12 : 0;
+      const botR = b.bottom <= m.top + m.height + 0.5 ? 12 : 0;
+      row.band.style.clipPath = `inset(${(b.top - m.top).toFixed(2)}px 0px ${(m.top + m.height - b.bottom).toFixed(2)}px 0px round ${topR}px ${topR}px ${botR}px ${botR}px)`;
     });
   };
 
@@ -158,8 +160,6 @@ export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.
     kick();
   };
   const release = (toward: "top" | "bottom") => {
-    // the open topic keeps the band
-    if (activeRef.current >= 0) return goTo(activeRef.current, toward);
     const b = band.current;
     if (!b.shown) return;
     const point = toward === "top" ? b.toTop : b.toBottom;
@@ -216,8 +216,7 @@ export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.
   const goRef = useRef({ goTo, release });
   goRef.current = { goTo, release };
   useEffect(() => {
-    if (activeIndex >= 0) goRef.current.goTo(activeIndex, "center");
-    else if (band.current.index >= 0 && cursorY.current === null) goRef.current.release("bottom");
+    if (band.current.index >= 0 && cursorY.current === null) goRef.current.release("bottom");
   }, [activeIndex]);
   useEffect(() => {
     const l = loop.current;
@@ -229,7 +228,10 @@ export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.
     const list = listRef.current;
     if (list) cursorY.current = e.clientY - list.getBoundingClientRect().top;
     const k = rowAt(e.clientY);
-    if (k >= 0 && k !== band.current.index) goTo(k, halfOf(e.clientY, k));
+    const m = k >= 0 ? metrics.current[k] : null;
+    const y = cursorY.current ?? 0;
+    const inside = !!m && y - m.top >= 6 && m.top + m.height - y >= 6;
+    if (k >= 0 && k !== band.current.index && (inside || band.current.index < 0)) goTo(k, halfOf(e.clientY, k));
     else kick();
   };
   const onPointerLeave = (e: ReactPointerEvent<HTMLUListElement>) => {
