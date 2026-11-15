@@ -70,9 +70,9 @@ export function Icon({ name, size = 20, ...rest }: { name: IconName; size?: numb
 }
 
 /**
- * Logo: the Data May Cry sphere of flowing climate bands (brand/logo.png, made by
+ * Logo: the Aeolus sphere of flowing climate bands (brand/logo.png, made by
  * brand/make_icons.py). A 128 px PNG keeps it sharp at the top-bar size on 4× screens.
  */
 export function Logo({ size = 34 }: { size?: number }) {
-  return <img src="/logo-128.png" width={size} height={size} alt="Data May Cry" draggable={false} style={{ display: "block", flex: "none" }} />;
+  return <img src="/logo-128.png" width={size} height={size} alt="Aeolus" draggable={false} style={{ display: "block", flex: "none" }} />;
 }

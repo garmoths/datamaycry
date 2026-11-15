@@ -8,6 +8,7 @@ import type { Series } from "./data.ts";
 import { MONTHS, monthlyTrends, summarizeMonths, type MonthTrend } from "./monthly.ts";
 import { trendColor } from "./trendField.ts";
 import { smartSigned, type Lang } from "./i18n.ts";
+import { asView, useChangeView, viewDecimals, viewUnit } from "./changeView.ts";
 import "./monthstrip.css";
 
 const T = {
@@ -38,7 +39,9 @@ export function MonthStrip({ series, startYear, endYear, lang, unit, decimals }:
   const max = Math.max(1e-12, ...months.filter((m) => Number.isFinite(m.slope)).map((m) => Math.abs(m.slope)));
   const names = MONTHS[lang];
   const constant = months.filter((m) => m.level === "constant").length;
-  const per = `${unit}/${lang === "tr" ? "10 yıl" : "decade"}`;
+  // tooltips follow the app-wide per decade / total choice (changeView.ts)
+  const [view] = useChangeView();
+  const per = viewUnit(lang, unit, view, [startYear, endYear]);
 
   return (
     <>
@@ -51,7 +54,7 @@ export function MonthStrip({ series, startYear, endYear, lang, unit, decimals }:
           const ok = Number.isFinite(m.slope) && m.level !== "constant";
           const [r, g, b] = trendColor(ok ? m.slope / max : 0);
           const tip = ok
-            ? `${names[m.month - 1]}: ${signed(lang, m.slope, decimals + 1)} ${per} · ${T.level[m.level][lang]}`
+            ? `${names[m.month - 1]}: ${signed(lang, asView(m.slope, view, [startYear, endYear]), viewDecimals(view, decimals))} ${per} · ${T.level[m.level][lang]}`
             : `${names[m.month - 1]}: ${T.level[m.level][lang]}`;
           return (
             <li key={m.month} title={tip} aria-label={tip} className={`lvl-${m.level}`}>
