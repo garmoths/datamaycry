@@ -160,6 +160,33 @@
   }
 }
 
+/* ── left column on wide screens: period card, rail and legend in one straight line ── */
+@media (min-width: 901px) {
+  /* the period card is as wide as the logo + view switch above it (useLeftColumn.ts) */
+  .period {
+    width: var(--left-w, 380px);
+  }
+  /* the rail starts right under the period card instead of floating at mid-screen */
+  .rail {
+    top: calc(var(--left-bottom, 176px) + 10px);
+    translate: none;
+  }
+  /* the legend sits on the same left edge, as wide as the rail column */
+  .legend {
+    left: calc(var(--edge) - 84px);
+  }
+}
+
+/* map zoom / compass: a small horizontal strip in the bottom-right corner, under the side panel */
+@media (min-width: 901px) {
+  .maplibregl-ctrl-bottom-right { right: var(--edge); bottom: var(--edge); }
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0; }
+  .app .maplibregl-ctrl-group { display: flex; }
+  .app .maplibregl-ctrl-group button + button { border-top: 0; border-left: 1px solid var(--line); }
+  /* leave the strip's height (30 px + gap) free under the panel */
+  .side { max-height: calc(100% - var(--top-h) - var(--edge) - 42px); }
+}
+
 /* ── period scale on tablets and phones: compact, so the globe keeps its room ── */
 @media (max-width: 900px) {
   .period {

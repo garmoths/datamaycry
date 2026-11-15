@@ -1,7 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { readLink, writeLink } from "./share.ts";
-import { preloadPlotly } from "./plotlyLoader.ts";
 import { VariableDock } from "./VariableDock.tsx";
 import { ViewTabs } from "./ViewTabs.tsx";
 import type { Question } from "./content.ts";
@@ -52,7 +51,8 @@ import { t, type Lang } from "./i18n.ts";
 import { cellsInside, countryCode, rasterizeContinents, rasterizeCountries, summarize, summarizeCells } from "./continentStats.ts";
 import { cellsOfGrid } from "./areaStats.ts";
 import { RANK_TAB_LABEL } from "./useRankRows.ts";
-import type { PlaceCells } from "./Fingerprint.tsx";
+import { useLeftColumn } from "./useLeftColumn.ts";
+import type { PlaceCells } from "./useFingerprint.ts";
 import "./reactbits/reactbits.css";
 import "./App.css";
 import "./responsive.css";
@@ -120,6 +120,7 @@ export default function App() {
   const [stripes, setStripes] = useState<number[]>([]);
   const [tl, setTl] = useState<Timeline>({ min: 1980, max: 2025, from: 1980, to: 2025, year: 1980 });
   const [frames, setFrames] = useState<AnomalyFrames | null>(null);
+  useLeftColumn(!!variables, animOn && !!frames);
   const [animError, setAnimError] = useState<string | null>(null);
   const [preload, setPreload] = useState<number | null>(null);
   const [urlFor, setUrlFor] = useState<((frame: number, smooth: boolean) => string) | null>(null);
@@ -142,9 +143,8 @@ export default function App() {
         setBounds(b);
       })
       .catch((e: Error) => setFatal(e.message));
-    // warm the caches the first click will need: the chart library and the demo countries
+    // warm the caches the first click will need: the demo countries
     whenIdle(() => {
-      void preloadPlotly();
       for (const c of ["TUR", "EGY", "BRA"]) {
         void getRegionSeries(c, null, "T2M").catch(() => {});
         void loadAdmin1(c).catch(() => {}); // demo countries' provinces, so their markers show early

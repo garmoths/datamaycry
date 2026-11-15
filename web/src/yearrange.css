@@ -1,0 +1,181 @@
+/* YearRange.tsx: the period slider in the chart drawer. Uses the tokens in index.css. */
+.yr {
+  --thumb: 18px;
+  display: grid;
+  gap: 10px;
+  padding: 14px 14px 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.yr-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.yr-label {
+  font: 500 12px/1 var(--sans);
+  color: var(--muted);
+}
+.yr-years {
+  font: 600 18px/1 var(--display, var(--sans));
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.yr-years span {
+  margin: 0 4px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.yr-span {
+  font: 400 11.5px/1 var(--mono);
+  color: var(--muted);
+}
+.yr-reset {
+  margin-left: auto;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: none;
+  color: var(--text-2);
+  font: 500 11.5px/1 var(--sans);
+  cursor: pointer;
+}
+.yr-reset:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.yr-track {
+  position: relative;
+  height: var(--thumb);
+  margin: 14px calc(var(--thumb) / 2) 0;
+}
+.yr-rail,
+.yr-fill {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 3px;
+}
+.yr-rail {
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+.yr-fill {
+  left: var(--a);
+  right: calc(100% - var(--b));
+  background: linear-gradient(90deg, var(--down), #c9d2de 50%, var(--up));
+  box-shadow: 0 0 12px rgba(121, 170, 230, 0.18);
+  transition: left 0.08s, right 0.08s;
+}
+.yr-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  translate: -50% 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-3, #222);
+  border: 1px solid var(--line-strong);
+  font: 500 10.5px/1.2 var(--mono);
+  color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.yr-bubble.start {
+  left: var(--a);
+}
+.yr-bubble.end {
+  left: var(--b);
+}
+.yr-track:hover .yr-bubble,
+.yr-track:focus-within .yr-bubble {
+  opacity: 1;
+}
+
+/* the two native inputs share the track; only their thumbs take the pointer */
+.yr-track input {
+  position: absolute;
+  inset: 0 calc(var(--thumb) / -2);
+  width: calc(100% + var(--thumb));
+  height: var(--thumb);
+  margin: 0;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+}
+.yr-track input:focus {
+  outline: none;
+}
+.yr-track input::-webkit-slider-runnable-track {
+  background: none;
+  border: 0;
+}
+.yr-track input::-moz-range-track {
+  background: none;
+  border: 0;
+}
+.yr-track input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 50%;
+  background: #f4f6f9;
+  border: 3px solid var(--surface-solid, #111);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  pointer-events: auto;
+  transition: transform 0.15s var(--ease);
+}
+.yr-track input::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 50%;
+  background: #f4f6f9;
+  border: 3px solid var(--surface-solid, #111);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  pointer-events: auto;
+}
+.yr-track input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.12);
+}
+.yr-track input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.yr-ticks {
+  position: relative;
+  height: 10px;
+  margin: 0 calc(var(--thumb) / 2);
+}
+.yr-ticks span {
+  position: absolute;
+  top: 0;
+  translate: -50% 0;
+  font: 400 10.5px/1 var(--mono);
+  color: var(--muted);
+}
+.yr-ticks span::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 1px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yr-fill,
+  .yr-bubble,
+  .yr-track input::-webkit-slider-thumb {
+    transition: none;
+  }
+}

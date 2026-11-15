@@ -12,7 +12,7 @@
  *
  * Written with AI assistance (Claude).
  */
-import { cloneElement, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   analyzeTrend,
@@ -30,8 +30,8 @@ import {
   type TrendMap,
 } from "./data.ts";
 import { Chart, type ChartView } from "./Chart.tsx";
-import { cardText, decimalsFor, meaningHead, noTrendText, robustText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
-import { emergence, robustness, SEASONS, type Season } from "./trend.ts";
+import { cardText, decimalsFor, meaningHead, noTrendText, smartSigned, t, unitLabel, type Lang, type StringKey } from "./i18n.ts";
+import { emergence, SEASONS, type Season } from "./trend.ts";
 
 const SEASON_LABEL: Record<Season, StringKey> = {
   all: "seasonAll", winter: "seasonWinter", spring: "seasonSpring", summer: "seasonSummer", autumn: "seasonAutumn",
@@ -41,13 +41,19 @@ import { NumberTicker } from "./NumberTicker.tsx";
 import type { AreaSummary } from "./continentStats.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
-import { Provenance, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
+import { Provenance, References, type ProvinceItem } from "./Evidence.tsx";
 import { Spotlight } from "./Spotlight.tsx";
 import { ChangeToggle } from "./ChangeToggle.tsx";
 import { asView, useChangeView } from "./changeView.ts";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
-import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
+import { YearRange } from "./YearRange.tsx";
+import { Fingerprint, FingerprintTable, SimilarPlaces } from "./Fingerprint.tsx";
+import { useFingerprint, type PlaceCells } from "./useFingerprint.ts";
+import { FlowingMenu, type FlowItem } from "./reactbits/FlowingMenu.tsx";
+import "./sidemenu.css";
+import { AnimatedTabs } from "./uilab/AnimatedTabs.tsx";
+import { monthlyTrends, MONTHS } from "./monthly.ts";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
 import { MonthStrip } from "./MonthStrip.tsx";
@@ -160,6 +166,11 @@ export function Panel(p: Props) {
   const [season, setSeason] = useState<Season>("all");
   const [printing, setPrinting] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // the menu row that is open (its details expand in place)
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  // phones: the nine trend maps (~15 MB) only load when a row that needs them is opened,
+  // and the menu starts closed so every row fits on the bottom sheet
+  const [isPhone] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches);
   const { years, onYears: setYears } = p;
   // during time travel the analysed period follows the animation year
   const animYear = p.anim?.year, animStart = p.anim?.from;
@@ -213,14 +224,6 @@ export function Panel(p: Props) {
         ? emergence(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, animFrom, animTo)
         : null,
     [shown, animFrom, animTo, season],
-  );
-  // Start/end-year sensitivity (display only): same test with the period moved by 5 years
-  const robust = useMemo(
-    () =>
-      shown && result && result.status === "ok"
-        ? robustness(shown, { months: SEASONS[season] ? [...SEASONS[season]!] : undefined }, result, variables.test_years)
-        : null,
-    [shown, result, season, variables.test_years],
   );
   // the bootstrap takes ~30 ms: it runs after the card is on screen, when the browser is idle
   const [bendOf, setBendOf] = useState<{ result: typeof result; bend: ReturnType<typeof bendFor> } | null>(null);
@@ -346,12 +349,6 @@ export function Panel(p: Props) {
       onAdmin1={p.onAdmin1}
     />
   ) : null;
-  const reportBtn =
-    hasAnswer || p.area ? (
-      <button className="link-btn report-btn" onClick={() => setPrinting(true)}>
-        <Icon name="download" size={14} /> {tr ? "Rapor (PDF)" : "Report (PDF)"}
-      </button>
-    ) : null;
   const areaFinding =
     p.area && !hasAnswer
       ? tr
@@ -374,7 +371,7 @@ export function Panel(p: Props) {
         <>
           {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
           {rankBadge}
-          {fingerprintEl && cloneElement(fingerprintEl, { eager: true })}
+          {fingerprintEl}
           {hasAnswer && ok && <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />}
         </>
       }
@@ -384,7 +381,7 @@ export function Panel(p: Props) {
 
   // ── the answer ─────────────────────────────────────────────────────────────
   const answer = hasAnswer ? (
-    <Card className={`verdict ${verdict!.cls}`}>
+    <div className={`verdict ${verdict!.cls}`}>
       {ok && (
         <div className="meter" role="img" aria-label={`${t(lang, "evidence")}: ${t(lang, result!.level)}`}>
           {(["none", "possible", "strong"] as const).map((lv) => (
@@ -408,8 +405,6 @@ export function Panel(p: Props) {
       )}
       <p className="card-text">{verdict!.body}</p>
       {bend && <BendNote bend={bend} lang={lang} unit={unit} decimals={v.decimals} />}
-      {rankBadge}
-      {reportBtn}
       {result!.cappedReason === "badge_disagree" && (
         <p className="warn">
           <b>{t(lang, "cappedTitle")}</b> {t(lang, "cappedBadge")}
@@ -444,14 +439,9 @@ export function Panel(p: Props) {
           )}
         </p>
       )}
-      {ok && !p.anim && robust && robust.windows.length > 0 && (
-        <p className={robust.same === robust.windows.length ? "note" : "warn"} title={t(lang, "robustTitle")}>
-          {robustText(lang, robust.same, robust.windows.length)}
-        </p>
-      )}
-    </Card>
+    </div>
   ) : p.area ? (
-    <Card className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
+    <div className={`verdict area ${p.area.summary.meanSlope >= 0 ? "rising" : "falling"}`}>
       <p className="label">
         {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")}
       </p>
@@ -465,8 +455,6 @@ export function Panel(p: Props) {
         {changeToggle}
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
-      {rankBadge}
-      {reportBtn}
       <p className="card-text">
         {p.area.kind === "province"
           ? p.area.nearest
@@ -483,7 +471,7 @@ export function Panel(p: Props) {
             : `This summary is for ${variables.test_years.start}–${variables.test_years.end}; the chosen period is shown on the map.`}
         </p>
       )}
-    </Card>
+    </div>
   ) : (
     <Card className="verdict idle">
       {shownError ? (
@@ -499,58 +487,177 @@ export function Panel(p: Props) {
     </Card>
   );
 
-  // ── shape over time ────────────────────────────────────────────────────────
-  const shape =
-    hasAnswer && ok ? (
-      <Card className="shape">
-        <header className="card-head end">
-          <button className="link-btn" onClick={() => p.onDrawer("chart")}>
-            <Icon name="expand" size={14} /> {tr ? "Grafiği aç" : "Open chart"}
-          </button>
-        </header>
-        <Sparkline result={result!} unit={unit} lang={lang} bendYear={bend?.year} />
-      </Card>
-    ) : null;
+  // ── side menu (React Bits FlowingMenu): one row per topic, the answer on the right; ──
+  // ── a row opens its details in the drawer on the left                                ──
+  const wantsMaps = !isPhone || openRow === "fingerprint" || openRow === "similar";
+  const fp = useFingerprint(
+    { lang, variables: variables.variables, target: p.target, opts: cardOpts, place: p.place, countryGrid: p.countryGrid, countries: p.countryRows, countryId: p.countryId, provinceFeatures: p.provinceFeatures },
+    !!p.place && wantsMaps,
+  );
+  const months = useMemo(
+    () => (hasAnswer && ok && !p.anim && shown ? monthlyTrends(shown, { startYear: eff[0], endYear: eff[1] }) : null),
+    [hasAnswer, ok, p.anim, shown, eff],
+  );
+  const fmtS = (x: number, d: number) => (tr ? smartSigned(x, d).replace(".", ",") : smartSigned(x, d));
 
-  // change by month (MonthStrip.tsx): only with a monthly series, not during time travel
-  const monthCard =
-    hasAnswer && ok && !p.anim ? (
-      <Card className="months">
-        <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />
-      </Card>
-    ) : null;
-
+  const trendTitle = tr ? `${v.name[lang]} trendi` : `${v.name[lang]} trend`;
+  const menuItems: FlowItem[] = [];
+  if (hasAnswer || p.area) {
+    const slope = hasAnswer ? (ok ? result!.slopePerDecade : NaN) : p.area!.summary.meanSlope;
+    const level = hasAnswer ? (ok ? result!.level : "none") : "possible";
+    const dir = !Number.isFinite(slope) || level === "none" ? "flat" : slope > 0 ? "up" : "down";
+    const word = hasAnswer
+      ? verdict!.meaning ?? (level === "none" ? (tr ? "Belirgin değişim yok" : "No clear change") : t(lang, level))
+      : t(lang, p.area!.kind === "world" ? "meanTrendAll" : "meanTrend");
+    const showNum = Number.isFinite(slope) && (level !== "none" || !hasAnswer);
+    menuItems.push({
+      id: "trend",
+      icon: VAR_ICONS[v.id],
+      title: trendTitle,
+      // closed: only the number (per decade or total, as the card's toggle says); open: the card
+      // below shows the word, the number and the toggle, so the row keeps only its title
+      feature:
+        openRow === "trend" ? undefined : showNum ? (
+          (() => {
+            const total = changeView === "total";
+            const value = total ? (hasAnswer ? result!.totalChange : areaTotal) : slope;
+            const span = hasAnswer ? `${result!.startYear}–${result!.endYear}` : `${variables.test_years.start}–${variables.test_years.end}`;
+            return (
+              <span className="feat">
+                <span className={`feat-num ${dir}`}>
+                  <NumberTicker className="big" value={value} decimals={decimalsFor(value, total ? v.decimals : v.decimals + 1)} signed comma={tr} />
+                  <small>
+                    {total ? `${unit} · ${span}` : per}
+                    {season !== "all" && <span className="feat-season"> · {t(lang, SEASON_LABEL[season])}</span>}
+                  </small>
+                </span>
+              </span>
+            );
+          })()
+        ) : (
+          <span className="feat">
+            <span className={`feat-word ${dir}`}>{word}</span>
+          </span>
+        ),
+      content: answer,
+      onClick: () => setOpenRow(openRow === "trend" ? null : "trend"),
+    });
+  }
+  const menuView = view === "seasons" ? "anomaly" : view;
+  // the chart: its own row, fourth (after the fingerprint and similar places)
+  const graphItem: FlowItem | null =
+    hasAnswer && ok
+      ? {
+          id: "graph",
+          icon: "chart",
+          title: tr ? "Grafik" : "Chart",
+          sub: tr ? `Yıllık fark ve eğilim, ${eff[0]}–${eff[1]}` : `Yearly difference and trend, ${eff[0]}–${eff[1]}`,
+          content: (
+            <>
+              <AnimatedTabs size="sm" tabs={(["anomaly", "raw"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={menuView} onChange={setView} />
+              <Chart series={shown!} result={result!} view={menuView} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
+              <button className="link-btn" onClick={() => p.onDrawer("chart")}>
+                <Icon name="expand" size={14} /> {tr ? "Dönem ve mevsim ayarlarıyla aç" : "Open with period and season controls"}
+              </button>
+            </>
+          ),
+          onClick: () => setOpenRow(openRow === "graph" ? null : "graph"),
+        }
+      : null;
+  if (!p.place && graphItem) menuItems.push(graphItem);
+  if (p.place) {
+    const tested = fp.rows.filter((r) => r.slope !== null);
+    const clear = tested.filter((r) => r.level === "strong").length;
+    menuItems.push({
+      id: "fingerprint",
+      icon: "grid",
+      title: tr ? "İklim parmak izi" : "Climate fingerprint",
+      sub: fp.ready && fp.insights[0] ? fp.insights[0].text[lang] : tr ? "9 değişken bir arada" : "All 9 variables together",
+      value: fp.ready ? (
+        <>
+          <b>
+            {clear}/{tested.length}
+          </b>
+          <small>{tr ? "net değişen" : "clearly changing"}</small>
+        </>
+      ) : (
+        <>
+          <b>—</b>
+          <small>{tr ? "aç ve hesapla" : "open to compute"}</small>
+        </>
+      ),
+      content: <FingerprintTable data={fp} lang={lang} variables={variables.variables} current={v.id} onVariable={p.onVariable} years={eff} fullYears={fullYears} />,
+      onClick: () => setOpenRow(openRow === "fingerprint" ? null : "fingerprint"),
+    });
+    const top = fp.similar.near[0] ?? fp.similar.world[0];
+    menuItems.push({
+      id: "similar",
+      icon: "globe",
+      title: tr ? "Benzer yerler" : "Similar places",
+      sub: top ? (
+        <>
+          {tr ? "En yakın: " : "Closest: "}
+          <b>{top.name[lang]}</b>
+        </>
+      ) : fp.ready ? (
+        tr ? "Yeterince benzeyen yer yok" : "No close match"
+      ) : tr ? (
+        "Aynı şekilde değişen yerler"
+      ) : (
+        "Places changing the same way"
+      ),
+      value: top ? (
+        <>
+          <b>%{Math.min(99, Math.round(top.score * 100))}</b>
+          <small>{tr ? "benzerlik" : "alike"}</small>
+        </>
+      ) : undefined,
+      content: <SimilarPlaces data={fp} lang={lang} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />,
+      onClick: () => setOpenRow(openRow === "similar" ? null : "similar"),
+    });
+    if (graphItem) menuItems.push(graphItem);
+  }
+  if (months) {
+    const fastest = months
+      .filter((m) => Number.isFinite(m.slope) && (m.level === "strong" || m.level === "possible"))
+      .sort((a, b) => Math.abs(b.slope) - Math.abs(a.slope))[0];
+    menuItems.push({
+      id: "months",
+      icon: "clock",
+      title: tr ? "Aylara göre" : "By month",
+      sub: fastest ? (tr ? "En hızlı değişen ay" : "The fastest-changing month") : tr ? "Hiçbir ayda net değişim yok" : "No month changes clearly",
+      value: fastest ? (
+        <>
+          <b className={fastest.slope >= 0 ? "up" : "down"}>{MONTHS[lang][fastest.month - 1]}</b>
+          <small>
+            {fmtS(fastest.slope, v.decimals + 1)} {unit}
+          </small>
+        </>
+      ) : (
+        <>
+          <b>—</b>
+          <small>{tr ? "12 test" : "12 tests"}</small>
+        </>
+      ),
+      content: (
+        <>
+          <h3 className="fm-sec">{t(lang, "seasons")}</h3>
+          <Chart series={shown!} result={result!} view="seasons" unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} />
+          <h3 className="fm-sec">{tr ? "Her ayın kendi eğilimi" : "Each month's own trend"}</h3>
+          <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />
+        </>
+      ),
+      onClick: () => setOpenRow(openRow === "months" ? null : "months"),
+    });
+  }
   // ── drawer contents ───────────────────────────────────────────────────────
   const chartPane = hasAnswer ? (
     <>
       <h2>{place}</h2>
-      <div className="seg" role="group">
-        {(["anomaly", "raw", "seasons"] as const).map((k) => (
-          <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>
-            {t(lang, k)}
-          </button>
-        ))}
-      </div>
+      <AnimatedTabs tabs={(["anomaly", "raw", "seasons"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={view} onChange={setView} />
       <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
       <div className="controls">
-        <label>
-          {t(lang, "period")} <b>{years[0]}–{years[1]}</b>
-          <div className="range2">
-            <input type="range" aria-label="start year" min={variables.test_years.start} max={variables.test_years.end} value={years[0]} onChange={(e) => setYears([Math.min(+e.target.value, years[1]), years[1]])} />
-            <input type="range" aria-label="end year" min={variables.test_years.start} max={variables.test_years.end} value={years[1]} onChange={(e) => setYears([years[0], Math.max(+e.target.value, years[0])])} />
-          </div>
-        </label>
-        <div>
-          {t(lang, "season")}
-          <div className="seg small" role="group">
-            {(["all", "winter", "spring", "summer", "autumn"] as const).map((s) => (
-              <button key={s} className={season === s ? "on" : ""} onClick={() => setSeason(s)}>
-                {t(lang, SEASON_LABEL[s])}
-              </button>
-            ))}
-          </div>
-          <p className="fine">{t(lang, "seasonHint")}</p>
-        </div>
+        <YearRange min={variables.test_years.start} max={variables.test_years.end} value={years} onChange={setYears} lang={lang} />
       </div>
       <button className="link-btn" onClick={downloadCsv}>
         <Icon name="download" size={15} /> {t(lang, "downloadCsv")}
@@ -644,9 +751,16 @@ export function Panel(p: Props) {
         {/* phones and tablets: the column is a bottom sheet; this handle makes it taller or shorter */}
         <button className="sheet-grab" onClick={() => setSheetOpen((o) => !o)} aria-expanded={sheetOpen} aria-label={tr ? (sheetOpen ? "Paneli küçült" : "Paneli büyüt") : sheetOpen ? "Shrink the panel" : "Expand the panel"} />
         <header className="side-head">
-          <button className="icon-btn side-close" onClick={p.onClose} aria-label={t(lang, "closePanel")}>
-            <Icon name="close" size={16} />
-          </button>
+          <div className="head-actions">
+            {(hasAnswer || p.area) && (
+              <button className="icon-btn" onClick={() => setPrinting(true)} aria-label={tr ? "Rapor (PDF)" : "Report (PDF)"} data-tip={tr ? "Rapor (PDF)" : "Report (PDF)"}>
+                <Icon name="download" size={16} />
+              </button>
+            )}
+            <button className="icon-btn" onClick={p.onClose} aria-label={t(lang, "closePanel")}>
+              <Icon name="close" size={16} />
+            </button>
+          </div>
           <nav className="trail" aria-label="breadcrumb">
             {p.trail.slice(0, -1).map((s, i) => (
               <button key={i} className="crumb" onClick={s.go}>
@@ -663,13 +777,25 @@ export function Panel(p: Props) {
               <span className="tag exp">{t(lang, "experimentalTag")}</span>
             </p>
           )}
+          {hasAnswer && (
+            <div className="side-season" title={t(lang, "seasonHint")}>
+              <AnimatedTabs
+                size="sm"
+                label={t(lang, "season")}
+                tabs={(["all", "winter", "spring", "summer", "autumn"] as const).map((x) => ({ id: x, label: t(lang, SEASON_LABEL[x]) }))}
+                value={season}
+                onChange={setSeason}
+              />
+            </div>
+          )}
         </header>
-        <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
-          {answer}
-          {fingerprintEl && <Card className="fingerprint">{fingerprintEl}</Card>}
-          {shape}
-          {monthCard}
-        </motion.div>
+        {menuItems.length ? (
+          <FlowingMenu items={menuItems} active={openRow} label={tr ? "Analiz" : "Analysis"} />
+        ) : (
+          <motion.div key={sceneKey} className="side-body" variants={scene} initial="hidden" animate="show">
+            {answer}
+          </motion.div>
+        )}
       </motion.aside>
       )}
       </AnimatePresence>
@@ -684,13 +810,11 @@ export function Panel(p: Props) {
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
           >
             <div className="drawer-head">
-              <div className="seg" role="tablist">
-                {DRAWER_TABS.map((x) => (
-                  <button key={x.id} role="tab" aria-selected={p.drawer === x.id} className={p.drawer === x.id ? "on" : ""} onClick={() => p.onDrawer(x.id)}>
-                    <Icon name={x.icon} size={14} /> {x.label ? x.label[lang] : t(lang, x.key!)}
-                  </button>
-                ))}
-              </div>
+              <AnimatedTabs
+                tabs={DRAWER_TABS.map((x) => ({ id: x.id, label: <><Icon name={x.icon} size={14} /> {x.label ? x.label[lang] : t(lang, x.key!)}</> }))}
+                value={p.drawer}
+                onChange={p.onDrawer}
+              />
               <button className="icon-btn" onClick={() => p.onDrawer(null)} aria-label={t(lang, "close")}>
                 <Icon name="close" size={16} />
               </button>

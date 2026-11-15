@@ -173,3 +173,15 @@
   font-size: 11.5px;
   color: var(--muted);
 }
+
+/* per decade / total switch under the table, with the note on what the values are */
+.fp-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+}
+.fp-foot .fine {
+  margin: 0;
+}

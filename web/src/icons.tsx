@@ -9,13 +9,16 @@ export type IconName =
   | "globe" | "grid" | "info" | "chevron" | "language"
   | "thermometer" | "droplet" | "wind" | "rain" | "evaporation" | "runoff"
   | "sprout" | "snow" | "haze" | "sun" | "drought" | "flame" | "kite" | "search" | "link" | "chart" | "download" | "check" | "alert" | "book" | "pin" | "flag" | "close" | "expand"
-  | "play" | "pause" | "clock" | "panel";
+  | "play" | "pause" | "clock" | "panel" | "back" | "menu" | "arrowRight";
 
 const PATHS: Record<IconName, string> = {
   globe: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M3 12h18 M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9 M12 3c-2.6 2.6-3.8 5.6-3.8 9s1.2 6.4 3.8 9",
   grid: "M4 4h16v16H4z M4 9.33h16 M4 14.67h16 M9.33 4v16 M14.67 4v16",
   info: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 11v5 M12 7.5v.5",
   chevron: "M6 9l6 6 6-6",
+  back: "M15 5l-7 7 7 7",
+  menu: "M4 7h16 M4 12h16 M4 17h10",
+  arrowRight: "M9 5l7 7-7 7",
   language: "M4 5h9 M8.5 3v2 M6 5c.8 3 2.8 5.3 5.5 6.5 M11 5c-.8 3-2.8 5.3-5.5 6.5 M13 21l4-9 4 9 M14.3 18h5.4",
   thermometer: "M14 14.5V5a2 2 0 1 0-4 0v9.5a4 4 0 1 0 4 0z M12 9v7",
   droplet: "M12 3.5c3.5 4.3 6 7.6 6 10.6a6 6 0 0 1-12 0c0-3 2.5-6.3 6-10.6z",

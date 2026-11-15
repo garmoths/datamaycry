@@ -64,7 +64,7 @@ export function RankBadge({ scope, id, inputs, onOpen, cardFromSeries }: { scope
 /** The drawer tab. */
 export function RankingPane(p: RankInputs & { countryId: string | null; continent: string | null; selected: string | null; onCountry: (id: string) => void; onAdmin1: (country: string, id: string) => void }) {
   const { lang, variable: v } = p;
-  const [kind, setKind] = useState<"countries" | "provinces">(p.countryId ? "provinces" : "countries");
+  const [kind, setKind] = useState<"countries" | "provinces">(p.selected && p.selected !== p.countryId ? "provinces" : "countries");
   const [dir, setDir] = useState<RankDir>("up");
   const [metric, setMetric] = useState<RankMetric>("slope");
   const useProvinces = kind === "provinces" && !!p.countryId;

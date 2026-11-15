@@ -1,0 +1,126 @@
+/* The drawer chart (Chart.tsx): frame, stripes, our own legend. Uses the tokens in index.css. */
+.chart-wrap {
+  position: relative;
+  margin: 14px 0;
+  padding: 14px 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.035), transparent 70%),
+    rgba(255, 255, 255, 0.015);
+  overflow: hidden;
+}
+.chart-wrap .chart {
+  height: 280px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+.chart-wrap.ready .chart {
+  opacity: 1;
+  transform: none;
+}
+.chart-unit {
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  font: 500 10.5px var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.chart-wrap .stripes {
+  height: 14px;
+  margin-top: 0;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+/* the unit sits above the y axis labels: with stripes, push the unit up to their row */
+.chart-wrap .stripes ~ .chart {
+  margin-top: 0;
+}
+.chart-wrap .stripes span {
+  animation: stripe-in 0.5s var(--ease) both;
+}
+@keyframes stripe-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.2);
+  }
+}
+
+/* legend chips under the plot */
+.chart-keys {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 6px 12px 0;
+  padding: 0;
+}
+.chart-keys button,
+.chart-keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  font: 500 11.5px/1 var(--sans);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.chart-keys button {
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+.chart-keys button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line);
+}
+.chart-keys button.off {
+  opacity: 0.45;
+}
+.chart-keys button.off .sw {
+  filter: grayscale(1);
+}
+.sw {
+  flex: none;
+  display: inline-block;
+  width: 16px;
+  height: 10px;
+  border-radius: 2px;
+}
+.sw.line {
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--c);
+}
+.sw.dash {
+  height: 0;
+  border-top: 1.5px dashed var(--c);
+}
+.sw.dot {
+  height: 0;
+  border-top: 2px dotted var(--c);
+}
+.sw.band {
+  background: var(--c);
+  height: 12px;
+  width: 10px;
+  border-radius: 3px;
+}
+.sw.split {
+  width: 12px;
+  background: linear-gradient(90deg, var(--up) 0 50%, var(--down) 50% 100%);
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-wrap .chart,
+  .chart-wrap .stripes span {
+    transition: none;
+    animation: none;
+  }
+}

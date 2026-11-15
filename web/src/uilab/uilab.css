@@ -1,0 +1,73 @@
+/* Plain-CSS versions of the ui-lab pieces in this folder. Uses the tokens in index.css. */
+.hover-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.atabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  max-width: 100%;
+}
+.atabs button {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 7px 13px;
+  border-radius: 8px;
+  color: var(--muted);
+  font: 500 13px/1 var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.atabs.sm button {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.atabs button:hover {
+  color: var(--text-2);
+}
+.atabs button.on {
+  color: var(--text);
+}
+.atabs-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: var(--surface-3, rgba(255, 255, 255, 0.1));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.atabs-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* inside a narrow column (the side menu): the tabs share the width, long labels wrap */
+.fm-inner .atabs {
+  display: flex;
+  width: 100%;
+}
+.fm-inner .atabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 6px;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+.fm-inner .atabs-label {
+  justify-content: center;
+}
