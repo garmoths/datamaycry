@@ -1,168 +1,168 @@
-# Gereklilikler
+# Requirements
 
-Data May Cry'ı geliştirmek ve çalıştırmak için gereken her şey: hesaplar, araçlar, paketler, gizli bilgiler ve limitler.
-Sürümler 2026-11-14'te kurulup doğrulandı. Kesin sürümler kilit dosyalarında: `web/package-lock.json` ve `worker/uv.lock`.
+Everything needed to develop and run Data May Cry: accounts, tools, packages, secrets and limits.
+Versions were installed and verified on 2026-11-14. Exact versions are in the lock files: `web/package-lock.json` and `worker/uv.lock`.
 
-| Parça | Kim | Dil | Nerede çalışır |
+| Part | Who | Language | Where it runs |
 |---|---|---|---|
-| **Backend (worker)** | Enes | Python | Enes'in Mac'i (M2). Canlıda sunucu yok |
-| **Frontend (web)** | Rumet + Enes | TypeScript | Tarayıcı, Vercel'de statik site |
-| **Sözleşme (contract)** | İkisi | TS + JSON Schema | İki tarafın ortak dosya formatı |
+| **Backend (worker)** | Enes | Python | Enes's Mac (M2). No server in production |
+| **Frontend (web)** | Rumet + Enes | TypeScript | Browser, static site on Vercel |
+| **Contract** | Both | TS + JSON Schema | The shared file format between the two sides |
 
 ---
 
-## 1. Hesaplar
+## 1. Accounts
 
-| Hesap | Kim | Ne için | Durum |
+| Account | Who | What for | Status |
 |---|---|---|---|
-| GitHub (`garmoths/datamaycry`, public) | İkisi | Kod, PR, CI | ✅ Rumet'in daveti bekliyor |
-| NASA Earthdata (https://urs.earthdata.nasa.gov) | İkisi | MERRA-2 indirme | ✅ Enes (GES DISC onaylı) · ⬜ Rumet |
-| Earthdata → **NASA GESDISC DATA ARCHIVE** uygulama onayı | Enes | Onay olmadan indirme 403 verir | ✅ |
-| Cloudflare R2 | Enes | Nokta modu karoları (~2,3 GB) | ✅ |
-| Cloudflare bütçe uyarısı ($1) | Enes | Sürpriz fatura olmasın | ⬜ |
-| Vercel (Hobby, repo sahibinin hesabı) | Enes | Frontend hosting | ✅ |
-| Copernicus CDS | Enes | ERA5 doğrulama verisi (CC-BY) | ⬜ |
-| Space Apps takım kaydı (aynı Local Event) | İkisi | Teslim | ✅ |
+| GitHub (`garmoths/datamaycry`, public) | Both | Code, PRs, CI | ✅ Rumet's invite pending |
+| NASA Earthdata (https://urs.earthdata.nasa.gov) | Both | Downloading MERRA-2 | ✅ Enes (GES DISC approved) · ⬜ Rumet |
+| Earthdata → **NASA GESDISC DATA ARCHIVE** application approval | Enes | Downloads return 403 without it | ✅ |
+| Cloudflare R2 | Enes | Point mode tiles (~2.3 GB) | ✅ |
+| Cloudflare budget alert ($1) | Enes | No surprise bills | ⬜ |
+| Vercel (Hobby, repo owner's account) | Enes | Frontend hosting | ✅ |
+| Copernicus CDS | Enes | ERA5 validation data (CC-BY) | ⬜ |
+| Space Apps team registration (same Local Event) | Both | Submission | ✅ |
 
 ---
 
 ## 2. Backend (worker) — Python
 
-### 2.1 Araçlar
+### 2.1 Tools
 
-| Araç | Sürüm | Not |
+| Tool | Version | Note |
 |---|---|---|
-| Python | **≥ 3.12** (geliştirmede 3.13) | `uv` doğru sürümü kendisi kurar |
-| [uv](https://docs.astral.sh/uv/) | ≥ 0.12 | Paket ve sanal ortam yöneticisi |
+| Python | **≥ 3.12** (3.13 in development) | `uv` installs the right version itself |
+| [uv](https://docs.astral.sh/uv/) | ≥ 0.12 | Package and virtual environment manager |
 | git | ≥ 2.40 | |
 
-### 2.2 Kurulum
+### 2.2 Setup
 
 ```bash
 cd worker
-uv sync                 # .venv oluşturur, uv.lock'taki sürümleri kurar
-uv run mock.py          # sahte veriyi üretir ve sözleşmeye göre doğrular
+uv sync                 # creates .venv, installs the versions in uv.lock
+uv run mock.py          # generates the fake data and validates it against the contract
 uv run validate.py ../web/public/data
 ```
 
-`uv` kullanmayanlar için aynı sürümler `requirements.txt` dosyasında:
+For those not using `uv`, the same versions are in `requirements.txt`:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-### 2.3 Paketler
+### 2.3 Packages
 
-| Paket | Sürüm | Ne için |
+| Package | Version | What for |
 |---|---|---|
-| `earthaccess` | 0.19.0 | Earthdata girişi, MERRA-2 granül arama, kimlikli HTTP oturumu |
-| `xarray` | 2026.9.0 | NetCDF dosyalarını okuma |
-| `h5netcdf`, `netCDF4` | 1.8.3, 1.7.5 | xarray'in NetCDF4/HDF5 okuyucuları |
-| `numpy` | 2.5.4 | Vektörel hesaplama (MK + Sen) |
-| `scipy` | 1.18.1 | Normal dağılım, istatistik yardımcıları |
-| `pandas` | 3.1.1 | Tablo işlemleri |
-| `pyarrow` | 26.0.1 | Ara Parquet dosyaları |
-| `duckdb` | 2.0.0 | Lokal kolon bazlı veritabanı |
-| `pymannkendall` | 1.4.3 | Referans MK testi (parite testi, pre-whitening) |
-| `geopandas`, `shapely` | 1.2.0, 2.2.0 | Hücre → il/ülke eşlemesi, alan ağırlıkları |
-| `boto3` | 1.43.117 | R2'ye yükleme (S3 API) |
-| `python-dotenv` | 1.2.4 | `.env` dosyasını okuma |
-| `jsonschema` | 4.26.0 | Üretilen dosyaları sözleşmeye göre doğrulama |
-| `pytest` (dev) | ≥ 8 | Birim testleri |
+| `earthaccess` | 0.19.0 | Earthdata login, MERRA-2 granule search, authenticated HTTP session |
+| `xarray` | 2026.9.0 | Reading NetCDF files |
+| `h5netcdf`, `netCDF4` | 1.8.3, 1.7.5 | xarray's NetCDF4/HDF5 readers |
+| `numpy` | 2.5.4 | Vectorized computation (MK + Sen) |
+| `scipy` | 1.18.1 | Normal distribution, statistics helpers |
+| `pandas` | 3.1.1 | Table operations |
+| `pyarrow` | 26.0.1 | Intermediate Parquet files |
+| `duckdb` | 2.0.0 | Local columnar database |
+| `pymannkendall` | 1.4.3 | Reference MK test (parity test, pre-whitening) |
+| `geopandas`, `shapely` | 1.2.0, 2.2.0 | Cell → province/country mapping, area weights |
+| `boto3` | 1.43.117 | Uploading to R2 (S3 API) |
+| `python-dotenv` | 1.2.4 | Reading the `.env` file |
+| `jsonschema` | 4.26.0 | Validating generated files against the contract |
+| `pytest` (dev) | ≥ 8 | Unit tests |
 
-### 2.4 Opsiyonel araçlar
+### 2.4 Optional tools
 
-| Araç | Ne için |
+| Tool | What for |
 |---|---|
-| `tippecanoe` + `pmtiles` CLI | Natural Earth sınırlarını `boundaries.pmtiles` dosyasına çevirmek |
-| `vercel` CLI | Elle deploy, ortam değişkenleri |
-| `caffeinate` (macOS'ta hazır) | Uzun işlerde Mac uykuya geçmesin: `caffeinate -i uv run worker.py` |
+| `tippecanoe` + `pmtiles` CLI | Converting Natural Earth borders to `boundaries.pmtiles` |
+| `vercel` CLI | Manual deploys, environment variables |
+| `caffeinate` (built into macOS) | Keeps the Mac awake during long jobs: `caffeinate -i uv run worker.py` |
 
-### 2.5 Donanım ve disk
+### 2.5 Hardware and disk
 
-- Apple M2, 8 çekirdek, 16 GB RAM (MK + Sen tüm dünya için ~20 dk ölçüldü).
-- **Proje için disk hedefi ≤ 10 GB.** DuckDB tahmini 3–5 GB, ERA5 ~0,3 GB, geçici dosyalar indirme sonrası silinir.
+- Apple M2, 8 cores, 16 GB RAM (MK + Sen for the whole world measured at ~20 min).
+- **Disk target for the project ≤ 10 GB.** DuckDB estimated at 3–5 GB, ERA5 ~0.3 GB, temporary files deleted after download.
 
 ---
 
 ## 3. Frontend (web) — TypeScript
 
-### 3.1 Araçlar
+### 3.1 Tools
 
-| Araç | Sürüm | Not |
+| Tool | Version | Note |
 |---|---|---|
-| Node.js | **20.19+ veya 22.12+** (geliştirmede 25.6.1) | Vite 8'in şartı |
-| npm | ≥ 10 | Node ile gelir |
+| Node.js | **20.19+ or 22.12+** (25.6.1 in development) | Required by Vite 8 |
+| npm | ≥ 10 | Comes with Node |
 
-### 3.2 Kurulum
+### 3.2 Setup
 
 ```bash
 cd web
 npm install
 npm run dev          # http://localhost:5173
-npm test             # vitest: data.ts + Python↔JS parite testleri
+npm test             # vitest: data.ts + Python↔JS parity tests
 npm run typecheck    # tsc
-npm run build        # dist/ (Vercel bunu yayınlar)
-npm run preview      # internet yoksa demo için lokal sunucu
+npm run build        # dist/ (what Vercel publishes)
+npm run preview      # local server for the demo if there is no internet
 ```
 
-### 3.3 Paketler
+### 3.3 Packages
 
-| Paket | Sürüm | Ne için |
+| Package | Version | What for |
 |---|---|---|
-| `react`, `react-dom` | 19.3 | Arayüz |
-| `maplibre-gl` | 6.18 | 3D globe, ülke/il sınırları, seçim, `flyTo` |
-| `pmtiles` | 4.5 | Sıkıştırılmış sınır dosyasını MapLibre'ye vermek |
-| `plotly.js-basic-dist-min` | 4.3 | Zaman serisi grafiği, trend çizgisi. Tam paket yerine sadece scatter/bar içeren hafif sürüm (4,6 MB yerine 1,2 MB), aynı API |
-| `motion` | 14.14 | Arayüz animasyonları (ölçek merdiveni, sayı sayacı, panel geçişleri); `prefers-reduced-motion`'a uyar |
-| `vite` (dev) | 8.3 | Geliştirme sunucusu ve build |
-| `typescript` (dev) | 7.0 | Tip kontrolü (sözleşme tipleri) |
-| `vitest` (dev) | 3.2 | Birim ve parite testleri |
-| `@vitejs/plugin-react` (dev) | 6.1 | React desteği |
+| `react`, `react-dom` | 19.3 | Interface |
+| `maplibre-gl` | 6.18 | 3D globe, country/province borders, selection, `flyTo` |
+| `pmtiles` | 4.5 | Feeding the compressed border file to MapLibre |
+| `plotly.js-basic-dist-min` | 4.3 | Time series chart, trend line. A light build with only scatter/bar instead of the full package (1.2 MB instead of 4.6 MB), same API |
+| `motion` | 14.14 | UI animations (scale ladder, number counter, panel transitions); respects `prefers-reduced-motion` |
+| `vite` (dev) | 8.3 | Dev server and build |
+| `typescript` (dev) | 7.0 | Type checking (contract types) |
+| `vitest` (dev) | 3.2 | Unit and parity tests |
+| `@vitejs/plugin-react` (dev) | 6.1 | React support |
 | `oxlint` (dev) | 1.90 | Lint |
-| `@types/plotly.js-dist-min` (dev) | 2.3 | Plotly tipleri (sürümü kütüphaneden eski, bazı tipler eksik olabilir) |
+| `@types/plotly.js-dist-min` (dev) | 2.3 | Plotly types (older than the library, some types may be missing) |
 
-### 3.4 Tarayıcı
+### 3.4 Browser
 
-- **WebGL 2** desteği şart (globe için). Yoksa hata mesajı ve düz harita/liste yedeği gösterilir.
-- Hedef: güncel Chrome, Safari, Firefox, Edge. Demo cihazında önceden test edilecek.
-
----
-
-## 4. Gizli bilgiler (git'e asla girmez)
-
-| Ne | Nerede | Kim |
-|---|---|---|
-| Earthdata kullanıcı adı + şifre | `~/.netrc` (izin `600`) | Enes ✅ |
-| R2 erişim anahtarları | `worker/.env` | Enes |
-| Copernicus CDS anahtarı | `~/.cdsapirc` | Enes |
-
-`worker/.env` şablonu: [`worker/.env.example`](worker/.env.example) (bucket: `data-may-cry`).
-
-Frontend'e sadece **okuma** adresi girer: `VITE_DATA_URL` (R2'nin public `r2.dev` adresi + `/v1/`, Vercel ortam değişkeni, şablon: [`web/.env.example`](web/.env.example)). Boş bırakılırsa sahte veri (`web/public/data`) kullanılır. R2 yazma anahtarı asla frontend'e girmez.
+- **WebGL 2** support is required (for the globe). Without it, an error message and a flat map/list fallback are shown.
+- Target: current Chrome, Safari, Firefox, Edge. To be tested on the demo device in advance.
 
 ---
 
-## 5. Hosting limitleri
+## 4. Secrets (never go into git)
 
-| Servis | Limit | Bizim kullanım |
+| What | Where | Who |
 |---|---|---|
-| Vercel Hobby | Deploy başına 100 MB ve 15.000 dosya, aylık 100 GB trafik | Sadece site kodu + sahte veri (~18 MB). Gerçek veri git'e ve Vercel'e girmez |
-| Cloudflare R2 (ücretsiz) | 10 GB depolama, 1 M yazma, 10 M okuma, trafik ücretsiz | **Tüm gerçek veri:** 6.102 dosya, 2,17 GB (web kısmı 64,8 MB + karolar 2,10 GB). Yükleme: `uv run upload.py` |
-| `r2.dev` adresi | Hız sınırlı, geliştirme amaçlı | Demo için kabul edildi |
+| Earthdata username + password | `~/.netrc` (permissions `600`) | Enes ✅ |
+| R2 access keys | `worker/.env` | Enes |
+| Copernicus CDS key | `~/.cdsapirc` | Enes |
+
+`worker/.env` template: [`worker/.env.example`](worker/.env.example) (bucket: `data-may-cry`).
+
+Only the **read** address goes into the frontend: `VITE_DATA_URL` (R2's public `r2.dev` address + `/v1/`, a Vercel environment variable, template: [`web/.env.example`](web/.env.example)). If left empty, the fake data (`web/public/data`) is used. The R2 write key never goes into the frontend.
 
 ---
 
-## 6. Veri kaynakları ve lisanslar
+## 5. Hosting limits
 
-| Kaynak | Ne için | Lisans |
+| Service | Limit | Our usage |
 |---|---|---|
-| NASA MERRA-2 v5.12.4 (M2TMNXSLV, M2TMNXFLX, M2TMNXLND, M2TMNXAER) | Ana veri, 1980–güncel | NASA açık veri |
-| NASA GISTEMP | Küresel sıcaklık doğrulaması | NASA açık veri |
-| NOAA GHCN-M v4 | İstasyon doğrulaması | Kamuya açık |
-| Copernicus ERA5 | İkinci reanaliz (doğrulama) | CC-BY |
-| Natural Earth | Ülke ve il sınırları | Public domain |
-| NASA Blue Marble (GIBS, `BlueMarble_ShadedRelief_Bathymetry`) | Globe altlığı (uydu görünümü), çalışma anında GIBS'ten karo olarak gelir, repoya girmez | NASA açık veri |
+| Vercel Hobby | 100 MB and 15,000 files per deploy, 100 GB traffic per month | Only the site code + fake data (~18 MB). Real data never goes into git or Vercel |
+| Cloudflare R2 (free) | 10 GB storage, 1 M writes, 10 M reads, free egress | **All real data:** 6,102 files, 2.17 GB (web part 64.8 MB + tiles 2.10 GB). Upload: `uv run upload.py` |
+| `r2.dev` address | Rate-limited, for development | Accepted for the demo |
 
-Teslimde hepsi References bölümünde listelenecek. Kendi kodumuz Apache-2.0 lisanslı olacak.
+---
+
+## 6. Data sources and licenses
+
+| Source | What for | License |
+|---|---|---|
+| NASA MERRA-2 v5.12.4 (M2TMNXSLV, M2TMNXFLX, M2TMNXLND, M2TMNXAER) | Main data, 1980–present | NASA open data |
+| NASA GISTEMP | Global temperature validation | NASA open data |
+| NOAA GHCN-M v4 | Station validation | Public domain |
+| Copernicus ERA5 | Second reanalysis (validation) | CC-BY |
+| Natural Earth | Country and province borders | Public domain |
+| NASA Blue Marble (GIBS, `BlueMarble_ShadedRelief_Bathymetry`) | Globe base layer (satellite view), loaded as tiles from GIBS at runtime, not stored in the repo | NASA open data |
+
+All of them will be listed in the References section at submission. Our own code will be Apache-2.0 licensed.

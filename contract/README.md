@@ -1,26 +1,26 @@
-# Sözleşme v1.0 — Rumet için başlangıç rehberi
+# Contract v1.0 — getting started guide for Rumet
 
-> Bu belge PLAN.md §8 adım 2'deki "sözleşmeyi birlikte oku" toplantısı için. Okuyup onaylarsan
-> `CHANGELOG.md`'deki "draft" yazısını kaldırırız ve sürüm 1.0 olur. Gün 1 saat 12:30'da sözleşme dondurulur.
+> This document is for the "read the contract together" meeting in PLAN.md §8 step 2. If you read and approve it,
+> we remove the "draft" note in `CHANGELOG.md` and it becomes version 1.0. The contract is frozen at 12:30 on Day 1.
 
-## 1. Kurulum (5 dk)
+## 1. Setup (5 min)
 
 ```bash
 git clone https://github.com/garmoths/datamaycry.git
 cd datamaycry/web
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 48 test geçmeli
+npm test         # 48 tests should pass
 ```
 
-Kendi işin için branch aç: `git checkout -b rumet/globe-panel`. `main`'e force push ve silme kapalı. İşini PR olarak aç.
+Open a branch for your work: `git checkout -b rumet/globe-panel`. Force pushes and deletion are disabled on `main`. Open your work as a PR.
 
-## 2. Tek kural
+## 2. The one rule
 
-**Arayüz verilere sadece `web/src/data.ts` üzerinden ulaşır.** `public/data/` içindeki dosyaları doğrudan okuma.
-Bugün bu dosyalar sahte. Yarın öğlen gerçekleriyle değiştirilecek ve senin kodunda hiçbir şey değişmeyecek.
+**The interface reaches data only through `web/src/data.ts`.** Don't read the files in `public/data/` directly.
+Today these files are fake. Tomorrow at noon they will be replaced with the real ones and nothing in your code will change.
 
-## 3. Kullanacağın fonksiyonlar
+## 3. The functions you'll use
 
 ```ts
 import {
@@ -29,59 +29,59 @@ import {
 } from "./data";
 ```
 
-| Fonksiyon | Ne döndürür | Nerede kullanılır |
+| Function | Returns | Used in |
 |---|---|---|
-| `loadVariables()` | 9 değişken: isim, açıklama (EN+TR), birim, ondalık sayısı | Değişken seçici, birim etiketleri |
-| `listCountries()` | Ülkeler → iller (`id`, EN+TR isim, `bbox`) | Bölge modu listesi, `flyTo(bbox)` |
-| `getRegionSeries("TUR", "TR-21", "T2M")` | Aylık seri (`values`, `start`, `unit`, `label`) | Bölge modu grafiği. Ülkenin tamamı için `admin1 = null` |
-| `getPointSeries(lat, lon, "T2M")` | Tıklanan noktanın aylık serisi | Nokta modu |
-| `getTrendMap("T2M")` | Her hücre için eğim, p, seviye (0/1/2) | Dünya trend haritası (raster) |
-| `analyzeTrend(series, { startYear, endYear, months })` | Sonuç kartı: `slopePerDecade`, `ci95`, `pValue`, `level`, `totalChange`, `status` | Sonuç kartı ve dönem kaydırıcı (anında hesaplanır) |
-| `anomalies(series)` | Mevsim etkisi çıkarılmış aylık seri | Grafikte "anomali" görünümü |
-| `monthLabels(series)` | `"1980-01"`... | Grafiğin x ekseni |
+| `loadVariables()` | 9 variables: name, description (EN+TR), unit, number of decimals | Variable picker, unit labels |
+| `listCountries()` | Countries → provinces (`id`, EN+TR name, `bbox`) | Region mode list, `flyTo(bbox)` |
+| `getRegionSeries("TUR", "TR-21", "T2M")` | Monthly series (`values`, `start`, `unit`, `label`) | Region mode chart. `admin1 = null` for the whole country |
+| `getPointSeries(lat, lon, "T2M")` | Monthly series of the clicked point | Point mode |
+| `getTrendMap("T2M")` | Slope, p, level (0/1/2) for every cell | World trend map (raster) |
+| `analyzeTrend(series, { startYear, endYear, months })` | Result card: `slopePerDecade`, `ci95`, `pValue`, `level`, `totalChange`, `status` | Result card and period slider (computed instantly) |
+| `anomalies(series)` | Monthly series with the seasonal effect removed | The "anomaly" view in the chart |
+| `monthLabels(series)` | `"1980-01"`... | The chart's x axis |
 
-Tipler ve alanların açıklamaları: [`types.ts`](types.ts).
+Types and field descriptions: [`types.ts`](types.ts).
 
-### Örnek: Diyarbakır kartı
+### Example: the Diyarbakır card
 
 ```ts
 const s = await getRegionSeries("TUR", "TR-21", "T2M");
 const r = analyzeTrend(s);                       // 1980–2025
 if (r.status === "ok") {
   // r.level: "strong" | "possible" | "none"
-  // r.slopePerDecade, r.ci95 = [alt, üst], r.pValue, r.totalChange
+  // r.slopePerDecade, r.ci95 = [low, high], r.pValue, r.totalChange
 }
-// r.status: "too_short" (< 10 yıl) | "insufficient_data" | "constant" → kartta uyarı göster
+// r.status: "too_short" (< 10 years) | "insufficient_data" | "constant" → show a warning on the card
 ```
 
-### Sonuç kartı kuralları (PLAN.md §3.5 adım 8 ve §3.6 L3)
+### Result card rules (PLAN.md §3.5 step 8 and §3.6 L3)
 
-| `level` | Etiket | Metin şablonu |
+| `level` | Label | Text template |
 |---|---|---|
-| `strong` | 🟢 Güçlü kanıt | "📈/📉 Anlamlı artış/azalış: {bölge}'de {değişken} her 10 yılda **{eğim} {birim}** …" |
-| `possible` | 🟡 Olası trend | aynı şablon, daha temkinli dil |
-| `none` | ⚪ Trend gösterilemedi | "〰️ Anlamlı bir trend yok…" |
+| `strong` | 🟢 Strong evidence | "📈/📉 Significant increase/decrease: in {region}, {variable} changed by **{slope} {unit}** per decade …" |
+| `possible` | 🟡 Possible trend | same template, more cautious language |
+| `none` | ⚪ No trend shown | "〰️ No significant trend…" |
 
-- Neden-sonuç cümlesi kurma ("iklim değişikliği yüzünden" deme).
-- `NaN` değerini asla 0 olarak gösterme, "veri yok" yaz.
-- Her kartta "Kaynak: NASA MERRA-2" yazsın.
-- `variables.json` içinde `is_mock: true` varsa ekranın köşesinde "SAHTE VERİ" etiketi göster.
+- Don't write cause-and-effect sentences (don't say "because of climate change").
+- Never show a `NaN` value as 0; write "no data".
+- Every card should say "Source: NASA MERRA-2".
+- If `variables.json` has `is_mock: true`, show a "FAKE DATA" label in the corner of the screen.
 
-## 4. Sahte verinin kapsamı
+## 4. Coverage of the fake data
 
-| Ne | Kapsam |
+| What | Coverage |
 |---|---|
-| Ülkeler | `TUR` (Diyarbakır TR-21, Konya TR-42, Ankara TR-06, İstanbul TR-34), `EGY` (Kahire, Asvan), `BRA` (Amazonas, São Paulo) |
-| Nokta modu | Sadece **30–40°K, 40–50°D** karosu (Doğu Türkiye, Diyarbakır dahil). Başka yere tıklarsan `DataError` gelir; hata mesajı göstermen gerekiyor |
-| Trend haritası | 9 değişkenin hepsi, bütün dünya (desen sahte) |
+| Countries | `TUR` (Diyarbakır TR-21, Konya TR-42, Ankara TR-06, Istanbul TR-34), `EGY` (Cairo, Aswan), `BRA` (Amazonas, São Paulo) |
+| Point mode | Only the **30–40°N, 40–50°E** tile (eastern Türkiye, including Diyarbakır). Clicking anywhere else returns a `DataError`; you need to show an error message |
+| Trend map | All 9 variables, the whole world (fake pattern) |
 
-## 5. Senin onaylaman gerekenler
+## 5. What you need to approve
 
-- [ ] Fonksiyon isimleri ve döndürdükleri alanlar arayüz için yeterli mi?
-- [ ] Eksik bir alan var mı? (ör. değişken için renk paleti, ikon)
-- [ ] İl `id`'leri (`TR-21` gibi) Natural Earth'teki `iso_3166_2` alanıyla eşleşiyor. Haritada tıklanan ilin bu alanını `getRegionSeries`'e verebiliyor musun?
+- [ ] Are the function names and the fields they return enough for the interface?
+- [ ] Is any field missing? (e.g. a color palette or icon per variable)
+- [ ] Province `id`s (like `TR-21`) match the `iso_3166_2` field in Natural Earth. Can you pass this field of the clicked province on the map to `getRegionSeries`?
 
-Değişiklik istersen bugün 12:30'dan önce söyle. Sonrasında sadece **yeni alan ekleme** yapılabilir.
+If you want changes, say so before 12:30 today. After that, only **adding new fields** is possible.
 
 ---
-*AI (Claude) yardımıyla yazıldı.*
+*Written with the help of AI (Claude).*

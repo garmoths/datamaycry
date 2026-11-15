@@ -1,8 +1,8 @@
-# Aeolus · Sunum
+# Aeolus · Presentation
 
-*Data May Cry ekibi*
+*Team Data May Cry*
 
-reveal.js ile kodla yazılmış sunum. İnternetsiz de çalışır (yazı tipleri ve kütüphaneler yerel).
+A presentation written in code with reveal.js. Works offline too (fonts and libraries are local).
 
 ```bash
 cd presentation
@@ -10,40 +10,40 @@ npm install
 npm run dev        # http://localhost:5180
 ```
 
-| Tuş | Ne yapar |
+| Key | What it does |
 |---|---|
-| → / Boşluk | sonraki adım |
-| ← | önceki adım |
-| **S** | konuşmacı görünümü (notlar + süre) |
-| F | tam ekran |
-| O veya Esc | tüm slaytlar |
+| → / Space | next step |
+| ← | previous step |
+| **S** | speaker view (notes + timer) |
+| F | full screen |
+| O or Esc | all slides |
 
-- Akış (3 dk, 8 slayt): açılış → sorular → zaman yolculuğu (46 yıl, 10 sn, bir kez) → **canlı gösterim (slayt 4)** →
-  kim ne için kullanır → sonuçlar → avantajlar ve dezavantajlar → QR kod.
-- Kartlar kendiliğinden sırayla gelir (`.rise`); tuşla açılan adım yok.
-- Zaman yolculuğu slaytının arkasındaki bulanık ekranlar `public/shots/z-*.jpg`, canlı siteden Diyarbakır için alındı.
-- 7. slayttaki zaman yolculuğu kareleri `public/shots/tt/1980…2025.jpg` (+ `meta.json`), uygulamanın Zaman yolculuğundan yıl yıl alındı.
-- Efektler (Aceternity / Amicro tarzında, düz CSS/JS): aurora arka plan, kelime kelime gelen başlıklar,
-  kayan soru kartları, bento ızgara, 3B eğilen kart, imleci izleyen ışık, QR etrafında dönen çerçeve.
-- Animasyonsuz görünüm: `?static` (provada ekran görüntüsü için). PDF'te ve "hareketi azalt" ayarında da kapalı.
-- Slayt 4'te uygulama canlı gömülü (`aeolusclimate.vercel.app`). İnternet yoksa yerel kopya: `http://localhost:5180/?app=http://localhost:5174`.
-- Sayılar `src/data.js` ve `docs/EVIDENCE.md` içinden; elle uydurulmuş sayı yok.
-- PDF almak için: `http://localhost:5180/?print-pdf` → tarayıcıda Yazdır → PDF olarak kaydet.
+- Flow (~2:30 + 30 s spare, 8 slides): opening → questions → **live demo (slide 3)** → who uses it and why →
+  results → pros and cons → time travel (46 years in 10 s, plays once) → QR code.
+- Cards come in on their own, in order (`.rise`); there are no key-triggered steps.
+- The blurred screens behind the time travel slide are `public/shots/z-*.jpg`, taken from the live site for Diyarbakır.
+- The time travel frames on slide 7 are `public/shots/tt/1980…2025.jpg` (+ `meta.json`), captured year by year from the app's Time travel.
+- Effects (Aceternity / Amicro style, plain CSS/JS): aurora background, headlines arriving word by word,
+  scrolling question cards, bento grid, 3D tilting card, a light that follows the cursor, a frame spinning around the QR.
+- No-animation view: `?static` (for screenshots during rehearsal). Also off in the PDF and with the "reduce motion" setting.
+- Slide 3 embeds the live app (`aeolusclimate.vercel.app`). Without internet, a local copy: `http://localhost:5180/?app=http://localhost:5174`.
+- Numbers come from `src/data.js` and `docs/EVIDENCE.md`; no made-up numbers.
+- To get a PDF: `http://localhost:5180/?print-pdf` → Print in the browser → Save as PDF.
 
-## İki sürüm ve PDF
+## Two versions and the PDFs
 
-| Dosya | Ne | Sayfa |
+| File | What | Pages |
 |---|---|---|
-| `index.html` | Türkçe canlı sunum (canlı gösterim slaytı dahil) | 8 |
-| `nasa.html` | NASA'ya yüklenecek İngilizce sürüm: konuşmayla aynı sıra, her görselin altında açıklama, her sayfada link ve sayfa no | 7 |
-| `pdf/aeolus-nasa.pdf` | NASA'ya yüklenecek PDF | 7 |
-| `ANLATIM.md` | Konuşma metni (slayt slayt, 3 dk) ve olası sorular | – |
-| `pdf/aeolus-sunum.pdf` | Türkçe sunumun PDF'i (yedek; canlı gösterim yerine ekran görüntüsü) | 11 |
+| `index.html` | Turkish live presentation (including the live demo slide) | 8 |
+| `nasa.html` | English version to upload to NASA: same order as the talk, a caption under every image, a link and page number on every page | 7 |
+| `pdf/aeolus-nasa.pdf` | PDF to upload to NASA | 7 |
+| `ANLATIM.md` | Speaker script (slide by slide, ~2:30) and likely questions | – |
+| `pdf/aeolus-sunum.pdf` | PDF of the Turkish presentation (backup; a screenshot instead of the live demo) | 11 |
 
-PDF'leri yeniden üretmek için (Chrome/Brave/Edge yüklü olmalı):
+To regenerate the PDFs (Chrome/Brave/Edge must be installed):
 
 ```bash
-npm run dev          # bir terminalde, http://localhost:5180
-npm run shots        # uygulama ekran görüntüleri (uygulama http://localhost:5174'te açık olmalı)
-npm run pdf          # pdf/aeolus-sunum.pdf ve pdf/aeolus-nasa.pdf
+npm run dev          # in one terminal, http://localhost:5180
+npm run shots        # app screenshots (the app must be running at http://localhost:5174)
+npm run pdf          # pdf/aeolus-sunum.pdf and pdf/aeolus-nasa.pdf
 ```
