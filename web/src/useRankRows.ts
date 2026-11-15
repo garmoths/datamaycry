@@ -28,6 +28,8 @@ export interface RankInputs {
   variable: VariableInfo;
   /** card's period and season (used for series-based rankings) */
   opts: TrendOptions;
+  /** the trend map's period (map-based rankings), for totals */
+  fullYears: [number, number];
   trendMap: TrendMap | null;
   countryGrid: Uint16Array | null;
   /** same order as the country grid's codes (Boundaries.countries, see countryCode) */

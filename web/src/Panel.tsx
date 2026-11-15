@@ -43,6 +43,8 @@ import { Icon, type IconName } from "./icons.tsx";
 import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
 import { Provenance, References, Sparkline, type ProvinceItem } from "./Evidence.tsx";
 import { Spotlight } from "./Spotlight.tsx";
+import { ChangeToggle } from "./ChangeToggle.tsx";
+import { asView, useChangeView } from "./changeView.ts";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
 import { Fingerprint, type PlaceCells } from "./Fingerprint.tsx";
@@ -241,7 +243,7 @@ export function Panel(p: Props) {
     () => ({ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }),
     [eff, season],
   );
-  const rankInputs: RankInputs = { lang, variable: v, opts: cardOpts, trendMap: p.trendMap, countryGrid: p.countryGrid, countryRows: p.countryRows, index: p.index, provinceFeatures: p.provinceFeatures };
+  const rankInputs: RankInputs = { lang, variable: v, opts: cardOpts, fullYears: [variables.test_years.start, variables.test_years.end], trendMap: p.trendMap, countryGrid: p.countryGrid, countryRows: p.countryRows, index: p.index, provinceFeatures: p.provinceFeatures };
   const rankScope: RankScope | null =
     p.mode !== "region" || !p.countryId ? null : p.admin1Id ? { kind: "provinces", country: p.countryId } : { kind: "countries", continent: null };
   const rankBadge = rankScope && (
@@ -250,33 +252,12 @@ export function Panel(p: Props) {
   const ok = result?.status === "ok";
   const unit = unitLabel(v.unit, lang);
   const per = `${unit} / ${t(lang, "decade")}`;
-  // the big number: change per decade (the trend) or the total over the period; remembered
-  const [changeView, setChangeView] = useState<"decade" | "total">(() => {
-    try {
-      return localStorage.getItem("dmc-change") === "total" ? "total" : "decade";
-    } catch {
-      return "decade";
-    }
-  });
-  const pickChange = (x: "decade" | "total") => {
-    setChangeView(x);
-    try {
-      localStorage.setItem("dmc-change", x);
-    } catch {
-      /* private mode */
-    }
-  };
+  // the big number: change per decade (the trend) or the total over the period (changeView.ts)
+  const [changeView] = useChangeView();
+  const fullYears: [number, number] = [variables.test_years.start, variables.test_years.end];
   // the world trend map is for the whole period: total = mean slope × decades
-  const areaTotal = p.area ? (p.area.summary.meanSlope * (variables.test_years.end - variables.test_years.start)) / 10 : 0;
-  const changeToggle = (
-    <span className="seg small change-toggle" role="group" aria-label={t(lang, "changeView")}>
-      {(["decade", "total"] as const).map((x) => (
-        <button key={x} className={changeView === x ? "on" : ""} aria-pressed={changeView === x} onClick={() => pickChange(x)}>
-          {t(lang, x === "decade" ? "perDecadeShort" : "totalShort")}
-        </button>
-      ))}
-    </span>
-  );
+  const areaTotal = p.area ? asView(p.area.summary.meanSlope, "total", fullYears) : 0;
+  const changeToggle = <ChangeToggle lang={lang} />;
   const place = shown?.label[lang] ?? "";
   const country = p.index.find((c) => c.id === p.countryId);
   const province = p.provinces.find((a) => a.id === p.admin1Id) ?? null;
@@ -354,6 +335,7 @@ export function Panel(p: Props) {
       current={v.id}
       target={p.target}
       opts={{ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }}
+      fullYears={[variables.test_years.start, variables.test_years.end]}
       place={p.place}
       countryGrid={p.countryGrid}
       countries={p.countryRows}

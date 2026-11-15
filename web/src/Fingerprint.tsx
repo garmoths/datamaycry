@@ -28,6 +28,8 @@ import { VAR_GROUPS, VAR_ICONS } from "./content.ts";
 import { Icon } from "./icons.tsx";
 import { smartSigned, unitLabel, type Lang } from "./i18n.ts";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
+import { ChangeToggle } from "./ChangeToggle.tsx";
+import { asView, useChangeView, viewDecimals } from "./changeView.ts";
 import type { Target } from "./Panel.tsx";
 import "./fingerprint.css";
 
@@ -54,6 +56,8 @@ const T = {
     tr: "Çubuk: değişimin, o değişkenin dünyadaki tipik büyük değişimine oranı.",
     en: "Bar: the change relative to a typical large change of that variable worldwide.",
   },
+  valDecade: { tr: "Değerler: 10 yıldaki değişim.", en: "Values: change per decade." },
+  valTotal: { tr: "Değerler: dönem boyunca toplam değişim.", en: "Values: total change over the period." },
   fromSeries: { tr: "aylık seriden, seçili dönem", en: "from the monthly series, selected period" },
   fromMap: { tr: "trend haritasından, 1980–2025", en: "from the trend map, 1980–2025" },
   level: {
@@ -77,6 +81,8 @@ interface Props {
   target: Target;
   /** same period and season as the main card */
   opts: TrendOptions;
+  /** the trend maps' period (map-based rows), for totals */
+  fullYears: [number, number];
   place: PlaceCells | null;
   /** similar-places pool: every country, plus the provinces of the open country */
   countryGrid: Uint16Array | null;
@@ -111,6 +117,8 @@ const provinceCache = new WeakMap<TrendStack, WeakMap<object, Candidate>>();
 
 export function Fingerprint(p: Props) {
   const { lang } = p;
+  const [view] = useChangeView();
+  const cardYears: [number, number] = [p.opts.startYear ?? p.fullYears[0], p.opts.endYear ?? p.fullYears[1]];
   const ids = useMemo(() => p.variables.map((v) => v.id), [p.variables]);
   const [stack, setStack] = useState<TrendStack | null>(null);
   // the nine maps are ~15 MB: on a phone the card sits below the fold of the bottom sheet,
@@ -249,6 +257,7 @@ export function Fingerprint(p: Props) {
         <span className="pill">
           {rows.filter((r) => r.slope !== null).length} {T.vars[lang]}
         </span>
+        <ChangeToggle lang={lang} />
       </header>
 
       <div className="fp-rows" role="list">
@@ -275,14 +284,18 @@ export function Fingerprint(p: Props) {
                 <span className="fp-bar" aria-hidden>
                   <i className={rel >= 0 ? "pos" : "neg"} style={{ width: `${(Math.abs(rel) / 1.5) * 50}%` }} />
                 </span>
-                <span className="fp-val">{r.slope === null ? T.noData[lang] : `${signed(lang, r.slope, v.decimals + 1)} ${unit}`}</span>
+                <span className="fp-val">
+                  {r.slope === null
+                    ? T.noData[lang]
+                    : `${signed(lang, asView(r.slope, view, r.source === "series" ? cardYears : p.fullYears), viewDecimals(view, v.decimals))} ${unit}`}
+                </span>
                 <span className="fp-lvl">{r.slope === null ? "" : T.level[r.level][lang]}</span>
               </button>
             );
           })}
       </div>
       <p className="fine">
-        {T.bar[lang]} {anySeries && anyMap ? `${T.fromSeries[lang]}; ${T.fromMap[lang]} ` : anySeries ? T.fromSeries[lang] : T.fromMap[lang]}.
+        {view === "total" ? T.valTotal[lang] : T.valDecade[lang]} {T.bar[lang]} {anySeries && anyMap ? `${T.fromSeries[lang]}; ${T.fromMap[lang]} ` : anySeries ? T.fromSeries[lang] : T.fromMap[lang]}.
       </p>
 
       <h4>{T.together[lang]}</h4>
