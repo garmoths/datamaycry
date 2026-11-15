@@ -36,7 +36,7 @@ interface Metric {
   height: number;
 }
 
-export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0.3, magnet = 0.08 }: {
+export function FlowingMenu({ items, active, label, duration = 0.38, stretch = 0.15, magnet = 0 }: {
   items: FlowItem[];
   /** the row whose details are open: the band rests there */
   active: string | null;
@@ -49,7 +49,13 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
   const rows = useRef<{ item: HTMLLIElement | null; head: HTMLDivElement | null; band: HTMLDivElement | null }[]>([]);
   const reduce = useReducedMotion();
   const metrics = useRef<(Metric | null)[]>([]);
-  const band = useRef({ top: 0, bottom: 0, vTop: 0, vBottom: 0, toTop: 0, toBottom: 0, lead: 1, shown: false, index: -1, rest: 0 });
+  // the whole row (head + opened details), for telling which row the pointer is on
+  const spans = useRef<(Metric | null)[]>([]);
+  const leaveTimer = useRef(0);
+  // edges on springs; `alpha` fades the band in where it appears and out where it was left
+  const band = useRef({ top: 0, bottom: 0, vTop: 0, vBottom: 0, toTop: 0, toBottom: 0, lead: 1, shown: false, index: -1, alpha: 0, toAlpha: 0 });
+  // what was last written to each band element (no repeated DOM writes)
+  const painted = useRef<string[]>([]);
   const cursorY = useRef<number | null>(null);
   const loop = useRef({ raf: 0, last: 0 });
   const opts = useRef({ duration, stretch, magnet });
@@ -60,19 +66,28 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
 
   const paint = () => {
     const b = band.current;
+    const alpha = b.alpha.toFixed(3);
     rows.current.forEach((row, k) => {
       const m = metrics.current[k];
       if (!row?.band || !m) return;
       const from = Math.max(b.top, m.top);
       const to = Math.min(b.bottom, m.top + m.height);
-      if (!b.shown || to - from < 0.25) {
+      let next = "hidden";
+      if (b.shown && b.alpha > 0.005 && to - from >= 0.25) {
+        const topR = b.top >= m.top - 0.5 ? 12 : 0;
+        const botR = b.bottom <= m.top + m.height + 0.5 ? 12 : 0;
+        next = `inset(${(b.top - m.top).toFixed(1)}px 0px ${(m.top + m.height - b.bottom).toFixed(1)}px 0px round ${topR}px ${topR}px ${botR}px ${botR}px)|${alpha}`;
+      }
+      if (painted.current[k] === next) return;
+      painted.current[k] = next;
+      if (next === "hidden") {
         row.band.style.visibility = "hidden";
         return;
       }
+      const [clip, a] = next.split("|");
       row.band.style.visibility = "visible";
-      const topR = b.top >= m.top - 0.5 ? 12 : 0;
-      const botR = b.bottom <= m.top + m.height + 0.5 ? 12 : 0;
-      row.band.style.clipPath = `inset(${(b.top - m.top).toFixed(2)}px 0px ${(m.top + m.height - b.bottom).toFixed(2)}px 0px round ${topR}px ${topR}px ${botR}px ${botR}px)`;
+      row.band.style.clipPath = clip;
+      row.band.style.opacity = a;
     });
   };
 
@@ -92,7 +107,14 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
         const lean = y === null || reduced ? 0 : clamp((y - (cur.top + cur.height / 2)) * o.magnet, -cur.height * 0.25, cur.height * 0.25);
         b.toTop = cur.top + lean;
         b.toBottom = cur.top + cur.height + lean;
-      } else if (b.index < 0) b.toTop = b.toBottom = b.rest;
+      }
+      // fade: quick in, a little slower out
+      if (reduced) b.alpha = b.toAlpha;
+      else {
+        const tau = b.toAlpha > b.alpha ? 0.09 : 0.16;
+        b.alpha += (b.toAlpha - b.alpha) * (1 - Math.exp(-elapsed / tau));
+        if (Math.abs(b.toAlpha - b.alpha) < 0.004) b.alpha = b.toAlpha;
+      }
       const gap = (b.toTop + b.toBottom) / 2 - (b.top + b.bottom) / 2;
       if (Math.abs(gap) > 2) b.lead = gap > 0 ? 1 : -1;
       if (reduced) {
@@ -127,8 +149,9 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
         b.top = b.toTop;
         b.bottom = b.toBottom;
         b.vTop = b.vBottom = 0;
-        if (b.index < 0 && b.bottom - b.top < 0.5) b.shown = false;
       } else busy = true;
+      if (b.alpha !== b.toAlpha) busy = true;
+      else if (b.alpha === 0) b.shown = false;
     }
     paint();
     if (busy) l.raf = requestAnimationFrame(frame);
@@ -146,11 +169,14 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
     const b = band.current;
     const top = m.top, bottom = m.top + m.height;
     if (!b.shown) {
-      const start = from === "bottom" ? bottom : from === "center" ? (top + bottom) / 2 : top;
-      b.top = b.bottom = start;
+      // nothing on screen: appear right on the row and fade in
+      b.top = top;
+      b.bottom = bottom;
       b.vTop = b.vBottom = 0;
+      b.alpha = 0;
       b.shown = true;
     }
+    b.toAlpha = 1;
     const shift = (top + bottom) / 2 - (b.top + b.bottom) / 2;
     b.lead = Math.abs(shift) > 0.5 ? (shift > 0 ? 1 : -1) : from === "bottom" ? -1 : 1;
     b.toTop = top;
@@ -159,35 +185,24 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
     rows.current.forEach((r, i) => r.item?.toggleAttribute("data-current", i === k));
     kick();
   };
-  const release = (toward: "top" | "bottom") => {
+  const release = () => {
     const b = band.current;
     if (!b.shown) return;
-    const point = toward === "top" ? b.toTop : b.toBottom;
-    b.lead = toward === "top" ? -1 : 1;
-    b.rest = point;
-    b.toTop = b.toBottom = point;
+    // stay on the last row and fade out (no shrinking toward an edge)
+    b.toAlpha = 0;
     b.index = -1;
     cursorY.current = null;
     rows.current.forEach((r) => r.item?.removeAttribute("data-current"));
     kick();
   };
 
-  const rowAt = (clientY: number) => {
-    const list = listRef.current;
-    if (!list) return -1;
-    const y = clientY - list.getBoundingClientRect().top;
-    return metrics.current.findIndex((m) => m && y >= m.top && y < m.top + m.height);
-  };
-  const halfOf = (clientY: number, k: number): "top" | "bottom" => {
-    const list = listRef.current;
-    const m = metrics.current[k];
-    if (!list || !m) return "top";
-    return clientY - list.getBoundingClientRect().top - m.top < m.height / 2 ? "top" : "bottom";
-  };
+  /** which row (head + details) a y inside the list falls on */
+  const rowAt = (y: number) => spans.current.findIndex((m) => m && y >= m.top && y < m.top + m.height);
 
   const measure = () => {
     // the band covers the row itself, not its opened details
     metrics.current = rows.current.map((r) => (r?.item && r.head ? { top: r.item.offsetTop + r.head.offsetTop, height: r.head.offsetHeight } : null));
+    spans.current = rows.current.map((r) => (r?.item ? { top: r.item.offsetTop, height: r.item.offsetHeight } : null));
     const b = band.current;
     if (b.shown && b.index >= 0) {
       const m = metrics.current[b.index];
@@ -216,7 +231,7 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
   const goRef = useRef({ goTo, release });
   goRef.current = { goTo, release };
   useEffect(() => {
-    if (band.current.index >= 0 && cursorY.current === null) goRef.current.release("bottom");
+    if (band.current.index >= 0 && cursorY.current === null) goRef.current.release();
   }, [activeIndex]);
   useEffect(() => {
     const l = loop.current;
@@ -228,30 +243,33 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
     };
   }, []);
 
-  const onPointerMove = (e: ReactPointerEvent<HTMLUListElement>) => {
+  const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType === "touch") return;
+    window.clearTimeout(leaveTimer.current);
     const list = listRef.current;
-    if (list) cursorY.current = e.clientY - list.getBoundingClientRect().top;
-    const k = rowAt(e.clientY);
-    const m = k >= 0 ? metrics.current[k] : null;
-    const y = cursorY.current ?? 0;
-    const inside = !!m && y - m.top >= 6 && m.top + m.height - y >= 6;
-    if (k >= 0 && k !== band.current.index && (inside || band.current.index < 0)) goTo(k, halfOf(e.clientY, k));
-    else kick();
+    if (!list) return;
+    const y = e.clientY - list.getBoundingClientRect().top; // the one layout read per move
+    cursorY.current = y;
+    const k = rowAt(y);
+    // over the menu's padding (above, below or beside the rows): keep the band where it is
+    if (k < 0 || k === band.current.index) return;
+    const m = spans.current[k];
+    // a 3 px dead zone at the edge between two rows, so the band does not flip back and forth
+    const inside = !!m && y - m.top >= 3 && m.top + m.height - y >= 3;
+    if (inside || band.current.index < 0) goTo(k, "center");
   };
-  const onPointerLeave = (e: ReactPointerEvent<HTMLUListElement>) => {
+  const onPointerLeave = (e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType === "touch") return;
-    const list = listRef.current;
-    const b = band.current;
-    cursorY.current = null;
-    if (!list || b.index < 0) return;
-    const r = list.getBoundingClientRect();
-    release(e.clientY <= r.top ? "top" : e.clientY >= r.bottom ? "bottom" : halfOf(e.clientY, b.index));
+    if (band.current.index < 0) return;
+    // a short grace period: grazing the edge does not fade the band out and back in
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(release, 120);
   };
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
 
   return (
-    <nav className="fm" aria-label={label}>
-      <ul className="fm-list" ref={listRef} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
+    <nav className="fm" aria-label={label} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
+      <ul className="fm-list" ref={listRef}>
         {items.map((it, k) => (
           <li
             key={it.id}

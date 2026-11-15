@@ -324,7 +324,8 @@ export function Panel(p: Props) {
   const hasAnswer = !!(shown && result && !shownError && verdict);
   const fullTitle = hasAnswer ? place : p.area ? areaName : p.mode === "point" ? t(lang, "modePoint") : t(lang, "world");
   // "Diyarbakır, Türkiye" → "Diyarbakır" when the trail above already says Türkiye
-  const title = p.trail.length > 1 ? fullTitle.split(",")[0].trim() : fullTitle;
+  // (only for places: a grid cell's label "40.00°N, 32.50°E" keeps both halves)
+  const title = p.trail.length > 1 && p.mode === "region" ? fullTitle.split(",")[0].trim() : fullTitle;
 
   // one entrance per selection: place, variable, and whether the answer is a series or a summary
   const sceneKey = `${p.mode}|${targetKey}|${p.area?.kind ?? ""}|${p.continent ?? ""}|${p.countryId ?? ""}|${p.admin1Id ?? ""}|${v.id}|${hasAnswer}`;
