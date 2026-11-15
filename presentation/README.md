@@ -22,7 +22,7 @@ npm run dev        # http://localhost:5180
   kim ne için kullanır → sonuçlar → avantajlar ve dezavantajlar → QR kod.
 - Kartlar kendiliğinden sırayla gelir (`.rise`); tuşla açılan adım yok.
 - Zaman yolculuğu slaytının arkasındaki bulanık ekranlar `public/shots/z-*.jpg`, canlı siteden Diyarbakır için alındı.
-- 3. slayttaki zaman yolculuğu kareleri `public/shots/tt/1980…2025.jpg` (+ `meta.json`), uygulamanın Zaman yolculuğundan yıl yıl alındı.
+- 7. slayttaki zaman yolculuğu kareleri `public/shots/tt/1980…2025.jpg` (+ `meta.json`), uygulamanın Zaman yolculuğundan yıl yıl alındı.
 - Efektler (Aceternity / Amicro tarzında, düz CSS/JS): aurora arka plan, kelime kelime gelen başlıklar,
   kayan soru kartları, bento ızgara, 3B eğilen kart, imleci izleyen ışık, QR etrafında dönen çerçeve.
 - Animasyonsuz görünüm: `?static` (provada ekran görüntüsü için). PDF'te ve "hareketi azalt" ayarında da kapalı.
