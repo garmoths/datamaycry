@@ -5,7 +5,7 @@
  * the pointer ("magnet"), and every row shows an inverted copy of itself where the band covers
  * it (clip-path). Changes from the original: no marquee, images or intro sweep; each row shows
  * our own content (index, title, a line, a value); a row with details opens them in place
- * under it (motion height), and the band rests on the open row when the pointer leaves; @hugeicons replaced by the project's Icon; plain CSS in reactbits.css
+ * under it (motion height) inside a thin see-through frame that marks the open row; @hugeicons replaced by the project's Icon; plain CSS in reactbits.css
  * (.fm-*). Reduced motion: the band jumps instead of gliding.
  */
 import { useEffect, useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
@@ -160,8 +160,6 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
     kick();
   };
   const release = (toward: "top" | "bottom") => {
-    // the open topic keeps the band
-    if (activeRef.current >= 0) return goTo(activeRef.current, toward);
     const b = band.current;
     if (!b.shown) return;
     const point = toward === "top" ? b.toTop : b.toBottom;
@@ -218,8 +216,7 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
   const goRef = useRef({ goTo, release });
   goRef.current = { goTo, release };
   useEffect(() => {
-    if (activeIndex >= 0) goRef.current.goTo(activeIndex, "center");
-    else if (band.current.index >= 0 && cursorY.current === null) goRef.current.release("bottom");
+    if (band.current.index >= 0 && cursorY.current === null) goRef.current.release("bottom");
   }, [activeIndex]);
   useEffect(() => {
     const l = loop.current;

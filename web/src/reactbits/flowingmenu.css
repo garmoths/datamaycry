@@ -16,10 +16,36 @@
 }
 .fm-item {
   position: relative;
+  isolation: isolate;
   border-radius: 12px;
   animation: fm-in 0.6s var(--ease) both;
 }
+/* the open row: a thin see-through frame around the row and its details */
+.fm-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  opacity: 0;
+  transform: scale(0.985);
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+  pointer-events: none;
+}
+.fm-item.active::after {
+  opacity: 1;
+  transform: none;
+}
+/* the dividers next to the frame step aside */
+.fm-item.active::before,
+.fm-item.active + .fm-item::before {
+  opacity: 0;
+}
 .fm-item + .fm-item::before {
+  transition: opacity 0.3s;
   content: "";
   position: absolute;
   top: 0;
@@ -223,6 +249,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .fm-item::after {
+    transition: none;
+  }
   .fm-item,
   .fm-item + .fm-item::before {
     animation: none;
