@@ -6,6 +6,8 @@
 import { useMemo, useState } from "react";
 import { CONTINENTS } from "./geo.ts";
 import { ordinal, rankRows, standing, type RankDir, type RankMetric } from "./ranking.ts";
+import { ChangeToggle } from "./ChangeToggle.tsx";
+import { asView, useChangeView, viewDecimals, viewUnit } from "./changeView.ts";
 import { useRankRows, type RankInputs, type RankScope } from "./useRankRows.ts";
 import { smartSigned, unitLabel, type Lang } from "./i18n.ts";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
@@ -74,6 +76,9 @@ export function RankingPane(p: RankInputs & { countryId: string | null; continen
   const effMetric: RankMetric = source === "series" ? "slope" : metric;
   const ordered = useMemo(() => rankRows(rows, effMetric, dir, lang), [rows, effMetric, dir, lang]);
   const unit = unitLabel(v.unit, lang);
+  // per decade or total (changeView.ts); series rankings use the card's period, map ones 1980–2025
+  const [view] = useChangeView();
+  const years: [number, number] = source === "series" ? [p.opts.startYear ?? p.fullYears[0], p.opts.endYear ?? p.fullYears[1]] : p.fullYears;
   const max = Math.max(1e-12, ...ordered.map((r) => (effMetric === "slope" ? Math.abs(r.slope) : (dir === "up" ? r.strongUp : r.strongDown) ?? 0)));
   const cont = CONTINENTS.find((c) => c.id === p.continent);
   const countryName = p.countryRows.find((c) => c.id === p.countryId)?.[`name_${lang}`] ?? "";
@@ -116,7 +121,8 @@ export function RankingPane(p: RankInputs & { countryId: string | null; continen
       </div>
       <h2>{title}</h2>
       <p className="eyebrow">
-        {v.name[lang]} <span className="unit">{effMetric === "slope" ? `${unit}/${lang === "tr" ? "10 yıl" : "decade"}` : "%"}</span>
+        {v.name[lang]} <span className="unit">{effMetric === "slope" ? viewUnit(lang, unit, view, years) : "%"}</span>
+        {effMetric === "slope" && <ChangeToggle lang={lang} />}
       </p>
       <p className="fine">{source === "series" ? T.fromSeries[lang] : T.fromMap[lang]}</p>
       {!ready ? (
@@ -140,7 +146,7 @@ export function RankingPane(p: RankInputs & { countryId: string | null; continen
                   <span className="rank-bar" aria-hidden>
                     <i className={(effMetric === "slope" ? val >= 0 : dir === "up") ? "pos" : "neg"} style={{ width: `${(Math.abs(val) / max) * 100}%` }} />
                   </span>
-                  <span className="rank-val">{effMetric === "slope" ? signed(lang, val, v.decimals + 1) : `%${Math.round(val * 100)}`}</span>
+                  <span className="rank-val">{effMetric === "slope" ? signed(lang, asView(val, view, years), viewDecimals(view, v.decimals)) : `%${Math.round(val * 100)}`}</span>
                   <span className={`rank-lvl lvl-${r.level}`}>{T.level[r.level][lang]}</span>
                 </button>
               </li>
