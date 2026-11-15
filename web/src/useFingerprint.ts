@@ -20,6 +20,11 @@ export interface PlaceCells {
   cells: number[] | null;
 }
 
+// similar-place vectors per loaded set of maps: per country grid, and per province feature
+// (from main, "No more stutter on big countries")
+const countryCache = new WeakMap<TrendStack, WeakMap<Uint16Array, Candidate[]>>();
+const provinceCache = new WeakMap<TrendStack, WeakMap<object, Candidate>>();
+
 export interface FingerprintInputs {
   lang: Lang;
   variables: VariableInfo[];
@@ -115,28 +120,42 @@ export function useFingerprint(p: FingerprintInputs, enabled: boolean): Fingerpr
   const insights = useMemo(() => interpret(rows), [rows]);
 
   // ── similar places ──
+  // The card is rebuilt on every selection, but these depend only on the loaded maps and the
+  // borders, which never change: they are worked out once and kept (module-level caches).
   const countryVectors: Candidate[] = useMemo(() => {
     if (!stack || !p.countryGrid) return [];
+    const byGrid = countryCache.get(stack) ?? new WeakMap<Uint16Array, Candidate[]>();
+    countryCache.set(stack, byGrid);
+    const hit = byGrid.get(p.countryGrid);
+    if (hit) return hit;
     const per: Partial<Record<VarId, (GridMean | null)[]>> = {};
     for (const id of ids) if (stack[id]) per[id] = summarizeByGrid(stack[id]!, p.countryGrid, p.countries.length);
-    return p.countries.map((c, k) => {
+    const list = p.countries.map((c, k) => {
       const means: Partial<Record<VarId, GridMean | null>> = {};
       // tiny countries (< 3 cells) are too noisy to be a match
       for (const id of ids) {
         const m = per[id]?.[k] ?? null;
         means[id] = m && m.cells >= 3 ? m : null;
       }
-      return { kind: "country", id: c.id, country: c.id, name: { en: c.name_en, tr: c.name_tr }, vector: vectorOf(means, scales) };
+      return { kind: "country" as const, id: c.id, country: c.id, name: { en: c.name_en, tr: c.name_tr }, vector: vectorOf(means, scales) };
     });
+    byGrid.set(p.countryGrid, list);
+    return list;
   }, [stack, p.countryGrid, p.countries, ids, scales]);
 
   const provinceVectors: Candidate[] = useMemo(() => {
     if (!stack) return [];
+    const byFeature = provinceCache.get(stack) ?? new WeakMap<object, Candidate>();
+    provinceCache.set(stack, byFeature);
     return p.provinceFeatures.map((f) => {
+      const hit = byFeature.get(f);
+      if (hit) return hit;
       const cells = cellsInside(f);
       const means: Partial<Record<VarId, GridMean | null>> = {};
       for (const id of ids) means[id] = stack[id] && cells.length >= 3 ? summarizeList(stack[id]!, cells) : null;
-      return { kind: "province", id: f.properties.id, country: f.properties.country, name: { en: f.properties.name_en, tr: f.properties.name_tr }, vector: vectorOf(means, scales) };
+      const c: Candidate = { kind: "province", id: f.properties.id, country: f.properties.country, name: { en: f.properties.name_en, tr: f.properties.name_tr }, vector: vectorOf(means, scales) };
+      byFeature.set(f, c);
+      return c;
     });
   }, [stack, p.provinceFeatures, ids, scales]);
 

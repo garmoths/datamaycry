@@ -653,7 +653,7 @@ export default function App() {
       {/* top bar: logo + view switch · search · actions */}
       <motion.header className="topbar" initial={reduce ? false : { y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
         <div className="brand">
-          <Logo size={30} />
+          <Logo size={32} />
           <ViewTabs
             label={t(lang, "view")}
             value={mode}

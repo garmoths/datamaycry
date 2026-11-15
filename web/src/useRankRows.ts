@@ -18,6 +18,9 @@ export const RANK_TAB_LABEL = { tr: "Sıralama", en: "Ranking" } as const;
 
 type ProvinceFeature = Feature<Polygon | MultiPolygon, { id: string; country: string; name_en: string; name_tr: string }>;
 
+/** series-based province rankings, by `${country}|${variable}|${period/season}` (small LRU) */
+const rowCache = new Map<string, RankRow[]>();
+
 export type RankScope = { kind: "countries"; continent: string | null } | { kind: "provinces"; country: string };
 
 export interface RankInputs {
@@ -43,14 +46,14 @@ export function useRankRows(scope: RankScope | null, p: RankInputs): { rows: Ran
   const seriesIds = useMemo(() => new Set(info?.admin1.map((a) => a.id) ?? []), [info]);
   const bySeries = !!countryId && features.length > 0 && features.every((f) => seriesIds.has(f.properties.id));
 
-  // map-based province cells, once per country
+  // map-based province cells, only when the ranking is read from the map (cached per province)
   const provinceCells = useMemo(
     () =>
-      features.map((f) => {
+      bySeries ? [] : features.map((f) => {
         const inside = cellsInside(f);
         return { f, cells: inside.length ? inside : cellsInside(f, labelPoint(f)), lowRes: inside.length === 0 };
       }),
-    [features],
+    [features, bySeries],
   );
 
   const mapRows: RankRow[] = useMemo(() => {
@@ -74,10 +77,15 @@ export function useRankRows(scope: RankScope | null, p: RankInputs): { rows: Ran
 
   // series-based provinces (one file per country holds every province)
   const optsKey = JSON.stringify(p.opts);
-  const [series, setSeries] = useState<{ key: string; rows: RankRow[] }>({ key: "", rows: [] });
   const seriesKey = `${countryId}|${variable.id}|${optsKey}`;
+  // the card is rebuilt on each selection: rows already computed for this country, variable
+  // and period are reused instead of analysing every province again
+  const [series, setSeries] = useState<{ key: string; rows: RankRow[] }>(() => {
+    const hit = rowCache.get(seriesKey);
+    return hit ? { key: seriesKey, rows: hit } : { key: "", rows: [] };
+  });
   useEffect(() => {
-    if (!bySeries || !countryId) return;
+    if (!bySeries || !countryId || rowCache.has(seriesKey)) return;
     let dead = false;
     const opts = JSON.parse(optsKey) as TrendOptions;
     void Promise.all(
@@ -92,12 +100,20 @@ export function useRankRows(scope: RankScope | null, p: RankInputs): { rows: Ran
           () => null,
         ),
       ),
-    ).then((rows) => !dead && setSeries({ key: seriesKey, rows: rows.filter((r): r is RankRow => !!r) }));
+    ).then((rows) => {
+      const ok = rows.filter((r): r is RankRow => !!r);
+      rowCache.set(seriesKey, ok);
+      if (rowCache.size > 24) rowCache.delete(rowCache.keys().next().value!);
+      if (!dead) setSeries({ key: seriesKey, rows: ok });
+    });
     return () => {
       dead = true;
     };
   }, [bySeries, countryId, features, variable.id, optsKey, seriesKey, info]);
 
-  if (bySeries) return { rows: series.key === seriesKey ? series.rows : [], source: "series", ready: series.key === seriesKey };
+  if (bySeries) {
+    const rows = series.key === seriesKey ? series.rows : rowCache.get(seriesKey);
+    return { rows: rows ?? [], source: "series", ready: !!rows };
+  }
   return { rows: mapRows, source: "map", ready: !!trendMap };
 }

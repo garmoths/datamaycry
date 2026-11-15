@@ -224,7 +224,22 @@ export function Panel(p: Props) {
         : null,
     [shown, animFrom, animTo, season],
   );
-  const bend = useMemo(() => bendFor(result), [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the bootstrap takes ~30 ms: it runs after the card is on screen, when the browser is idle
+  const [bendOf, setBendOf] = useState<{ result: typeof result; bend: ReturnType<typeof bendFor> } | null>(null);
+  useEffect(() => {
+    if (!result || p.anim) return;
+    let dead = false;
+    const run = () => !dead && setBendOf({ result, bend: bendFor(result) });
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: object) => number }).requestIdleCallback;
+    const id = ric ? ric(run, { timeout: 600 }) : window.setTimeout(run, 50);
+    return () => {
+      dead = true;
+      const cic = (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      if (ric && cic) cic(id);
+      else window.clearTimeout(id);
+    };
+  }, [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bend = !p.anim && bendOf && bendOf.result === result ? bendOf.bend : null;
   // rankings (Ranking.tsx): same period and season as the card
   const cardOpts = useMemo(
     () => ({ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }),
@@ -239,6 +254,33 @@ export function Panel(p: Props) {
   const ok = result?.status === "ok";
   const unit = unitLabel(v.unit, lang);
   const per = `${unit} / ${t(lang, "decade")}`;
+  // the big number: change per decade (the trend) or the total over the period; remembered
+  const [changeView, setChangeView] = useState<"decade" | "total">(() => {
+    try {
+      return localStorage.getItem("dmc-change") === "total" ? "total" : "decade";
+    } catch {
+      return "decade";
+    }
+  });
+  const pickChange = (x: "decade" | "total") => {
+    setChangeView(x);
+    try {
+      localStorage.setItem("dmc-change", x);
+    } catch {
+      /* private mode */
+    }
+  };
+  // the world trend map is for the whole period: total = mean slope × decades
+  const areaTotal = p.area ? (p.area.summary.meanSlope * (variables.test_years.end - variables.test_years.start)) / 10 : 0;
+  const changeToggle = (
+    <span className="seg small change-toggle" role="group" aria-label={t(lang, "changeView")}>
+      {(["decade", "total"] as const).map((x) => (
+        <button key={x} className={changeView === x ? "on" : ""} aria-pressed={changeView === x} onClick={() => pickChange(x)}>
+          {t(lang, x === "decade" ? "perDecadeShort" : "totalShort")}
+        </button>
+      ))}
+    </span>
+  );
   const place = shown?.label[lang] ?? "";
   const country = p.index.find((c) => c.id === p.countryId);
   const province = p.provinces.find((a) => a.id === p.admin1Id) ?? null;
@@ -371,8 +413,13 @@ export function Panel(p: Props) {
       {ok && verdict!.meaning && <p className="meaning">{verdict!.meaning}</p>}
       {ok && result!.level !== "none" && (
         <div className="headline">
-          <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
-          <span className="unit">{per}</span>
+          {changeView === "total" ? (
+            <NumberTicker className="big" value={result!.totalChange} decimals={decimalsFor(result!.totalChange, v.decimals)} signed comma={tr} />
+          ) : (
+            <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
+          )}
+          <span className="unit">{changeView === "total" ? `${unit} · ${result!.startYear}–${result!.endYear}` : per}</span>
+          {changeToggle}
         </div>
       )}
       <p className="card-text">{verdict!.body}</p>
@@ -418,8 +465,13 @@ export function Panel(p: Props) {
         {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")}
       </p>
       <div className="headline">
-        <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
-        <span className="unit">{per}</span>
+        {changeView === "total" ? (
+          <NumberTicker className="big" value={areaTotal} decimals={decimalsFor(areaTotal, v.decimals)} signed comma={tr} />
+        ) : (
+          <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
+        )}
+        <span className="unit">{changeView === "total" ? `${unit} · ${variables.test_years.start}–${variables.test_years.end}` : per}</span>
+        {changeToggle}
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
       <p className="card-text">
@@ -489,12 +541,19 @@ export function Panel(p: Props) {
             <span className={`feat-word ${dir}`}>{word}</span>
             {hasAnswer && ok && <span className={`feat-level ${result!.level}`}>{t(lang, result!.level)}</span>}
           </span>
-          {showNum && (
-            <span className="feat-num">
-              <NumberTicker className="big" value={slope} decimals={decimalsFor(slope, v.decimals + 1)} signed comma={tr} />
-              <small>{per}</small>
-            </span>
-          )}
+          {showNum &&
+            (() => {
+              // same choice as the card's toggle (main): change per decade, or the total over the period
+              const total = changeView === "total";
+              const value = total ? (hasAnswer ? result!.totalChange : areaTotal) : slope;
+              const span = hasAnswer ? `${result!.startYear}–${result!.endYear}` : `${variables.test_years.start}–${variables.test_years.end}`;
+              return (
+                <span className="feat-num">
+                  <NumberTicker className="big" value={value} decimals={decimalsFor(value, total ? v.decimals : v.decimals + 1)} signed comma={tr} />
+                  <small>{total ? `${unit} · ${span}` : per}</small>
+                </span>
+              );
+            })()}
           {hasAnswer && ok && openRow !== "chart" && (
             <TrendPlot compact series={shown!} result={result!} view="anomaly" unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} height={72} />
           )}
