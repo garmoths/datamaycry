@@ -6,7 +6,7 @@ import { VariableDock } from "./VariableDock.tsx";
 import { ViewTabs } from "./ViewTabs.tsx";
 import type { Question } from "./content.ts";
 import { Icon, Logo } from "./icons.tsx";
-import { MethodDialog } from "./MethodDialog.tsx";
+import { MethodDialog, type MethodTab } from "./MethodDialog.tsx";
 import {
   getRegionSeries,
   frameMean,
@@ -98,7 +98,9 @@ export default function App() {
   const [trendMap, setTrendMap] = useState<TrendMap | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [noGl, setNoGl] = useState(false);
-  const [methodOpen, setMethodOpen] = useState(false);
+  // "How it works"; a link ending in #api (the API docs address) opens it on the API tab
+  const [methodOpen, setMethodOpen] = useState(() => typeof location !== "undefined" && location.hash === "#api");
+  const [methodTab] = useState<MethodTab>(() => (typeof location !== "undefined" && location.hash === "#api" ? "api" : "basics"));
   const [question, setQuestion] = useState<Question | null>(null);
   const [drawer, setDrawer] = useState<DrawerTab | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -798,7 +800,7 @@ export default function App() {
         <VariableDock lang={lang} variables={variables.variables} value={varId} suggested={question?.vars ?? []} onChange={(v) => startTransition(() => setVarId(v))} />
       </motion.div>
 
-      <MethodDialog lang={lang} open={methodOpen} onClose={() => setMethodOpen(false)} />
+      <MethodDialog lang={lang} open={methodOpen} initialTab={methodTab} onClose={() => setMethodOpen(false)} />
 
       {animOn && frames && (
         <div className="yearbadge" aria-live="polite">

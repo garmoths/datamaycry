@@ -24,7 +24,35 @@ function maplibreWorker(): Plugin {
   }
 }
 
+// The public API (web/api/v1/*.ts) runs as Vercel functions in production. In `npm run dev`
+// the same handlers answer /api/v1/* here, reading the data the dev server serves
+// (VITE_DATA_URL, e.g. /pkg/ for the real package, otherwise the mock files in /data/).
+function devApi(): Plugin {
+  return {
+    name: 'dev-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url ?? ''
+        const m = url.match(/^\/api\/v1\/(variables|places|trend|series)(\?.*)?$/)
+        if (!m) return next()
+        try {
+          const port = server.config.server.port ?? 5173
+          process.env.DATA_ORIGIN ??= `http://localhost:${port}${process.env.VITE_DATA_URL || '/data/'}`
+          const mod = await server.ssrLoadModule(`/api/v1/${m[1]}.ts`)
+          const r: Response = await mod.default(new Request(`http://localhost:${port}${url}`))
+          res.statusCode = r.status
+          r.headers.forEach((v, k) => res.setHeader(k, v))
+          res.end(await r.text())
+        } catch (e) {
+          res.statusCode = 500
+          res.end(String(e))
+        }
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), maplibreWorker()],
+  plugins: [react(), maplibreWorker(), devApi()],
 })
