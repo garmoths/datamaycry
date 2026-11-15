@@ -10,6 +10,7 @@ import type { CountryInfo, VarId, VariableInfo } from "./data.ts";
 import { CONTINENTS } from "./geo.ts";
 import { QUESTIONS, VAR_ICONS, type Question } from "./content.ts";
 import { fold } from "./fold.ts";
+import { hitRank } from "./searchRank.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import type { Lang } from "./i18n.ts";
 
@@ -131,7 +132,7 @@ function PaletteBody(p: Props) {
     if (!f) return all.filter((x) => x.key.startsWith("q:") || x.key.startsWith("k:")).slice(0, 9);
     return all
       .filter((x) => x.text.includes(f))
-      .sort((a, b) => Number(b.text.startsWith(f)) - Number(a.text.startsWith(f)) || Number(!!b.hasData) - Number(!!a.hasData))
+      .sort((a, b) => hitRank(b, f) - hitRank(a, f) || Number(!!b.hasData) - Number(!!a.hasData))
       .slice(0, 9);
   }, [q, all]);
 

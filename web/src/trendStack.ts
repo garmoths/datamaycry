@@ -26,6 +26,16 @@ export function loadTrendStack(vars: VarId[]): Promise<TrendStack> {
  * cell with data. Dividing by it makes °C, mm/day and kg/m² comparable (FEATURE_PLAN §2.3).
  */
 export function scaleOf(map: TrendMap): number {
+  // a map never changes once loaded: sort its ~70 000 slopes only once
+  const hit = scaleCache.get(map);
+  if (hit !== undefined) return hit;
+  const out = scaleOfUncached(map);
+  scaleCache.set(map, out);
+  return out;
+}
+const scaleCache = new WeakMap<TrendMap, number>();
+
+function scaleOfUncached(map: TrendMap): number {
   const v: number[] = [];
   for (let k = 0; k < map.slopePerDecade.length; k += 3) {
     const s = map.slopePerDecade[k];

@@ -220,7 +220,22 @@ export function Panel(p: Props) {
         : null,
     [shown, result, season, variables.test_years],
   );
-  const bend = useMemo(() => bendFor(result), [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the bootstrap takes ~30 ms: it runs after the card is on screen, when the browser is idle
+  const [bendOf, setBendOf] = useState<{ result: typeof result; bend: ReturnType<typeof bendFor> } | null>(null);
+  useEffect(() => {
+    if (!result || p.anim) return;
+    let dead = false;
+    const run = () => !dead && setBendOf({ result, bend: bendFor(result) });
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: object) => number }).requestIdleCallback;
+    const id = ric ? ric(run, { timeout: 600 }) : window.setTimeout(run, 50);
+    return () => {
+      dead = true;
+      const cic = (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      if (ric && cic) cic(id);
+      else window.clearTimeout(id);
+    };
+  }, [result, p.anim]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bend = !p.anim && bendOf && bendOf.result === result ? bendOf.bend : null;
   // rankings (Ranking.tsx): same period and season as the card
   const cardOpts = useMemo(
     () => ({ startYear: eff[0], endYear: eff[1], months: SEASONS[season] ? [...SEASONS[season]!] : undefined }),
