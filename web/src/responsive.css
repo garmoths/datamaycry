@@ -166,9 +166,9 @@
   .period {
     width: var(--left-w, 380px);
   }
-  /* the rail starts right under the period card instead of floating at mid-screen */
+  /* the rail starts a little under the period card instead of floating at mid-screen */
   .rail {
-    top: calc(var(--left-bottom, 176px) + 10px);
+    top: calc(var(--left-bottom, 176px) + 40px);
     translate: none;
   }
   /* the legend sits on the same left edge, as wide as the rail column */
