@@ -1,0 +1,22 @@
+{
+  "name": "data-may-cry-presentation",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Data May Cry presentation (reveal.js), runs on localhost",
+  "scripts": {
+    "dev": "vite --port 5180",
+    "build": "vite build",
+    "preview": "vite preview --port 5180"
+  },
+  "dependencies": {
+    "@fontsource/geist-mono": "5.3.0",
+    "@fontsource/geist-sans": "5.3.0",
+    "@fontsource/outfit": "5.3.0",
+    "qrcode": "1.5.4",
+    "reveal.js": "5.2.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.6"
+  }
+}

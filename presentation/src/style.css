@@ -1,0 +1,548 @@
+/*
+ * Presentation theme: the app's look (dark zinc, Outfit headings, Geist text, liquid-glass
+ * cards, the trend palette). Slides are 1280 × 720 and scale to any screen.
+ * Written with AI assistance (Claude).
+ */
+:root {
+  --bg: #09090b;
+  --text: #f2f2f3;
+  --text-2: #b4b4bb;
+  --muted: #7c7c85;
+  --up: #e0725a;
+  --down: #5b9be0;
+  --warn: #d9a441;
+  --ok: #6fbf8b;
+  --accent: #7aa7ff;
+  --display: "Outfit", "Geist Sans", system-ui, sans-serif;
+  --sans: "Geist Sans", "Inter", system-ui, sans-serif;
+  --r-background-color: var(--bg);
+}
+
+html,
+body,
+.reveal-viewport {
+  background: radial-gradient(ellipse at 30% 20%, #141a2e 0%, #0b0d16 45%, #070709 100%);
+  color: var(--text);
+}
+.reveal {
+  font-family: var(--sans);
+  font-size: 28px;
+  color: var(--text);
+}
+.reveal .slides {
+  text-align: left;
+}
+.reveal .slides section {
+  height: 100%;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  font-family: var(--display);
+  color: var(--text);
+  margin: 0 0 0.5em;
+  text-transform: none;
+}
+.reveal h1 {
+  font-size: 120px;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+.reveal h2 {
+  font-size: 54px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+.reveal h3 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.3em;
+}
+.reveal p {
+  margin: 0 0 0.6em;
+  line-height: 1.45;
+}
+.accent {
+  color: var(--up);
+}
+.kicker {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sub {
+  color: var(--text-2);
+  font-size: 24px;
+}
+.sub.small {
+  font-size: 18px;
+  margin-top: 18px;
+}
+.reveal code {
+  font-size: 0.9em;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+/* ── title and end slides: climate stripes behind the text ── */
+.title-slide {
+  position: relative;
+  isolation: isolate;
+}
+/* reveal's 3D transforms ignore negative z-index: the stripes sit at 0, the text above at 1 */
+.title-slide > :not(.stripes-bg) {
+  position: relative;
+  z-index: 1;
+}
+.stripes-bg {
+  position: absolute;
+  inset: -40px -200px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.32;
+  filter: saturate(1.1);
+  mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+}
+.stripes-bg .stripes-row {
+  height: 100%;
+}
+.title-slide .lead {
+  font-family: var(--display);
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  margin-top: 10px;
+}
+.title-slide .team {
+  margin-top: 40px;
+  color: var(--text-2);
+  font-size: 22px;
+}
+.big-q {
+  font-size: 68px !important;
+}
+
+/* ── glass cards ── */
+.cards {
+  display: grid;
+  gap: 22px;
+  margin-top: 16px;
+}
+.cards.two {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 26px;
+}
+.cards.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.cards.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+.card {
+  position: relative;
+  padding: 26px 24px 22px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)), rgba(18, 18, 24, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 18px 50px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+}
+.card p {
+  color: var(--text-2);
+  font-size: 21px;
+  margin: 0;
+}
+.card .ico {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.steps .num {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 14px;
+  border-radius: 50%;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--text);
+}
+
+/* ── live app frame ── */
+.frame {
+  margin-top: 12px;
+}
+.frame iframe {
+  width: 100%;
+  height: 470px;
+  border: 0;
+  border-radius: 18px;
+  background: #0b0d16;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.frame-note {
+  margin-top: 8px !important;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+/* ── example answer card (looks like the app's) ── */
+.split {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 44px;
+  align-items: center;
+}
+.answer-card {
+  padding: 30px 30px 26px;
+  border-radius: 22px;
+  background: rgba(17, 17, 19, 0.94);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.meter {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 22px;
+}
+.meter span {
+  padding-top: 10px;
+  font-size: 15px;
+  color: var(--muted);
+  border-top: 4px solid #222226;
+}
+.meter span.on {
+  color: var(--text);
+  font-weight: 500;
+  border-top-color: var(--up);
+}
+.answer-card .meaning {
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--up);
+  margin: 0;
+}
+.answer-card .number {
+  margin: 4px 0 14px;
+}
+.answer-card .number b {
+  font-family: var(--display);
+  font-size: 76px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.answer-card .number small {
+  color: var(--muted);
+  font-size: 22px;
+}
+.answer-card .body {
+  font-size: 21px;
+  color: var(--text-2);
+  margin: 0;
+}
+.explain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 22px;
+}
+.explain li {
+  font-size: 24px;
+  line-height: 1.4;
+  color: var(--text-2);
+  padding-left: 20px;
+  border-left: 3px solid rgba(255, 255, 255, 0.16);
+}
+.explain li b {
+  color: var(--text);
+}
+.explain.next li {
+  border-left-color: var(--accent);
+}
+
+/* ── evidence levels ── */
+.levels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  margin: 10px 0 18px;
+}
+.level {
+  padding: 22px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.level p {
+  font-size: 20px;
+  color: var(--text-2);
+  margin: 14px 0 0;
+}
+.level p b {
+  color: var(--text);
+}
+.pill {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+}
+.pill.none {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-2);
+}
+.pill.possible {
+  background: rgba(217, 164, 65, 0.18);
+  color: #f0c56a;
+}
+.pill.strong {
+  background: rgba(224, 114, 90, 0.2);
+  color: #f29a85;
+}
+
+/* ── stripes on the time travel slide ── */
+.stripes-big {
+  position: relative;
+  margin: 10px 0 8px;
+}
+.stripes-row {
+  display: flex;
+  height: 150px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.stripes-big .stripes-row {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+.stripes-row span {
+  flex: 1;
+}
+.stripes-labels {
+  position: relative;
+  height: 26px;
+  margin-top: 8px;
+  font-size: 16px;
+  color: var(--muted);
+}
+.stripes-labels span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+/* ── big numbers ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+  margin-top: 18px;
+}
+.stat {
+  padding: 24px 22px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.stat b {
+  display: block;
+  font-family: var(--display);
+  font-size: 50px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+.stat span {
+  font-size: 19px;
+  color: var(--text-2);
+  line-height: 1.35;
+}
+.stat small {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* ── method pipeline ── */
+.pipeline {
+  list-style: none;
+  counter-reset: s;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.pipeline li {
+  counter-increment: s;
+  display: grid;
+  grid-template-columns: 44px 330px 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.pipeline li::before {
+  content: counter(s);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--bg);
+  background: var(--accent);
+}
+.pipeline b {
+  font-family: var(--display);
+  font-size: 24px;
+}
+.pipeline span {
+  font-size: 19px;
+  color: var(--text-2);
+}
+
+/* ── tables ── */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 19px;
+}
+.tbl th {
+  text-align: left;
+  font-family: var(--display);
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.tbl td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text-2);
+}
+.tbl td.ok {
+  color: var(--ok);
+  font-weight: 500;
+}
+.reveal table {
+  margin: 0;
+}
+
+/* ── architecture ── */
+.arch {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 14px;
+}
+.arch .node {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+.arch .node b {
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1.15;
+}
+.arch .node small {
+  font-size: 16px;
+  color: var(--text-2);
+  line-height: 1.35;
+}
+.arch .node.hl {
+  background: rgba(122, 167, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(122, 167, 255, 0.4);
+}
+.arch .arrow {
+  align-self: center;
+  font-size: 28px;
+  color: var(--muted);
+}
+
+/* ── section divider ── */
+.divider h2 {
+  font-size: 96px !important;
+}
+
+/* ── end slide ── */
+.end {
+  align-items: center;
+  text-align: center;
+}
+.qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+.qr-wrap canvas {
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+.qr-wrap a {
+  font-family: var(--display);
+  font-size: 30px;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 2px solid var(--up);
+}
+
+/* ── reveal chrome in the same colours ── */
+.reveal .controls {
+  color: var(--text-2);
+}
+.reveal .progress {
+  color: var(--up);
+  height: 4px;
+}
+.reveal .slide-number {
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: 16px;
+}
+.reveal .slides section .fragment {
+  transition-duration: 0.45s;
+}

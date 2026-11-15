@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data May Cry · Sunum</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e0725a'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <!-- ───────────────────────── 1. Başlık ───────────────────────── -->
+        <section class="title-slide">
+          <div class="stripes-bg" data-stripes></div>
+          <p class="kicker">NASA Space Apps Challenge 2026</p>
+          <h1>Data May Cry</h1>
+          <p class="lead">Dünyanın son 46 yılı,<br />herkesin anlayacağı dille.</p>
+          <p class="team">Enes Tekdemir · Rumet Argeş Şaşmaz</p>
+          <aside class="notes">
+            Merhaba. Bu arkadaki şeritlerin her biri bir yıl: 1980'den 2025'e dünyanın ortalama sıcaklığının normalden farkı.
+            Mavi serin, kırmızı sıcak yıllar. Bugün size bu verinin herkes için nasıl okunur hale geldiğini anlatacağız.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 2. Soru ───────────────────────── -->
+        <section>
+          <h2 class="big-q">İklim değişiyor.<br /><span class="accent">Peki benim şehrimde ne değişti?</span></h2>
+          <p class="fragment sub">Haberler küresel ortalamayı anlatır. İnsanlar kendi yerini sorar.</p>
+          <aside class="notes">
+            "Dünya ısınıyor" cümlesini hepimiz duyduk. Ama insanlar şunu merak ediyor: benim ilimde, benim köyümde ne oldu?
+            Yağış azaldı mı, kar mı kalmadı, rüzgâr mı değişti? Bu sorunun cevabı aslında var.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 3. Sorun ───────────────────────── -->
+        <section>
+          <p class="kicker">Sorun</p>
+          <h2>Veri var. Ama okunmuyor.</h2>
+          <div class="cards three">
+            <div class="card fragment">
+              <span class="ico" data-icon="files"></span>
+              <h3>Dosyalar</h3>
+              <p>NASA'nın 46 yıllık verisi açık ama binlerce bilimsel dosya, gigabaytlarca.</p>
+            </div>
+            <div class="card fragment">
+              <span class="ico" data-icon="units"></span>
+              <h3>Birimler</h3>
+              <p>kg/m², Kelvin, saniyede kilogram… Günlük hayattaki karşılığı belli değil.</p>
+            </div>
+            <div class="card fragment">
+              <span class="ico" data-icon="stats"></span>
+              <h3>İstatistik</h3>
+              <p>"Bu artış gerçek mi, yoksa tesadüf mü?" sorusu uzman ister.</p>
+            </div>
+          </div>
+          <aside class="notes">
+            NASA bu veriyi herkese açık yayınlıyor. Ama açmak için programlama, birimleri anlamak için fizik, sonucun gerçek olup
+            olmadığını söylemek için istatistik bilgisi gerekiyor. Yani veri açık ama erişilebilir değil.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 4. Çözüm ───────────────────────── -->
+        <section>
+          <p class="kicker">Çözüm</p>
+          <h2>Bir yer seç. Bir değişken seç.<br /><span class="accent">Cevabı düz Türkçeyle oku.</span></h2>
+          <div class="frame">
+            <iframe data-src-live title="Data May Cry canlı" loading="lazy"></iframe>
+            <p class="frame-note">Canlı uygulama · <span data-live-label></span></p>
+          </div>
+          <aside class="notes">
+            Data May Cry tam olarak bunu yapıyor. Dünyanın herhangi bir yerini seçiyorsunuz, sıcaklık ya da yağış gibi bir değişken
+            seçiyorsunuz; uygulama 46 yıllık NASA verisini analiz edip size sade bir cümleyle cevap veriyor. Bu ekran canlı.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 5. Nasıl kullanılır ───────────────────────── -->
+        <section>
+          <p class="kicker">Nasıl kullanılır</p>
+          <h2>Üç adım</h2>
+          <div class="cards three steps">
+            <div class="card fragment">
+              <span class="num">1</span>
+              <h3>Yer seç</h3>
+              <p>Küre üzerinde kıta → ülke → il. Ya da arama kutusuna yaz: "Diyarbakır".</p>
+            </div>
+            <div class="card fragment">
+              <span class="num">2</span>
+              <h3>Değişken seç</h3>
+              <p>Sıcaklık, nem, rüzgâr, yağış, buharlaşma, toprak nemi, yüzey akışı, kar, pus.</p>
+            </div>
+            <div class="card fragment">
+              <span class="num">3</span>
+              <h3>Cevabı oku</h3>
+              <p>"Isınıyor. 10 yılda +0,42 °C." Ne kadar emin olduğumuz da yazıyor.</p>
+            </div>
+          </div>
+          <aside class="notes">
+            Kullanmak için hiçbir şey bilmeniz gerekmiyor. Yeri seçiyorsunuz, değişkeni seçiyorsunuz, kart açılıyor.
+            Dokuz değişken var; hepsi NASA'nın aynı veri setinden.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 6. Örnek kart ───────────────────────── -->
+        <section>
+          <p class="kicker">Örnek · Diyarbakır, hava sıcaklığı</p>
+          <div class="split">
+            <div class="answer-card">
+              <div class="meter"><span>Belirgin değişim yok</span><span>Muhtemel değişim</span><span class="on">Net değişim</span></div>
+              <p class="meaning">Isınıyor</p>
+              <p class="number"><b data-count="0.42" data-decimals="2" data-sign="+">+0,42</b> <small>°C / 10 yıl</small></p>
+              <p class="body">1980–2025 arasında toplam yaklaşık <b>1,9 °C</b> ısınmış. Gerçek eğim büyük ihtimalle 10 yılda 0,24 ile 0,61 °C arası; şans eseri olma ihtimali <b>binde birden az</b>.</p>
+            </div>
+            <ul class="explain">
+              <li class="fragment"><b>Ne oluyor?</b> Tek kelime: "Isınıyor".</li>
+              <li class="fragment"><b>Ne kadar?</b> 10 yılda 0,42 °C, 46 yılda yaklaşık 1,9 °C.</li>
+              <li class="fragment"><b>Ne kadar eminiz?</b> Üç kademeli gösterge ve "binde birden az" gibi günlük dil.</li>
+            </ul>
+          </div>
+          <aside class="notes">
+            Bu Diyarbakır'ın gerçek kartı. Üstte tek kelimelik özet, altında rakam, en altta bunun ne kadar güvenilir olduğu.
+            p-değeri yerine "binde birden az" diyoruz; lise öğrencisi de anlasın istiyoruz.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 7. Dürüst cevap ───────────────────────── -->
+        <section>
+          <p class="kicker">Dürüstlük</p>
+          <h2>Emin değilsek, <span class="accent">söyleriz</span>.</h2>
+          <div class="levels">
+            <div class="level fragment">
+              <span class="pill none">Belirgin değişim yok</span>
+              <p><b>Diyarbakır 1980–2011</b><br />Yıldan yıla iniş çıkışlar eğilimden büyük. Yön söylemiyoruz.</p>
+            </div>
+            <div class="level fragment">
+              <span class="pill possible">Muhtemel değişim</span>
+              <p><b>Diyarbakır 1980–2016</b><br />+0,22 °C / 10 yıl. "Kanıt henüz kesin değil."</p>
+            </div>
+            <div class="level fragment">
+              <span class="pill strong">Net değişim</span>
+              <p><b>Diyarbakır 1980–2025</b><br />+0,42 °C / 10 yıl. Üç ayrı kontrolden geçti.</p>
+            </div>
+          </div>
+          <p class="fragment sub">Dönemi değiştir, cevap anında yeniden hesaplansın. Sonuç seçilen yıllara duyarlıysa kart bunu da yazar.</p>
+          <aside class="notes">
+            Burası bizim için çok önemli. Aynı yer, farklı dönemler: kısa dönemde "belirgin değişim yok" diyoruz, uzadıkça kanıt
+            güçleniyor. Bir trend uydurmuyoruz. Anlamlı olmayan bir eğimin yönünü bile söylemiyoruz.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 8. Zaman yolculuğu ───────────────────────── -->
+        <section>
+          <p class="kicker">Zaman yolculuğu</p>
+          <h2>46 yıl, yıl yıl.</h2>
+          <div class="stripes-big" data-stripes data-labels></div>
+          <p class="sub">Dünya ortalaması · 1991–2020 normalinden fark · NASA MERRA-2</p>
+          <div class="cards two">
+            <div class="card fragment"><h3>1992 · Pinatubo</h3><p>Volkan külü güneşi perdeledi: dünya bir yılda 0,25 °C soğudu. Veride görünüyor.</p></div>
+            <div class="card fragment"><h3>2023–2025</h3><p>Kayıtlardaki en sıcak üç yıl. Haritada her yıl kendi rengiyle oynatılabiliyor.</p></div>
+          </div>
+          <aside class="notes">
+            Uygulamada "Zaman yolculuğu"na basınca harita yıl yıl oynuyor. Bu şerit dünya ortalaması. 1992'deki soğuma Pinatubo
+            yanardağı; bunu biz yerleştirmedik, veride kendiliğinden çıkıyor. Bu da verinin doğru çalıştığının bir kanıtı.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 9. Kimin işine yarar ───────────────────────── -->
+        <section>
+          <p class="kicker">Kimin işine yarar?</p>
+          <div class="cards four">
+            <div class="card fragment"><span class="ico" data-icon="student"></span><h3>Öğrenci ve öğretmen</h3><p>Ders için hazır, gerçek veri. Rapor (PDF) tek tıkla.</p></div>
+            <div class="card fragment"><span class="ico" data-icon="news"></span><h3>Gazeteci</h3><p>"Şehrimiz ne kadar ısındı?" sorusuna kaynaklı cevap.</p></div>
+            <div class="card fragment"><span class="ico" data-icon="city"></span><h3>Belediye ve planlamacı</h3><p>İl il, dönem dönem karşılaştırma ve sıralama.</p></div>
+            <div class="card fragment"><span class="ico" data-icon="sprout"></span><h3>Çiftçi ve meraklı herkes</h3><p>Toprak nemi, yağış, kar: kendi yerinde ne değişti?</p></div>
+          </div>
+          <aside class="notes">
+            Hedefimiz uzmanlar değil, herkes. Öğretmen derste açabilir, gazeteci haberine kaynak gösterebilir, belediye illeri
+            karşılaştırabilir, çiftçi kendi bölgesindeki toprak nemine bakabilir.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 10. Neden güvenilir ───────────────────────── -->
+        <section>
+          <p class="kicker">Neden güvenilir?</p>
+          <h2>Kendi verimizi bağımsız kaynaklarla kontrol ettik.</h2>
+          <div class="stats">
+            <div class="stat fragment"><b data-count="94" data-suffix=" %">94 %</b><span>NOAA meteoroloji istasyonlarıyla uyum<br /><small>1.013 bölgenin 954'ünde</small></span></div>
+            <div class="stat fragment"><b data-count="0.968" data-decimals="3">0,968</b><span>NASA GISTEMP küresel sıcaklıkla korelasyon</span></div>
+            <div class="stat fragment"><b>6 / 6</b><span>Fizik testi geçti<br /><small>su dengesi, El Niño, Pinatubo…</small></span></div>
+            <div class="stat fragment"><b>≤ 5,5 %</b><span>Yanlış alarm<br /><small>trend yokken "değişim var" deme oranı</small></span></div>
+          </div>
+          <aside class="notes">
+            Bir uygulamanın güzel görünmesi yetmez, doğru olması gerekir. Sonuçlarımızı NOAA'nın yer istasyonları ve NASA'nın
+            GISTEMP verisiyle karşılaştırdık. Fizik yasalarına uyuyor mu diye altı test yaptık. Trend olmayan sahte verilerde
+            yanlışlıkla "değişim var" deme oranımız yüzde beşin biraz üstünde; bu istatistikte beklenen seviye.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 11. Teknik bölüm ───────────────────────── -->
+        <section class="divider" data-background-color="#0d0d10">
+          <p class="kicker">Teknik bölüm</p>
+          <h2>Kaputun altı</h2>
+          <p class="sub">Veri · yöntem · doğrulama · mimari</p>
+          <aside class="notes">Buradan sonrası teknik merak edenler için.</aside>
+        </section>
+
+        <!-- ───────────────────────── 12. Veri ───────────────────────── -->
+        <section>
+          <p class="kicker">Veri</p>
+          <h2>NASA MERRA-2</h2>
+          <div class="stats">
+            <div class="stat"><b>9</b><span>değişken<br /><small>sıcaklık, nem, rüzgâr, yağış, buharlaşma, toprak nemi, akış, kar, aerosol</small></span></div>
+            <div class="stat"><b data-count="561">561</b><span>ay<br /><small>Ocak 1980 → Eylül 2026</small></span></div>
+            <div class="stat"><b>≈ 55 km</b><span>ızgara<br /><small>0,5° × 0,625°, 207.936 hücre</small></span></div>
+            <div class="stat"><b data-count="4861">4.861</b><span>yer<br /><small>7 kıta · 258 ülke · 4.596 il</small></span></div>
+          </div>
+          <p class="sub small">Ek kaynaklar: NASA GPCP v3.3 (yağış), NOAA GHCN-M v4 (istasyon), NASA GISTEMP v4, Natural Earth sınırları. Her dosya sürüm, DOI ve SHA-256 ile kayıtlı.</p>
+          <aside class="notes">
+            Ana veri NASA'nın MERRA-2 yeniden analizi: gözlemlerle beslenen bir model. Aylık, 46 yıl, yaklaşık 55 kilometrelik
+            hücreler. Bunu her ülke ve her il için ayrı aylık serilere çevirdik.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 13. Yöntem ───────────────────────── -->
+        <section>
+          <p class="kicker">Yöntem</p>
+          <h2>Her kartın arkasındaki hesap</h2>
+          <ol class="pipeline">
+            <li class="fragment"><b>Anomali</b><span>Her ay, 1991–2020 normalinden farkı (mevsim etkisi çıkar)</span></li>
+            <li class="fragment"><b>Yıllık ortalama</b><span>Tam yıllar; seçilen dönem ve mevsim</span></li>
+            <li class="fragment"><b>Mann-Kendall + Sen eğimi</b><span>Aykırı değerlere dayanıklı trend testi ve eğim</span></li>
+            <li class="fragment"><b>%95 aralık</b><span>Yıllar birbirine benzer: etkin örneklem sayısıyla düzeltilmiş</span></li>
+            <li class="fragment"><b>Seviye</b><span>Muhtemel: p &lt; 0,05 · Net: p &lt; 0,01 + ön-beyazlatılmış aylık test + ±5 yıl kırpma testi, aralık 0'ı içermez</span></li>
+            <li class="fragment"><b>Bağımsız kontrol</b><span>İstasyon / GPCP aynı fikirde değilse "Net" verilmez</span></li>
+          </ol>
+          <aside class="notes">
+            Mann-Kendall iklim biliminde standart trend testi; aykırı bir yıl sonucu bozmaz. "Net" demek için üç farklı testin
+            aynı yönü göstermesini ve güven aralığının sıfırı içermemesini şart koşuyoruz.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 14. Doğrulama ───────────────────────── -->
+        <section>
+          <p class="kicker">Doğrulama</p>
+          <h2>Kurallar önceden yazıldı, sonra test edildi</h2>
+          <div class="split">
+            <table class="tbl">
+              <thead><tr><th>İstatistik testi</th><th>Kriter</th><th>Sonuç</th></tr></thead>
+              <tbody>
+                <tr><td>Yanlış alarm (trend yok)</td><td>≤ %7</td><td class="ok">%3,8 – %5,5</td></tr>
+                <tr><td>Güç (0,3 SD/10 yıl trend)</td><td>≥ %90</td><td class="ok">%100</td></tr>
+                <tr><td>%95 aralık kapsaması</td><td>≥ %90</td><td class="ok">%94,9 – %95,1</td></tr>
+              </tbody>
+            </table>
+            <table class="tbl">
+              <thead><tr><th>Fizik testi</th><th>Sonuç</th></tr></thead>
+              <tbody>
+                <tr><td>Yağış = buharlaşma (küresel)</td><td class="ok">fark %0,02</td></tr>
+                <tr><td>Clausius-Clapeyron</td><td class="ok">%7,3 / K</td></tr>
+                <tr><td>Arktik ısınması</td><td class="ok">küresel × 2,74</td></tr>
+                <tr><td>Pinatubo 1992</td><td class="ok">−0,25 °C</td></tr>
+                <tr><td>El Niño yılları</td><td class="ok">2015, 1997 en sıcak</td></tr>
+                <tr><td>Kar ↔ sıcaklık</td><td class="ok">r = −0,38</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="sub small">Tüm sayılar <code>docs/EVIDENCE.md</code> içinde, betiklerin çıktısından otomatik kopyalanır.</p>
+          <aside class="notes">
+            Testlerin geçme kriterlerini sonuçları görmeden önce koda yazdık; sonra değiştirmedik. Sentetik veride yöntemin
+            davranışını, gerçek veride fizik yasalarına uyumunu ölçtük.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 15. Mimari ───────────────────────── -->
+        <section>
+          <p class="kicker">Mimari</p>
+          <h2>NASA'dan tarayıcıya</h2>
+          <div class="arch">
+            <div class="node fragment"><b>NASA GES DISC</b><small>MERRA-2 · earthaccess · OPeNDAP</small></div>
+            <div class="arrow fragment">→</div>
+            <div class="node fragment"><b>Python işçi</b><small>xarray · protokol · Mann-Kendall · paketleme</small></div>
+            <div class="arrow fragment">→</div>
+            <div class="node fragment"><b>Veri paketi</b><small>6.112 dosya · DMC1 ikili biçim · int16</small></div>
+            <div class="arrow fragment">→</div>
+            <div class="node fragment"><b>Cloudflare R2 + Vercel</b><small>statik barındırma · CDN</small></div>
+            <div class="arrow fragment">→</div>
+            <div class="node fragment hl"><b>Tarayıcı</b><small>React · MapLibre 3D küre · Web Worker havuzu · istatistik istemcide</small></div>
+          </div>
+          <p class="sub small fragment">Sunucu yok: tüm hesap kullanıcının tarayıcısında. Python ve JavaScript aynı kartı 80 vakada birebir aynı hesaplıyor.</p>
+          <aside class="notes">
+            Arkada bir sunucu çalışmıyor. Veri bir kez Python ile işlenip küçük ikili dosyalara paketleniyor, bulutta duruyor;
+            istatistik testleri kullanıcının tarayıcısında saniyenin binde birinde çalışıyor. Bu yüzden ucuz ve hızlı.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 16. Mühendislik ───────────────────────── -->
+        <section>
+          <p class="kicker">Mühendislik</p>
+          <h2>Hızlı ve test edilmiş</h2>
+          <div class="stats">
+            <div class="stat"><b data-count="247">247</b><span>otomatik test<br /><small>her değişiklikte CI'da</small></span></div>
+            <div class="stat"><b>3 s → 60 ms</b><span>Rusya seçimi<br /><small>tarama çizgisi + önbellek</small></span></div>
+            <div class="stat"><b>312 → 120 ms</b><span>40 harita karosu<br /><small>3 Web Worker paralel</small></span></div>
+            <div class="stat"><b>~0,25 s</b><span>istenen dönem için<br /><small>52.128 hücrede trend haritası</small></span></div>
+          </div>
+          <aside class="notes">
+            Performansı ölçerek iyileştirdik. Örneğin Rusya gibi büyük bir ülkeyi seçmek önce sayfayı üç saniye donduruyordu,
+            şimdi 60 milisaniye. İstediğiniz dönem için tüm dünyanın trend haritası çeyrek saniyede yeniden hesaplanıyor.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 17. Sınırlar ───────────────────────── -->
+        <section>
+          <p class="kicker">Sınırlar ve sonraki adımlar</p>
+          <div class="split">
+            <ul class="explain">
+              <li><b>Yeniden analiz, doğrudan ölçüm değil.</b> Bu yüzden bağımsız kaynaklarla kontrol ediyoruz.</li>
+              <li><b>Yağış daha zor.</b> GPCP ile bölgelerin %57'sinde uyum; uyuşmayan yerde "Net" denmiyor.</li>
+              <li><b>~55 km hücre.</b> Bir hücreden küçük iller işaretleniyor.</li>
+              <li><b>Neden-sonuç iddiası yok.</b> "Ne değişti" diyoruz, "neden" demiyoruz.</li>
+            </ul>
+            <ul class="explain next">
+              <li>Öğretmenler için hazır ders paketleri</li>
+              <li>Daha yüksek çözünürlüklü kaynaklar (GPM, ERA5-Land)</li>
+              <li>Aşırı olaylar: sıcak hava dalgası, kuraklık günleri</li>
+              <li>Daha fazla dil</li>
+            </ul>
+          </div>
+          <aside class="notes">
+            Sınırlarımızı açıkça yazıyoruz; uygulamanın içinde de yazıyor. Sonraki adımda eğitim tarafını ve aşırı hava olaylarını
+            eklemek istiyoruz.
+          </aside>
+        </section>
+
+        <!-- ───────────────────────── 18. Teşekkür ───────────────────────── -->
+        <section class="title-slide end">
+          <div class="stripes-bg" data-stripes></div>
+          <h2>Teşekkürler</h2>
+          <p class="lead">Kendi şehrinize bakın:</p>
+          <div class="qr-wrap">
+            <canvas data-qr></canvas>
+            <a data-live-link></a>
+          </div>
+          <p class="team">Enes Tekdemir · Rumet Argeş Şaşmaz · NASA Space Apps 2026</p>
+          <aside class="notes">Teşekkürler. QR kodu okutup kendi şehrinizi deneyebilirsiniz. Sorularınızı alalım.</aside>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
