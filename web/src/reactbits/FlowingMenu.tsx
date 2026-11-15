@@ -220,7 +220,12 @@ export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0
   }, [activeIndex]);
   useEffect(() => {
     const l = loop.current;
-    return () => cancelAnimationFrame(l.raf);
+    return () => {
+      // forget the cancelled frame too, or kick() thinks one is still coming and the band freezes
+      // (React's StrictMode mounts, unmounts and mounts again in development)
+      cancelAnimationFrame(l.raf);
+      l.raf = 0;
+    };
   }, []);
 
   const onPointerMove = (e: ReactPointerEvent<HTMLUListElement>) => {
