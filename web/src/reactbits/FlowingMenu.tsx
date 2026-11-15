@@ -36,7 +36,7 @@ interface Metric {
   height: number;
 }
 
-export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.6, magnet = 0.22 }: {
+export function FlowingMenu({ items, active, label, duration = 0.42, stretch = 0.3, magnet = 0.08 }: {
   items: FlowItem[];
   /** the row whose details are open: the band rests there */
   active: string | null;
@@ -70,7 +70,9 @@ export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.
         return;
       }
       row.band.style.visibility = "visible";
-      row.band.style.clipPath = `inset(${(b.top - m.top).toFixed(2)}px 0px ${(m.top + m.height - b.bottom).toFixed(2)}px 0px round 12px)`;
+      const topR = b.top >= m.top - 0.5 ? 12 : 0;
+      const botR = b.bottom <= m.top + m.height + 0.5 ? 12 : 0;
+      row.band.style.clipPath = `inset(${(b.top - m.top).toFixed(2)}px 0px ${(m.top + m.height - b.bottom).toFixed(2)}px 0px round ${topR}px ${topR}px ${botR}px ${botR}px)`;
     });
   };
 
@@ -229,7 +231,10 @@ export function FlowingMenu({ items, active, label, duration = 0.5, stretch = 0.
     const list = listRef.current;
     if (list) cursorY.current = e.clientY - list.getBoundingClientRect().top;
     const k = rowAt(e.clientY);
-    if (k >= 0 && k !== band.current.index) goTo(k, halfOf(e.clientY, k));
+    const m = k >= 0 ? metrics.current[k] : null;
+    const y = cursorY.current ?? 0;
+    const inside = !!m && y - m.top >= 6 && m.top + m.height - y >= 6;
+    if (k >= 0 && k !== band.current.index && (inside || band.current.index < 0)) goTo(k, halfOf(e.clientY, k));
     else kick();
   };
   const onPointerLeave = (e: ReactPointerEvent<HTMLUListElement>) => {
