@@ -35,8 +35,9 @@ npm run dev        # http://localhost:5180
 | Dosya | Ne | Sayfa |
 |---|---|---|
 | `index.html` | Türkçe canlı sunum (canlı gösterim slaytı dahil) | 11 |
-| `nasa.html` | NASA'ya yüklenecek İngilizce sürüm (ekran görüntüleriyle, canlı kısım yok) | 7 |
+| `nasa.html` | NASA'ya yüklenecek İngilizce sürüm: konuşmayla aynı sıra, her görselin altında açıklama, her sayfada link ve sayfa no | 7 |
 | `pdf/aeolus-nasa.pdf` | NASA'ya yüklenecek PDF | 7 |
+| `ANLATIM.md` | Konuşma metni (slayt slayt, ~6 dk), canlı gösterim akışı ve olası sorular | – |
 | `pdf/aeolus-sunum.pdf` | Türkçe sunumun PDF'i (yedek; canlı gösterim yerine ekran görüntüsü) | 11 |
 
 PDF'leri yeniden üretmek için (Chrome/Brave/Edge yüklü olmalı):

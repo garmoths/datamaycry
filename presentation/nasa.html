@@ -7,29 +7,39 @@
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
   </head>
-  <!-- The 7-page submission deck (English). Same design as index.html; exported to pdf/aeolus-nasa.pdf. -->
+  <!--
+    The 7-page submission deck (English), exported to pdf/aeolus-nasa.pdf.
+    Same story and order as the talk (index.html), but it has to explain itself without a speaker:
+    every screenshot says what it shows, and every page carries the site link and its page number.
+    Talk slides → pages: 1 → 1 · 2 → 2 · 3+4 → 3 · 5+6 → 4 · 7 → 5 · 8 → 6 · 9+10+11 → 7
+  -->
   <body class="nasa">
     <div class="reveal">
       <div class="slides">
-        <!-- 1 · Title -->
+        <!-- 1 · Title (talk 1) -->
         <section class="title-slide">
           <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
           <div class="stripes-bg" data-stripes></div>
           <div class="brand-row">
             <img class="logo" src="/logo.png" alt="" width="150" height="150" />
             <div>
-              <p class="kicker shimmer">NASA Space Apps Challenge 2026 · Earth System Trend Detective</p>
+              <p class="kicker shimmer">NASA Space Apps Challenge 2026 · Be an Earth System Trend Detective</p>
               <h1>Aeolus</h1>
               <p class="myth">In Greek myth, the keeper of the winds</p>
             </div>
           </div>
           <p class="lead">How has the climate where you live changed in 46 years? One click, in words anyone understands.</p>
+          <p class="what">
+            A free website that turns 46 years of NASA climate data into a plain answer for any place on Earth:
+            <b>what changed, by how much, and how sure we are.</b>
+          </p>
           <p class="team">Team Data May Cry · Enes Tekdemir · Rumet Argeş Şaşmaz · <a data-live-link></a></p>
+          <p class="stripes-note">Background: one stripe per year, 1980 → 2025, world temperature against the 1991–2020 normal (blue cooler, red warmer).</p>
         </section>
 
-        <!-- 2 · The problem -->
+        <!-- 2 · Everyone has a question (talk 2) -->
         <section>
-          <p class="kicker shimmer">The problem</p>
+          <p class="kicker shimmer">1 · Everyone has a question</p>
           <h2>"Did anything really change <span class="accent">where I live?"</span></h2>
           <div class="qgrid">
             <span class="q">Is there really less snow in the mountains?</span>
@@ -39,52 +49,67 @@
             <span class="q">Which province warmed the most?</span>
             <span class="q">Is the air getting hazier?</span>
           </div>
+          <p class="sub left">The answers are in NASA's data. But reading them takes three things most people do not have:</p>
           <div class="cards three compact">
-            <div class="card"><span class="ico" data-icon="files"></span><h3>Thousands of files</h3><p>46 years of monthly NASA data, gigabytes of scientific formats.</p></div>
+            <div class="card"><span class="ico" data-icon="files"></span><h3>Thousands of files</h3><p>46 years of monthly data, gigabytes of scientific formats.</p></div>
             <div class="card"><span class="ico" data-icon="units"></span><h3>Strange units</h3><p>kg/m², Kelvin, kg per second: no everyday meaning.</p></div>
-            <div class="card"><span class="ico" data-icon="stats"></span><h3>"Is it real?"</h3><p>Telling a trend from chance needs statistics most people never learned.</p></div>
+            <div class="card"><span class="ico" data-icon="stats"></span><h3>"Is it real?"</h3><p>Telling a trend from chance needs statistics.</p></div>
           </div>
+          <p class="page-foot"><span>Aeolus · NASA Space Apps 2026</span><a data-live-link></a><span>2 / 7</span></p>
         </section>
 
-        <!-- 3 · Our solution -->
+        <!-- 3 · Three steps (talk 3 + the live demo) -->
         <section>
-          <p class="kicker shimmer">Our solution</p>
+          <p class="kicker shimmer">2 · Our solution</p>
           <div class="split shot-split">
             <div>
               <h2>Three steps to an answer.</h2>
               <ol class="steps-list">
-                <li><span class="num">1</span><div><b>Pick a place</b><p>Click the globe or search: continent, country, province, or one 55 km grid cell. 4,861 places.</p></div></li>
+                <li><span class="num">1</span><div><b>Pick a place</b><p>Click the globe or search. Continent, country, province, or one 55 km square: 4,861 places.</p></div></li>
                 <li><span class="num">2</span><div><b>Pick what you wonder about</b><p>Temperature, rain, humidity, wind, snow, soil moisture, evaporation, runoff, haze.</p></div></li>
                 <li><span class="num">3</span><div><b>Read the answer</b><p>"Getting warmer: +1.9 °C over 1980–2025", and how sure we are.</p></div></li>
               </ol>
             </div>
-            <figure class="shot"><img src="/shots/world.jpg" alt="Aeolus showing the world trend map on a 3D globe" /><figcaption>World trend map on a 3D globe (air temperature, 1980–2025)</figcaption></figure>
+            <figure class="shot">
+              <img src="/shots/world.jpg" alt="Aeolus home screen: a 3D globe coloured by the temperature trend" />
+              <figcaption>
+                <b>The app as it opens.</b> The globe is coloured by the 1980–2025 trend: red warming, blue cooling, deeper colour =
+                bigger and surer change. Left: period and variables. Right: the answer for the selected place.
+              </figcaption>
+            </figure>
           </div>
+          <p class="page-foot"><span>Aeolus · NASA Space Apps 2026</span><a data-live-link></a><span>3 / 7</span></p>
         </section>
 
-        <!-- 4 · One answer, honestly -->
+        <!-- 4 · One answer, honestly (talk 5 + 6) -->
         <section>
-          <p class="kicker shimmer">One answer, honestly</p>
-          <div class="split shot-split wide-shot">
-            <figure class="shot"><img src="/shots/diyarbakir.jpg" alt="Aeolus card for Diyarbakır: getting warmer, +0.42 °C per decade" /><figcaption>Diyarbakır, Türkiye · air temperature</figcaption></figure>
+          <p class="kicker shimmer">3 · One answer, honestly</p>
+          <div class="split shot-split answer-split">
+            <figure class="shot crop-right">
+              <img src="/shots/answer.jpg" alt="Aeolus answer for Diyarbakır: getting warmer, +0.42 °C per decade, clear change" />
+              <figcaption><b>The real card for Diyarbakır, Türkiye</b> (air temperature).</figcaption>
+            </figure>
             <div>
+              <h2 class="tight">Three questions, three plain answers.</h2>
               <ul class="explain tight-list">
                 <li><b>What is happening?</b> One phrase: "Getting warmer".</li>
                 <li><b>How much?</b> +0.42 °C per decade, or +1.9 °C in total: one switch.</li>
-                <li><b>How sure?</b> Everyday words instead of p-values; a level only when the 95 % range excludes zero.</li>
+                <li><b>How sure?</b> Everyday words instead of p-values: "the chance this is a fluke is less than 1 in 1,000".</li>
               </ul>
+              <p class="mini-title">If we are not sure, we say so. Same place, different periods:</p>
               <div class="levels mini">
                 <div class="level"><span class="pill none">No clear change</span><p>1980–2011: no direction, no number.</p></div>
                 <div class="level"><span class="pill possible">Likely change</span><p>1980–2016: +0.22 °C / decade.</p></div>
-                <div class="level"><span class="pill strong">Clear change</span><p>1980–2025: +0.42 °C / decade.</p></div>
+                <div class="level"><span class="pill strong">Clear change</span><p>1980–2025: +0.42 °C / decade, three checks agree.</p></div>
               </div>
             </div>
           </div>
+          <p class="page-foot"><span>Aeolus · NASA Space Apps 2026</span><a data-live-link></a><span>4 / 7</span></p>
         </section>
 
-        <!-- 5 · Everyday use -->
+        <!-- 5 · Everyday use (talk 7) -->
         <section>
-          <p class="kicker shimmer">Everyday use</p>
+          <p class="kicker shimmer">4 · Everyday use</p>
           <h2>Who uses it, for what?</h2>
           <div class="bento">
             <div class="tile big"><span class="ico" data-icon="sprout"></span><h3>Farmers</h3><p>"Is our soil drying, is rain shifting?" Planning sowing and irrigation with data.</p><span class="tag">soil moisture · rain · evaporation</span></div>
@@ -94,50 +119,63 @@
             <div class="tile"><span class="ico" data-icon="snow"></span><h3>Tourism and ski resorts</h3><p>How snow and winter temperatures changed over the years.</p></div>
             <div class="tile wide"><span class="ico" data-icon="clock"></span><h3>Anyone curious</h3><p>"What changed in my city since the year I was born?" Pick the years, get the answer.</p></div>
           </div>
+          <p class="page-foot"><span>Aeolus · NASA Space Apps 2026</span><a data-live-link></a><span>5 / 7</span></p>
         </section>
 
-        <!-- 6 · Features and trust -->
+        <!-- 6 · What you can do (talk 8) -->
         <section>
-          <p class="kicker shimmer">What you can do · why you can trust it</p>
-          <h2 class="tight">Built for curiosity, checked for truth.</h2>
-          <div class="features compact">
-            <div class="feat"><span class="ico" data-icon="play"></span><div><h3>Time travel</h3><p>The map plays 1980 → 2025, year by year.</p></div></div>
+          <p class="kicker shimmer">5 · What you can do</p>
+          <h2 class="tight">Watch the planet change, year by year.</h2>
+          <div class="pair">
+            <figure class="shot crop-globe">
+              <img src="/shots/timetravel_1992.jpg" alt="Time travel in 1992: the globe is mostly blue" />
+              <figcaption><b>1992</b> · −0.37 °C against normal: cooler after the Pinatubo eruption</figcaption>
+            </figure>
+            <figure class="shot crop-globe">
+              <img src="/shots/timetravel.jpg" alt="Time travel in 2024: the globe is mostly red" />
+              <figcaption><b>2024</b> · +0.65 °C against normal: the warmest year in the record</figcaption>
+            </figure>
+          </div>
+          <div class="features compact six">
+            <div class="feat"><span class="ico" data-icon="play"></span><div><h3>Time travel</h3><p>The map plays 1980 → 2025 (above).</p></div></div>
             <div class="feat"><span class="ico" data-icon="range"></span><div><h3>Any period</h3><p>Pick the years; the trend is recomputed instantly.</p></div></div>
             <div class="feat"><span class="ico" data-icon="sum"></span><div><h3>Per decade / total</h3><p>The pace of change or its total.</p></div></div>
             <div class="feat"><span class="ico" data-icon="rank"></span><div><h3>Rankings</h3><p>Where your province stands among all others.</p></div></div>
-            <div class="feat"><span class="ico" data-icon="finger"></span><div><h3>Climate fingerprint</h3><p>Nine variables in one table, similar places.</p></div></div>
-            <div class="feat"><span class="ico" data-icon="pdf"></span><div><h3>PDF report and API</h3><p>For homework, news, meetings, other apps.</p></div></div>
+            <div class="feat"><span class="ico" data-icon="finger"></span><div><h3>Climate fingerprint</h3><p>All nine variables in one table, similar places.</p></div></div>
+            <div class="feat"><span class="ico" data-icon="pdf"></span><div><h3>PDF report and open API</h3><p>For homework, news, meetings, other apps.</p></div></div>
           </div>
+          <p class="page-foot"><span>Aeolus · NASA Space Apps 2026</span><a data-live-link></a><span>6 / 7</span></p>
+        </section>
+
+        <!-- 7 · Why trust it, how it works, try it (talk 9 + 10 + 11) -->
+        <section>
+          <p class="kicker shimmer">6 · Why you can trust it · how it works</p>
+          <h2 class="tight">We checked our own results.</h2>
           <div class="stats compact">
             <div class="stat"><b>94 %</b><span>agree with NOAA weather stations<br /><small>954 of 1,013 regions</small></span></div>
             <div class="stat"><b>0.968</b><span>correlation with NASA GISTEMP global temperature</span></div>
             <div class="stat"><b>6 / 6</b><span>physics checks passed<br /><small>water balance, El Niño, Pinatubo…</small></span></div>
             <div class="stat"><b>≤ 5.5 %</b><span>false alarms when there is no trend</span></div>
           </div>
-        </section>
-
-        <!-- 7 · How it works, open science -->
-        <section>
-          <p class="kicker shimmer">How it works · open science</p>
-          <h2 class="tight">Open, free, and checked.</h2>
-          <div class="flow">
-            <div class="step"><b>NASA MERRA-2</b><small>46 years · monthly · 9 variables · ~55 km grid</small></div>
+          <div class="flow compact">
+            <div class="step"><b>NASA MERRA-2</b><small>1980–2025 · monthly · 9 variables · ~55 km grid</small></div>
             <div class="arrow">→</div>
             <div class="step"><b>Difference from normal</b><small>each month vs its 1991–2020 average, then yearly means</small></div>
             <div class="arrow">→</div>
             <div class="step"><b>Trend test</b><small>Mann-Kendall + Sen's slope, 95 % range corrected for autocorrelation</small></div>
             <div class="arrow">→</div>
-            <div class="step hl"><b>Your browser</b><small>no server: every answer computed in a millisecond</small></div>
+            <div class="step hl"><b>Your browser</b><small>every answer computed on your device in a millisecond</small></div>
           </div>
           <div class="close-row">
             <ul class="links">
               <li><b>Try it</b> <a data-live-link></a></li>
               <li><b>Open API</b> <span>/api/v1/trend?place=TR-21&amp;var=T2M</span></li>
               <li><b>Code</b> <span>github.com/garmoths/datamaycry</span></li>
-              <li><b>Data</b> <span>NASA MERRA-2 v5.12.4 · checked against NOAA GHCN, NASA GPCP, NASA GISTEMP</span></li>
+              <li><b>Data</b> <span>NASA MERRA-2 · checked against NOAA GHCN, NASA GPCP, NASA GISTEMP</span></li>
             </ul>
             <div class="qr-ring"><canvas data-qr></canvas></div>
           </div>
+          <p class="page-foot"><span>Aeolus · Team Data May Cry · NASA Space Apps 2026</span><span>Scan to try it on your own city</span><span>7 / 7</span></p>
         </section>
       </div>
     </div>
