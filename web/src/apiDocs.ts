@@ -8,8 +8,8 @@ export type Tx = Record<Lang, string>;
 
 export const API_TEXT: { intro: Tx; badges: Tx[]; note: Tx } = {
   intro: {
-    tr: "Data May Cry'ın cevaplarını kendi uygulamanda, haberinde ya da ödevinde kullan. Sitedeki kartla aynı hesap, JSON olarak.",
-    en: "Use Data May Cry's answers in your own app, story or homework. The same calculation as the card on the site, as JSON.",
+    tr: "Aeolus'un cevaplarını kendi uygulamanda, haberinde ya da ödevinde kullan. Sitedeki kartla aynı hesap, JSON olarak.",
+    en: "Use Aeolus's answers in your own app, story or homework. The same calculation as the card on the site, as JSON.",
   },
   badges: [
     { tr: "Ücretsiz", en: "Free" },
@@ -19,8 +19,8 @@ export const API_TEXT: { intro: Tx; badges: Tx[]; note: Tx } = {
     { tr: "Türkçe + İngilizce metin", en: "Turkish + English text" },
   ],
   note: {
-    tr: "\"Belirgin değişim yok\" çıkan sonuçlarda yön ve sayı verilmez (null): anlamlı olmayan bir eğimin işareti güvenilir değildir. Cevaplar bir gün önbellekte tutulur. Kullanırken kaynak olarak \"NASA MERRA-2 · Data May Cry\" yazman yeterli.",
-    en: "Results with \"no clear change\" give no direction and no numbers (null): the sign of a non-significant slope is not reliable. Answers are cached for a day. Please credit \"NASA MERRA-2 · Data May Cry\".",
+    tr: "\"Belirgin değişim yok\" çıkan sonuçlarda yön ve sayı verilmez (null): anlamlı olmayan bir eğimin işareti güvenilir değildir. Cevaplar bir gün önbellekte tutulur. Kullanırken kaynak olarak \"NASA MERRA-2 · Aeolus (Data May Cry)\" yazman yeterli.",
+    en: "Results with \"no clear change\" give no direction and no numbers (null): the sign of a non-significant slope is not reliable. Answers are cached for a day. Please credit \"NASA MERRA-2 · Aeolus (Data May Cry)\".",
   },
 };
 

@@ -1,5 +1,5 @@
 /**
- * The public Data May Cry API, framework-free so it runs in Vercel functions (web/api/) and in
+ * The public Aeolus API, framework-free so it runs in Vercel functions (web/api/) and in
  * unit tests (apiCore.test.ts on the mock files). It reads the same data package as the site and
  * runs the same analysis code (trend.ts, caps.ts, i18n.ts), so an API answer always matches the
  * card on the site.

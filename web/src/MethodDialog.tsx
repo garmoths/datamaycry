@@ -84,7 +84,7 @@ export function MethodDialog({ lang, open, onClose, initialTab = "basics" }: { l
       case "basics":
         return (
           <>
-            <p className="m-lead">{lang === "tr" ? "Data May Cry, NASA'nın 46 yıllık iklim verisini herkesin okuyabileceği bir cevaba çevirir: bir yer seç, merak ettiğini seç, cevabı oku." : "Data May Cry turns 46 years of NASA climate data into an answer anyone can read: pick a place, pick what you are curious about, read the answer."}</p>
+            <p className="m-lead">{lang === "tr" ? "Aeolus, NASA'nın 46 yıllık iklim verisini herkesin okuyabileceği bir cevaba çevirir: bir yer seç, merak ettiğini seç, cevabı oku." : "Aeolus turns 46 years of NASA climate data into an answer anyone can read: pick a place, pick what you are curious about, read the answer."}</p>
             <div className="m-cards">
               {BASICS.map((b) => (
                 <div key={b.title.en} className="m-card">
@@ -107,6 +107,12 @@ export function MethodDialog({ lang, open, onClose, initialTab = "basics" }: { l
             </div>
             <h3>{lang === "tr" ? "Haritadaki renkler" : "Colours on the map"}</h3>
             <p className="fine">{lang === "tr" ? "Kırmızı artış, mavi azalış; renk ne kadar güçlüyse değişim o kadar büyük ve kanıt o kadar sağlam. Soluk yerlerde değişim küçük ya da belirsiz." : "Red is a rise, blue a fall; the stronger the colour, the bigger the change and the firmer the evidence. Faint places changed little or unclearly."}</p>
+            <h3>{lang === "tr" ? "Neden Aeolus?" : "Why Aeolus?"}</h3>
+            <p className="fine">
+              {lang === "tr"
+                ? "Yunan mitolojisinde Aeolus rüzgârların bekçisidir: havayı tutar, salar ve yönünü bilir. Aeolus da 46 yılın havasını izleyip iklimin ne yöne değiştiğini söyler. Data May Cry ekibinin (Enes Tekdemir, Rumet Argeş Şaşmaz) NASA Space Apps Challenge 2026 projesidir."
+                : "In Greek myth Aeolus is the keeper of the winds: he holds the air, lets it go and knows where it blows. Aeolus watches 46 years of weather and tells you which way the climate is changing. A NASA Space Apps Challenge 2026 project by team Data May Cry (Enes Tekdemir, Rumet Argeş Şaşmaz)."}
+            </p>
           </>
         );
       case "method":

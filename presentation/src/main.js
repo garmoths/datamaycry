@@ -1,5 +1,5 @@
 /**
- * Data May Cry presentation: reveal.js with speaker notes, climate stripes drawn from the
+ * Aeolus presentation (team Data May Cry): reveal.js with speaker notes, climate stripes drawn from the
  * real world-mean temperature series, a live embed of the app and a QR code to it.
  *
  *   npm run dev            → http://localhost:5180

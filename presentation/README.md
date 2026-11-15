@@ -1,4 +1,6 @@
-# Data May Cry · Sunum
+# Aeolus · Sunum
+
+*Data May Cry ekibi*
 
 reveal.js ile kodla yazılmış sunum. İnternetsiz de çalışır (yazı tipleri ve kütüphaneler yerel).
 

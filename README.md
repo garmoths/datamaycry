@@ -1,4 +1,6 @@
-# Data May Cry 🌍🔍
+# Aeolus 🌍🔍
+
+*Data May Cry ekibinin projesi · a project by team Data May Cry*
 
 **NASA Space Apps Challenge 2026: _Be An Earth System Trend Detective!_**
 

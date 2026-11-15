@@ -1,9 +1,9 @@
 {
-  "name": "data-may-cry-presentation",
+  "name": "aeolus-presentation",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Data May Cry presentation (reveal.js), runs on localhost",
+  "description": "Aeolus presentation (reveal.js) by team Data May Cry, runs on localhost",
   "scripts": {
     "dev": "vite --port 5180",
     "build": "vite build",

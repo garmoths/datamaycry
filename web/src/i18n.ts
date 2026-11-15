@@ -2,7 +2,7 @@
 export type Lang = "en" | "tr";
 
 const S = {
-  title: { en: "Data May Cry", tr: "Data May Cry" },
+  title: { en: "Aeolus", tr: "Aeolus" },
   tagline: { en: "Is your corner of Earth changing?", tr: "Dünyanın senin köşen değişiyor mu?" },
   mock: { en: "MOCK DATA", tr: "SAHTE VERİ" },
   view: { en: "View", tr: "Görünüm" },

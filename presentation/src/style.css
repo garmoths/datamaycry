@@ -827,3 +827,12 @@ body,
   color: var(--accent);
   background: none;
 }
+
+/* the name's story under the title */
+.reveal p.myth {
+  margin: 8px 0 0;
+  font-family: var(--display);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--text-2);
+}

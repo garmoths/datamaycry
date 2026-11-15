@@ -607,7 +607,7 @@ export default function App() {
   if (fatal) {
     return (
       <main className="splash">
-        <h1>Data May Cry</h1>
+        <h1>Aeolus</h1>
         <p className="alert">{t(lang, "error")}: {fatal}</p>
       </main>
     );
@@ -615,7 +615,7 @@ export default function App() {
   if (!variables) {
     return (
       <main className="splash">
-        <h1>Data May Cry</h1>
+        <h1>Aeolus</h1>
         <p>{t(lang, "loading")}</p>
       </main>
     );
@@ -656,6 +656,7 @@ export default function App() {
       <motion.header className="topbar" initial={reduce ? false : { y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
         <div className="brand">
           <Logo size={32} />
+          <span className="wordmark">Aeolus</span>
           <ViewTabs
             label={t(lang, "view")}
             value={mode}
