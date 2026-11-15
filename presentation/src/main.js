@@ -68,6 +68,14 @@ const ICONS = {
   news: "M4 5h13v14H6a2 2 0 0 1-2-2z M17 9h3v8a2 2 0 0 1-2 2 M8 9h5 M8 13h5",
   city: "M3 21h18 M5 21V10 M19 21V10 M9 21v-6h6v6 M2 10l10-6 10 6",
   sprout: "M12 21v-9 M12 12c0-3.5-2.5-6-7-6 0 3.5 2.5 6 7 6z M12 14c0-3.5 2.5-6 7-6 0 3.5-2.5 6-7 6z M7 21h10",
+  snow: "M12 2.5v19 M3.8 7.25l16.4 9.5 M3.8 16.75l16.4-9.5 M9.5 4.5L12 7l2.5-2.5 M9.5 19.5L12 17l2.5 2.5",
+  clock: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 7v5l3 2",
+  play: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M10 8.5v7l6-3.5z",
+  range: "M3 12h18 M7 8v8 M17 8v8 M3 5h4 M17 19h4",
+  sum: "M17 5H7l6 7-6 7h10",
+  rank: "M5 20v-6 M12 20V8 M19 20v-9 M3 20h18 M12 4l1.2 2.4 2.6.4-1.9 1.8.5 2.6L12 10l-2.4 1.2.5-2.6-1.9-1.8 2.6-.4z",
+  finger: "M4 12a8 8 0 0 1 16 0 M7 15a5 5 0 0 1 10 0v1 M10 18a2 2 0 0 1 4 0v3 M12 12v9",
+  pdf: "M6 3h8l5 5v13H6z M14 3v5h5 M9 13h1.5a1.5 1.5 0 0 1 0 3H9v-3 M9 16v2",
 };
 document.querySelectorAll("[data-icon]").forEach((el) => {
   const d = ICONS[el.dataset.icon];
@@ -115,6 +123,64 @@ function countIn(root) {
   });
 }
 
+// ── Aceternity-style "text generate": headlines settle word by word when their slide shows ──
+// still mode: reduced motion, ?static (rehearsal screenshots) or ?print-pdf (PDF export)
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches || /[?&](static|print-pdf)\b/.test(location.search);
+if (reduceMotion) document.documentElement.classList.add("still");
+document.querySelectorAll("[data-generate]").forEach((el) => {
+  let k = 0;
+  const wrap = (node) => {
+    for (const child of [...node.childNodes]) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const frag = document.createDocumentFragment();
+        for (const part of child.textContent.split(/(\s+)/)) {
+          if (!part) continue;
+          if (/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
+          else {
+            const w = document.createElement("span");
+            w.className = "gw";
+            w.style.setProperty("--i", String(k++));
+            w.textContent = part;
+            frag.appendChild(w);
+          }
+        }
+        child.replaceWith(frag);
+      } else if (child.nodeType === Node.ELEMENT_NODE && child.tagName !== "BR") wrap(child);
+    }
+  };
+  wrap(el);
+});
+
+// ── marquee: two copies of each row so the loop is seamless ──
+document.querySelectorAll(".marquee-track").forEach((t) => {
+  t.innerHTML += t.innerHTML.replace(/class="q"/g, 'class="q" aria-hidden="true"');
+});
+
+// ── Amicro-style light under the pointer on glass cards ──
+document.addEventListener("pointermove", (e) => {
+  const el = e.target.closest?.(".glow");
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--mx", `${((e.clientX - r.left) / r.width) * 100}%`);
+  el.style.setProperty("--my", `${((e.clientY - r.top) / r.height) * 100}%`);
+});
+
+// ── Aceternity-style 3D card: tilts gently towards the pointer ──
+document.querySelectorAll(".tilt").forEach((el) => {
+  if (reduceMotion) return;
+  el.addEventListener("pointermove", (e) => {
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.setProperty("--rx", `${(-y * 8).toFixed(2)}deg`);
+    el.style.setProperty("--ry", `${(x * 10).toFixed(2)}deg`);
+  });
+  el.addEventListener("pointerleave", () => {
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+  });
+});
+
 const deck = new Reveal({
   hash: true,
   slideNumber: "c/t",
@@ -128,6 +194,21 @@ const deck = new Reveal({
   margin: 0.06,
   plugins: [Notes],
 });
-deck.initialize().then(() => countIn(deck.getCurrentSlide()));
-deck.on("slidechanged", (e) => countIn(e.currentSlide));
+// replay the word-by-word headline each time a slide is shown
+function generate(slide) {
+  if (reduceMotion || !slide) return;
+  slide.querySelectorAll("[data-generate]").forEach((el) => {
+    el.classList.remove("go");
+    void el.offsetWidth; // restart the animation
+    el.classList.add("go");
+  });
+}
+deck.initialize().then(() => {
+  countIn(deck.getCurrentSlide());
+  generate(deck.getCurrentSlide());
+});
+deck.on("slidechanged", (e) => {
+  countIn(e.currentSlide);
+  generate(e.currentSlide);
+});
 deck.on("fragmentshown", (e) => countIn(e.fragment.closest("section")));
