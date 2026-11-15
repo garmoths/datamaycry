@@ -7,6 +7,7 @@
  * prefer reduced motion.
  */
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import "./uilab.css";
 
 export function HoverBackground({ show, group }: { show: boolean; group: string }) {
   const reduce = useReducedMotion();

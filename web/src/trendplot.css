@@ -64,8 +64,14 @@
 }
 .tp-values {
   fill: none;
-  stroke: rgba(154, 164, 178, 0.42);
-  stroke-width: 1;
+  stroke: rgba(170, 180, 195, 0.22);
+  stroke-width: 0.8;
+}
+.tp-run-glow {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 7;
+  stroke-linecap: round;
 }
 .tp-run {
   fill: none;
@@ -111,51 +117,49 @@
   cursor: crosshair;
 }
 
-/* readout card (Cult UI analytics-chart pattern): a dot on the point, a card beside it */
+/* readout: a dot on the hovered point, a card pinned in the top corner away from it
+   (card styling after Cult UI analytics-chart) */
+.tp-dot {
+  position: absolute;
+  z-index: 4;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--surface-solid, #111), 0 0 0 4px rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+  transition: left 0.12s var(--ease), top 0.12s var(--ease);
+}
 .tp-card {
   position: absolute;
+  top: 10px;
   z-index: 5;
+  display: grid;
+  gap: 5px;
+  min-width: 168px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  background: rgba(13, 14, 17, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
   pointer-events: none;
   animation: tp-card-in 0.18s var(--ease) both;
 }
 @keyframes tp-card-in {
   from {
     opacity: 0;
-    filter: blur(3px);
+    transform: translateY(-4px);
   }
 }
-.tp-card-dot {
-  position: absolute;
-  left: -5px;
-  top: -5px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px var(--surface-solid, #111), 0 0 0 4px rgba(255, 255, 255, 0.25);
-}
-.tp-card-body {
-  position: absolute;
-  top: -14px;
-  display: grid;
-  gap: 4px;
-  min-width: 150px;
-  padding: 9px 11px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: rgba(14, 15, 18, 0.97);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-  white-space: nowrap;
-}
-.tp-card.right .tp-card-body {
-  left: 14px;
-}
-.tp-card.left .tp-card-body {
-  right: 14px;
-}
 .tp-card-head {
-  font: 600 11.5px/1.2 var(--sans);
-  color: var(--text-2);
+  font: 600 12px/1.2 var(--display, var(--sans));
+  color: var(--text);
   font-variant-numeric: tabular-nums;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
 }
 .tp-card-row {
   display: grid;
@@ -163,7 +167,7 @@
   align-items: center;
   gap: 8px;
   font: 400 12px/1.2 var(--sans);
-  color: var(--muted);
+  color: var(--text-2);
 }
 .tp-card-row i {
   width: 8px;
@@ -175,6 +179,15 @@
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+.tp-normal {
+  font: 500 10px var(--sans);
+  fill: var(--muted);
+  letter-spacing: 0.02em;
+  paint-order: stroke;
+  stroke: var(--surface-solid, #111);
+  stroke-width: 3px;
+  pointer-events: none;
+}
 
 /* compact (side panel) */
 .tp.compact .tp-axis {
@@ -184,5 +197,8 @@
 @media (prefers-reduced-motion: reduce) {
   .tp-card {
     animation: none;
+  }
+  .tp-dot {
+    transition: none;
   }
 }

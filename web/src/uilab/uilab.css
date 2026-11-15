@@ -54,3 +54,20 @@
   align-items: center;
   gap: 6px;
 }
+
+/* inside a narrow column (the side menu): the tabs share the width, long labels wrap */
+.fm-inner .atabs {
+  display: flex;
+  width: 100%;
+}
+.fm-inner .atabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 6px;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+.fm-inner .atabs-label {
+  justify-content: center;
+}

@@ -45,20 +45,19 @@ import { Provenance, References, type ProvinceItem } from "./Evidence.tsx";
 import { Spotlight } from "./Spotlight.tsx";
 import BlurText from "./reactbits/BlurText.tsx";
 import { TextShimmer } from "./amicro/TextShimmer.tsx";
+import { YearRange } from "./YearRange.tsx";
 import { Fingerprint, FingerprintTable, SimilarPlaces } from "./Fingerprint.tsx";
 import { useFingerprint, type PlaceCells } from "./useFingerprint.ts";
 import { FlowingMenu, type FlowItem } from "./reactbits/FlowingMenu.tsx";
-import { TrendPlot } from "./TrendPlot.tsx";
 import "./sidemenu.css";
 import { AnimatedTabs } from "./uilab/AnimatedTabs.tsx";
 import { monthlyTrends, MONTHS } from "./monthly.ts";
-import { standing } from "./ranking.ts";
 import { changePoint } from "./changepoint.ts";
 import { BendNote } from "./Bend.tsx";
 import { MonthStrip } from "./MonthStrip.tsx";
 import { Report } from "./Report.tsx";
 import { RankBadge, RankingPane } from "./Ranking.tsx";
-import { RANK_TAB_LABEL, useRankRows, type RankInputs, type RankScope } from "./useRankRows.ts";
+import { RANK_TAB_LABEL, type RankInputs, type RankScope } from "./useRankRows.ts";
 
 /** Summary of the world / a continent / a country / a province, from the per-cell trend map. */
 export interface AreaInfo {
@@ -517,8 +516,6 @@ export function Panel(p: Props) {
     () => (hasAnswer && ok && !p.anim && shown ? monthlyTrends(shown, { startYear: eff[0], endYear: eff[1] }) : null),
     [hasAnswer, ok, p.anim, shown, eff],
   );
-  const rankData = useRankRows(rankScope, rankInputs);
-  const rankStand = rankScope && rankData.ready ? standing(rankData.rows, (p.admin1Id ?? p.countryId)!, lang) : null;
   const fmtS = (x: number, d: number) => (tr ? smartSigned(x, d).replace(".", ",") : smartSigned(x, d));
 
   const trendTitle = tr ? `${v.name[lang]} trendi` : `${v.name[lang]} trend`;
@@ -532,50 +529,60 @@ export function Panel(p: Props) {
       : t(lang, p.area!.kind === "world" ? "meanTrendAll" : "meanTrend");
     const showNum = Number.isFinite(slope) && (level !== "none" || !hasAnswer);
     menuItems.push({
-      id: "chart",
+      id: "trend",
       icon: VAR_ICONS[v.id],
       title: trendTitle,
-      feature: (
-        <span className="feat">
-          <span className="feat-head">
-            <span className={`feat-word ${dir}`}>{word}</span>
-            {hasAnswer && ok && <span className={`feat-level ${result!.level}`}>{t(lang, result!.level)}</span>}
-          </span>
-          {showNum &&
-            (() => {
-              // same choice as the card's toggle (main): change per decade, or the total over the period
-              const total = changeView === "total";
-              const value = total ? (hasAnswer ? result!.totalChange : areaTotal) : slope;
-              const span = hasAnswer ? `${result!.startYear}–${result!.endYear}` : `${variables.test_years.start}–${variables.test_years.end}`;
-              return (
-                <span className="feat-num">
+      // closed: only the number (per decade or total, as the card's toggle says); open: the card
+      // below shows the word, the number and the toggle, so the row keeps only its title
+      feature:
+        openRow === "trend" ? undefined : showNum ? (
+          (() => {
+            const total = changeView === "total";
+            const value = total ? (hasAnswer ? result!.totalChange : areaTotal) : slope;
+            const span = hasAnswer ? `${result!.startYear}–${result!.endYear}` : `${variables.test_years.start}–${variables.test_years.end}`;
+            return (
+              <span className="feat">
+                <span className={`feat-num ${dir}`}>
                   <NumberTicker className="big" value={value} decimals={decimalsFor(value, total ? v.decimals : v.decimals + 1)} signed comma={tr} />
-                  <small>{total ? `${unit} · ${span}` : per}</small>
+                  <small>
+                    {total ? `${unit} · ${span}` : per}
+                    {season !== "all" && <span className="feat-season"> · {t(lang, SEASON_LABEL[season])}</span>}
+                  </small>
                 </span>
-              );
-            })()}
-          {hasAnswer && ok && openRow !== "chart" && (
-            <TrendPlot compact series={shown!} result={result!} view="anomaly" unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} height={72} />
-          )}
-        </span>
-      ),
-      content: (
-        <>
-          {answer}
-          {hasAnswer && ok && (
+              </span>
+            );
+          })()
+        ) : (
+          <span className="feat">
+            <span className={`feat-word ${dir}`}>{word}</span>
+          </span>
+        ),
+      content: answer,
+      onClick: () => setOpenRow(openRow === "trend" ? null : "trend"),
+    });
+  }
+  const menuView = view === "seasons" ? "anomaly" : view;
+  // the chart: its own row, fourth (after the fingerprint and similar places)
+  const graphItem: FlowItem | null =
+    hasAnswer && ok
+      ? {
+          id: "graph",
+          icon: "chart",
+          title: tr ? "Grafik" : "Chart",
+          sub: tr ? `Yıllık fark ve eğilim, ${eff[0]}–${eff[1]}` : `Yearly difference and trend, ${eff[0]}–${eff[1]}`,
+          content: (
             <>
-              <AnimatedTabs size="sm" tabs={(["anomaly", "raw", "seasons"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={view} onChange={setView} />
-              <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
+              <AnimatedTabs size="sm" tabs={(["anomaly", "raw"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={menuView} onChange={setView} />
+              <Chart series={shown!} result={result!} view={menuView} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
               <button className="link-btn" onClick={() => p.onDrawer("chart")}>
                 <Icon name="expand" size={14} /> {tr ? "Dönem ve mevsim ayarlarıyla aç" : "Open with period and season controls"}
               </button>
             </>
-          )}
-        </>
-      ),
-      onClick: () => setOpenRow(openRow === "chart" ? null : "chart"),
-    });
-  }
+          ),
+          onClick: () => setOpenRow(openRow === "graph" ? null : "graph"),
+        }
+      : null;
+  if (!p.place && graphItem) menuItems.push(graphItem);
   if (p.place) {
     const tested = fp.rows.filter((r) => r.slope !== null);
     const clear = tested.filter((r) => r.level === "strong").length;
@@ -626,6 +633,7 @@ export function Panel(p: Props) {
       content: <SimilarPlaces data={fp} lang={lang} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />,
       onClick: () => setOpenRow(openRow === "similar" ? null : "similar"),
     });
+    if (graphItem) menuItems.push(graphItem);
   }
   if (months) {
     const fastest = months
@@ -649,37 +657,17 @@ export function Panel(p: Props) {
           <small>{tr ? "12 test" : "12 tests"}</small>
         </>
       ),
-      content: <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />,
+      content: (
+        <>
+          <h3 className="fm-sec">{t(lang, "seasons")}</h3>
+          <Chart series={shown!} result={result!} view="seasons" unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} />
+          <h3 className="fm-sec">{tr ? "Her ayın kendi eğilimi" : "Each month's own trend"}</h3>
+          <MonthStrip series={shown!} startYear={eff[0]} endYear={eff[1]} lang={lang} unit={unit} decimals={v.decimals} />
+        </>
+      ),
       onClick: () => setOpenRow(openRow === "months" ? null : "months"),
     });
   }
-  if (rankScope) {
-    menuItems.push({
-      id: "rank",
-      icon: "flag",
-      title: tr ? "Sıralama" : "Ranking",
-      sub: rankStand
-        ? tr
-          ? `${rankStand.of} yer arasında, ${rankStand.dir === "up" ? "en hızlı artanlardan" : "en hızlı azalanlardan"}`
-          : `among ${rankStand.of} places, by ${rankStand.dir === "up" ? "fastest rise" : "fastest fall"}`
-        : tr
-          ? "Komşularıyla karşılaştır"
-          : "Compare with its neighbours",
-      value: rankStand ? (
-        <>
-          <b>#{rankStand.rank}</b>
-          <small>/ {rankStand.of}</small>
-        </>
-      ) : undefined,
-      content: (
-        <>
-          <RankingPane {...rankInputs} countryId={p.countryId} continent={p.continent} selected={p.admin1Id ?? p.countryId} onCountry={p.onCountry} onAdmin1={p.onAdmin1} />
-        </>
-      ),
-      onClick: () => setOpenRow(openRow === "rank" ? null : "rank"),
-    });
-  }
-
   // ── drawer contents ───────────────────────────────────────────────────────
   const chartPane = hasAnswer ? (
     <>
@@ -687,18 +675,7 @@ export function Panel(p: Props) {
       <AnimatedTabs tabs={(["anomaly", "raw", "seasons"] as const).map((k) => ({ id: k, label: t(lang, k) }))} value={view} onChange={setView} />
       <Chart series={shown!} result={result!} view={view} unit={unit} decimals={v.decimals} startYear={eff[0]} endYear={eff[1]} lang={lang} bendYear={bend?.year} />
       <div className="controls">
-        <label>
-          {t(lang, "period")} <b>{years[0]}–{years[1]}</b>
-          <div className="range2">
-            <input type="range" aria-label="start year" min={variables.test_years.start} max={variables.test_years.end} value={years[0]} onChange={(e) => setYears([Math.min(+e.target.value, years[1]), years[1]])} />
-            <input type="range" aria-label="end year" min={variables.test_years.start} max={variables.test_years.end} value={years[1]} onChange={(e) => setYears([years[0], Math.max(+e.target.value, years[0])])} />
-          </div>
-        </label>
-        <div>
-          {t(lang, "season")}
-          <AnimatedTabs size="sm" tabs={(["all", "winter", "spring", "summer", "autumn"] as const).map((x) => ({ id: x, label: t(lang, SEASON_LABEL[x]) }))} value={season} onChange={setSeason} />
-          <p className="fine">{t(lang, "seasonHint")}</p>
-        </div>
+        <YearRange min={variables.test_years.start} max={variables.test_years.end} value={years} onChange={setYears} lang={lang} />
       </div>
       <button className="link-btn" onClick={downloadCsv}>
         <Icon name="download" size={15} /> {t(lang, "downloadCsv")}
@@ -817,6 +794,17 @@ export function Panel(p: Props) {
             <p className="eyebrow">
               <span className="tag exp">{t(lang, "experimentalTag")}</span>
             </p>
+          )}
+          {hasAnswer && (
+            <div className="side-season" title={t(lang, "seasonHint")}>
+              <AnimatedTabs
+                size="sm"
+                label={t(lang, "season")}
+                tabs={(["all", "winter", "spring", "summer", "autumn"] as const).map((x) => ({ id: x, label: t(lang, SEASON_LABEL[x]) }))}
+                value={season}
+                onChange={setSeason}
+              />
+            </div>
           )}
         </header>
         {menuItems.length ? (

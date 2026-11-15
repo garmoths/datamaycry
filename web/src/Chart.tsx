@@ -31,7 +31,7 @@ const L = {
   trend: { en: "Trend (Sen)", tr: "Eğilim (Sen)" },
   band: { en: "95 % range", tr: "%95 aralığı" },
   smooth: { en: "Smoothed (LOESS)", tr: "Yumuşatılmış (LOESS)" },
-  values: { en: "Monthly values", tr: "Aylık değerler" },
+  values: { en: "Monthly values and each year's range", tr: "Aylık değerler ve yıl aralığı" },
   run: { en: "12-month mean", tr: "12 aylık ortalama" },
   mean: { en: "1991–2020 mean", tr: "1991–2020 ortalaması" },
   needYears: { en: "Pick at least 20 years to compare the start and the end.", tr: "Başı ve sonu karşılaştırmak için en az 20 yıl seç." },
@@ -64,11 +64,20 @@ export function Chart(props: Props) {
         ]
       : view === "raw"
         ? [
-            { id: "values", name: L.values[lang], kind: "line", color: "rgba(154,164,178,0.7)" },
+            { id: "values", name: L.values[lang], kind: "band", color: "linear-gradient(180deg, var(--up), rgba(201,210,222,0.4), var(--down))" },
             { id: "run", name: L.run[lang], kind: "line", color: "#f4f6f9" },
             { id: "mean", name: L.mean[lang], kind: "dot", color: "rgba(255,255,255,0.55)" },
           ]
         : [];
+  // seasons: which line is which decade (not switchable)
+  const span = Math.min(10, Math.floor((endYear - startYear + 1) / 2));
+  const seasonKeys: Key[] =
+    view === "seasons" && !tooShort
+      ? [
+          { id: "first", name: `${startYear}–${startYear + span - 1}`, kind: "dot", color: "rgba(255,255,255,0.8)" },
+          { id: "last", name: `${endYear - span + 1}–${endYear}`, kind: "line", color: col },
+        ]
+      : [];
 
   const toggle = (id: string) =>
     setHidden((h) => {
@@ -96,6 +105,18 @@ export function Chart(props: Props) {
           bendYear={bendYear}
           hidden={hidden}
         />
+      )}
+      {seasonKeys.length > 0 && (
+        <ul className="chart-keys">
+          {seasonKeys.map((k) => (
+            <li key={k.id}>
+              <span>
+                <i className={`sw ${k.kind}`} style={{ "--c": k.color } as CSSProperties} />
+                {k.name}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
       {keys.length > 0 && (
         <ul className="chart-keys">

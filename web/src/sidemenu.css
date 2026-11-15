@@ -63,6 +63,33 @@
   color: #1d2532;
 }
 
+/* the season, under the place name: it applies to every row */
+.side-season {
+  margin-top: 10px;
+}
+.side-season .atabs {
+  display: flex;
+  width: 100%;
+}
+.side-season .atabs button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 3px;
+  font-size: 11.5px;
+  text-align: center;
+}
+.side-season .atabs-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-season .atabs-label {
+  justify-content: center;
+}
+.feat-season {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 /* two header buttons (report, close): keep the title clear of them */
 .side-head .trail,
 .side-head h1 {
@@ -82,8 +109,8 @@
     padding-top: 0;
   }
   .fm-row {
-    min-height: 44px;
-    padding: 5px 8px;
+    min-height: 41px;
+    padding: 4px 8px;
     gap: 10px;
   }
   .fm-sub {
@@ -93,8 +120,8 @@
     display: none;
   }
   .fm-item.featured .fm-row {
-    padding-top: 8px;
-    padding-bottom: 10px;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
   .feat-num .big {
     font-size: 26px;

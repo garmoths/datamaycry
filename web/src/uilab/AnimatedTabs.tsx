@@ -7,6 +7,7 @@
  */
 import { useId, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
+import "./uilab.css";
 
 export interface TabItem<T extends string> {
   id: T;

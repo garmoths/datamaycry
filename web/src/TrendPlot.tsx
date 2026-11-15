@@ -13,7 +13,7 @@
  * `compact` is the small version for the side panel: no axes text, no hover.
  * Written with AI assistance (Claude).
  */
-import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { anomalies, monthLabels, type Series, type TrendResult } from "./data.ts";
 import { loess, runningMean } from "./stats.ts";
@@ -51,6 +51,8 @@ const T = {
   yearly: { en: "Difference", tr: "Fark" },
   run: { en: "12-month mean", tr: "12 aylık ort." },
   value: { en: "Value", tr: "Değer" },
+  range: { en: "Year's range", tr: "Yıl aralığı" },
+  mean: { en: "1991–2020 mean", tr: "1991–2020 ort." },
   bend: { en: "pace changes", tr: "hız değişimi" },
   diff: { en: "Change", tr: "Değişim" },
 } as const;
@@ -139,11 +141,12 @@ export function TrendPlot(p: PlotProps) {
     return () => ro.disconnect();
   }, []);
   const [hover, setHover] = useState<number | null>(null);
+  const uid = useId().replace(/:/g, "");
   const hidden = p.hidden ?? new Set<string>();
   const on = (id: string) => !hidden.has(id);
   const compact = !!p.compact;
   const H = p.height ?? (compact ? 96 : 300);
-  const M = compact ? { l: 2, r: 8, t: 6, b: 16 } : { l: 46, r: 14, t: 16, b: 28 };
+  const M = compact ? { l: 2, r: 8, t: 6, b: 16 } : { l: 40, r: 14, t: 26, b: 28 };
   const iw = Math.max(10, W - M.l - M.r), ih = H - M.t - M.b;
   const tr = p.lang === "tr";
   const num = (v: number, d = p.decimals + 1) => (tr ? smartSigned(v, d).replace(".", ",") : smartSigned(v, d));
@@ -194,7 +197,20 @@ export function TrendPlot(p: PlotProps) {
       const mean = base.every(Number.isFinite) ? base.reduce((s, b) => s + b, 0) / 12 : NaN;
       const fin = series.values.filter(Number.isFinite) as unknown as number[];
       const lo = Math.min(...Array.from(fin)), hi = Math.max(...Array.from(fin));
-      return { kind: "raw" as const, pts, run, mean, x0: pts[0]?.[0] ?? 0, x1: pts[pts.length - 1]?.[0] ?? 1, y: niceRange(lo, hi, 5) };
+      const byYear = new Map<number, { lo: number; hi: number }>();
+      pts.forEach(([x, v]) => {
+        if (!Number.isFinite(v)) return;
+        const y = Math.floor(x);
+        const r = byYear.get(y);
+        if (!r) byYear.set(y, { lo: v, hi: v });
+        else {
+          r.lo = Math.min(r.lo, v);
+          r.hi = Math.max(r.hi, v);
+        }
+      });
+      const ranges = [...byYear.entries()].map(([y, r]) => ({ y, ...r }));
+      const x0 = Math.floor(pts[0]?.[0] ?? 0);
+      return { kind: "raw" as const, pts, run, mean, ranges, x0, x1: Math.ceil(pts[pts.length - 1]?.[0] ?? 1), y: niceRange(lo, hi, 5) };
     }
     const span = Math.min(10, Math.floor((endYear - startYear + 1) / 2));
     const first = monthlyClimate(series, startYear, startYear + span - 1);
@@ -256,15 +272,18 @@ export function TrendPlot(p: PlotProps) {
     if (model.kind === "anomaly" && model.years[hover] !== undefined) {
       const y = model.years[hover], a = model.a[hover];
       const rows: CardRow[] = [{ k: T.yearly[p.lang], v: Number.isFinite(a) ? `${num(a)} ${p.unit}` : "–", c: a >= 0 ? UP : DOWN }];
-      if (model.strong && on("trend")) rows.push({ k: T.trend[p.lang], v: `${num(model.at(y))} ${p.unit}` });
-      if (model.ok && on("smooth") && Number.isFinite(model.sm[hover])) rows.push({ k: T.smooth[p.lang], v: `${num(model.sm[hover])} ${p.unit}` });
+      if (model.strong && on("trend")) rows.push({ k: T.trend[p.lang], v: `${num(model.at(y))} ${p.unit}`, c: model.up ? UP : DOWN });
+      if (model.ok && on("smooth") && Number.isFinite(model.sm[hover])) rows.push({ k: T.smooth[p.lang], v: `${num(model.sm[hover])} ${p.unit}`, c: "rgba(255,255,255,0.85)" });
       card = { x: sx(y), y: sy(Number.isFinite(a) ? a : 0), head: String(y), rows, dot: a >= 0 ? UP : DOWN };
     } else if (model.kind === "raw" && model.pts[hover]) {
       const [x, v] = model.pts[hover];
       const yr = Math.floor(x), m = Math.round((x - yr) * 12 + 0.5) - 1;
       const rows: CardRow[] = [{ k: T.value[p.lang], v: `${plain(v)} ${p.unit}` }];
-      if (Number.isFinite(model.run[hover][1])) rows.push({ k: T.run[p.lang], v: `${plain(model.run[hover][1])} ${p.unit}` });
-      card = { x: sx(x), y: sy(v), head: `${monthsShort[m]} ${yr}`, rows, dot: "#f4f6f9" };
+      rows[0].c = "rgba(170,180,195,0.9)";
+      if (Number.isFinite(model.run[hover][1])) rows.push({ k: T.run[p.lang], v: `${plain(model.run[hover][1])} ${p.unit}`, c: "#f4f6f9" });
+      const yrRange = model.ranges.find((r) => r.y === yr);
+      if (yrRange) rows.push({ k: T.range[p.lang], v: `${plain(yrRange.lo, 1)} – ${plain(yrRange.hi, 1)}`, c: "rgba(121,170,230,0.6)" });
+      card = { x: sx(x), y: sy(v), head: `${monthsShort[m]} ${yr}`, rows, dot: "#aab4c3" };
     } else if (model.kind === "seasons") {
       const a = model.first[hover], b = model.last[hover];
       const rows: CardRow[] = [
@@ -280,6 +299,19 @@ export function TrendPlot(p: PlotProps) {
     <div className={`tp ${compact ? "compact" : ""}`} ref={box} onPointerLeave={() => setHover(null)}>
       <svg width={W} height={H} role="img" aria-label={`${p.series.label[p.lang]}`}>
         <defs>
+          <linearGradient id={`tp-up-${uid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style={{ stopColor: UP, stopOpacity: 0.95 }} />
+            <stop offset="1" style={{ stopColor: UP, stopOpacity: 0.35 }} />
+          </linearGradient>
+          <linearGradient id={`tp-down-${uid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style={{ stopColor: DOWN, stopOpacity: 0.35 }} />
+            <stop offset="1" style={{ stopColor: DOWN, stopOpacity: 0.95 }} />
+          </linearGradient>
+          <linearGradient id={`tp-range-${uid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style={{ stopColor: UP, stopOpacity: 0.55 }} />
+            <stop offset="0.5" style={{ stopColor: "#c9d2de", stopOpacity: 0.18 }} />
+            <stop offset="1" style={{ stopColor: DOWN, stopOpacity: 0.55 }} />
+          </linearGradient>
           <linearGradient id="tp-run" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#ffffff" stopOpacity="0.16" />
             <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
@@ -292,21 +324,26 @@ export function TrendPlot(p: PlotProps) {
             <g key={t}>
               <line className={t === 0 && model.kind === "anomaly" ? "tp-zero" : "tp-grid"} x1={M.l} x2={W - M.r} y1={sy(t)} y2={sy(t)} />
               <text className="tp-axis" x={M.l - 8} y={sy(t) + 3.5} textAnchor="end">
-                {t === 0 && model.kind === "anomaly" ? T.normal[p.lang] : plain(t, Math.max(0, -Math.floor(Math.log10(model.y.step) + 1e-9)))}
+                {t === 0 ? "0" : plain(t, Math.max(0, -Math.floor(Math.log10(model.y.step) + 1e-9)))}
               </text>
             </g>
           ))}
         {compact && model.kind === "anomaly" && <line className="tp-zero" x1={M.l} x2={W - M.r} y1={sy(0)} y2={sy(0)} />}
+        {!compact && model.kind === "anomaly" && (
+          <text className="tp-normal" x={M.l + 6} y={sy(0) - 6}>
+            1991–2020 {T.normal[p.lang]}
+          </text>
+        )}
         {!compact && (
-          <text className="tp-unit" x={M.l - 8} y={M.t - 6} textAnchor="end">
+          <text className="tp-unit" x={M.l - 8} y={10} textAnchor="end">
             {p.unit}
           </text>
         )}
 
         {/* x axis labels */}
         {!compact && model.kind !== "seasons" &&
-          Array.from({ length: 20 }, (_, k) => Math.ceil(model.x0 / 10) * 10 + k * 10)
-            .filter((y) => y >= model.x0 && y <= model.x1)
+          Array.from({ length: 20 }, (_, k) => Math.ceil((model.x0 - 0.5) / 10) * 10 + k * 10)
+            .filter((y) => y >= model.x0 - 0.5 && y <= model.x1)
             .map((y) => (
               <text key={y} className="tp-axis" x={sx(y)} y={H - 8} textAnchor="middle">
                 {y}
@@ -358,9 +395,9 @@ export function TrendPlot(p: PlotProps) {
                     x={sx(y) - bw / 2}
                     width={bw}
                     rx={Math.min(2, bw / 3)}
-                    fill={v >= 0 ? UP : DOWN}
-                    initial={reduce ? false : { attrY: y0, height: 0, opacity: 0.85 }}
-                    animate={{ attrY: Math.min(y0, y1), height: Math.max(0.8, Math.abs(y1 - y0)), opacity: dim ? 0.35 : 0.85 }}
+                    fill={compact ? (v >= 0 ? UP : DOWN) : `url(#tp-${v >= 0 ? "up" : "down"}-${uid})`}
+                    initial={reduce ? false : { attrY: y0, height: 0, opacity: 1 }}
+                    animate={{ attrY: Math.min(y0, y1), height: Math.max(0.8, Math.abs(y1 - y0)), opacity: dim ? 0.38 : 1 }}
                     transition={reduce ? { duration: 0 } : { duration: 0.55, ease: EASE, delay: hover === null ? Math.min(0.5, 0.008 * k) : 0, opacity: { duration: 0.15 } }}
                   />
                 );
@@ -369,9 +406,9 @@ export function TrendPlot(p: PlotProps) {
               <motion.path
                 className="tp-smooth"
                 d={smoothPath(model.years.map((y, k) => [sx(y), sy(model.sm[k])]))}
-                initial={reduce ? false : { pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ ...draw, delay: 0.45 }}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: reduce ? 0 : 0.6 }}
               />
             )}
             {model.strong && on("trend") && (
@@ -415,7 +452,31 @@ export function TrendPlot(p: PlotProps) {
         {/* ── raw ── */}
         {model.kind === "raw" && (
           <>
-            {on("values") && <path className="tp-values" d={linePath(model.pts.map(([x, v]) => [sx(x), sy(v)]))} />}
+            {on("values") &&
+              model.ranges.map((r, k) => {
+                const bw2 = Math.max(2, (iw / Math.max(1, model.ranges.length)) * 0.56);
+                return (
+                  <motion.rect
+                    key={r.y}
+                    className="tp-range"
+                    x={sx(r.y + 0.5) - bw2 / 2}
+                    width={bw2}
+                    rx={bw2 / 2}
+                    fill={`url(#tp-range-${uid})`}
+                    initial={reduce ? false : { attrY: sy((r.lo + r.hi) / 2), height: 0, opacity: 0 }}
+                    animate={{ attrY: sy(r.hi), height: Math.max(1, sy(r.lo) - sy(r.hi)), opacity: hover !== null && Math.floor(model.pts[hover]?.[0] ?? -1) !== r.y ? 0.35 : 1 }}
+                    transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE, delay: hover === null ? Math.min(0.45, k * 0.008) : 0, opacity: { duration: 0.15 } }}
+                  />
+                );
+              })}
+            {on("mean") && Number.isFinite(model.mean) && (
+              <>
+                <line className="tp-mean" x1={M.l} x2={W - M.r} y1={sy(model.mean)} y2={sy(model.mean)} />
+                <text className="tp-normal" x={M.l + 6} y={sy(model.mean) - 6}>
+                  {T.mean[p.lang]}
+                </text>
+              </>
+            )}
             {on("run") && (
               <>
                 <path
@@ -423,6 +484,7 @@ export function TrendPlot(p: PlotProps) {
                   d={`${smoothPath(model.run.map(([x, v]) => [sx(x), sy(v)]))}L${sx(model.x1).toFixed(1)},${H - M.b}L${sx(model.x0).toFixed(1)},${H - M.b}Z`}
                   fill="url(#tp-run)"
                 />
+                <path className="tp-run-glow" d={smoothPath(model.run.map(([x, v]) => [sx(x), sy(v)]))} />
                 <motion.path
                   className="tp-run"
                   d={smoothPath(model.run.map(([x, v]) => [sx(x), sy(v)]))}
@@ -431,9 +493,6 @@ export function TrendPlot(p: PlotProps) {
                   transition={draw}
                 />
               </>
-            )}
-            {on("mean") && Number.isFinite(model.mean) && (
-              <line className="tp-mean" x1={M.l} x2={W - M.r} y1={sy(model.mean)} y2={sy(model.mean)} />
             )}
           </>
         )}
@@ -453,9 +512,9 @@ export function TrendPlot(p: PlotProps) {
             <motion.path
               className="tp-first"
               d={smoothPath(model.first.map((v, k) => [sx(k + 1), sy(v)]))}
-              initial={reduce ? false : { pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={draw}
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
             />
             <motion.path
               className="tp-last"
@@ -480,9 +539,9 @@ export function TrendPlot(p: PlotProps) {
       </svg>
 
       {card && (
-        <div className={`tp-card ${card.x > W * 0.6 ? "left" : "right"}`} style={{ left: card.x, top: Math.max(M.t, Math.min(H - M.b, card.y)) }}>
-          <span className="tp-card-dot" style={{ background: card.dot }} />
-          <div className="tp-card-body">
+        <>
+          <span className="tp-dot" style={{ left: card.x, top: card.y, background: card.dot }} />
+          <div className={`tp-card ${card.x > W / 2 ? "at-left" : "at-right"}`} style={card.x > W / 2 ? { left: M.l + 10 } : { right: M.r + 10 }}>
             <span className="tp-card-head">{card.head}</span>
             {card.rows.map((r) => (
               <span key={r.k} className="tp-card-row">
@@ -492,7 +551,7 @@ export function TrendPlot(p: PlotProps) {
               </span>
             ))}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

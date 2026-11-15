@@ -107,6 +107,8 @@
 }
 .sw.band {
   background: var(--c);
+  height: 12px;
+  width: 10px;
   border-radius: 3px;
 }
 .sw.split {
