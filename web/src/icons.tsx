@@ -67,32 +67,9 @@ export function Icon({ name, size = 20, ...rest }: { name: IconName; size?: numb
 }
 
 /**
- * Logo: a globe whose outline is cut by a rising trend line with its data points —
- * "a trend detective for Earth". Two-tone so it reads on the dark UI.
+ * Logo: the Data May Cry sphere of flowing climate bands (brand/logo.png, made by
+ * brand/make_icons.py). A 128 px PNG keeps it sharp at the top-bar size on 4× screens.
  */
 export function Logo({ size = 34 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" role="img" aria-label="Data May Cry">
-      <defs>
-        <linearGradient id="logo-g" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#2166ac" />
-          <stop offset="1" stopColor="#5fb0e8" />
-        </linearGradient>
-        <linearGradient id="logo-t" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#f4a582" />
-          <stop offset="1" stopColor="#ffd166" />
-        </linearGradient>
-      </defs>
-      <circle cx="20" cy="20" r="15" fill="url(#logo-g)" />
-      <g fill="none" stroke="#dbe9ff" strokeOpacity="0.55" strokeWidth="1.2">
-        <ellipse cx="20" cy="20" rx="6.5" ry="15" />
-        <path d="M5 20h30 M7.5 12.5h25 M7.5 27.5h25" />
-      </g>
-      <polyline points="4,30 13,24 20,26 29,15 37,10" fill="none" stroke="#0a1328" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline points="4,30 13,24 20,26 29,15 37,10" fill="none" stroke="url(#logo-t)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-      {[[13, 24], [20, 26], [29, 15]].map(([x, y]) => (
-        <circle key={x} cx={x} cy={y} r="2" fill="#ffd166" stroke="#0a1328" strokeWidth="1.2" />
-      ))}
-    </svg>
-  );
+  return <img src="/logo-128.png" width={size} height={size} alt="Data May Cry" draggable={false} style={{ display: "block", flex: "none" }} />;
 }

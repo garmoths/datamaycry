@@ -250,6 +250,33 @@ export function Panel(p: Props) {
   const ok = result?.status === "ok";
   const unit = unitLabel(v.unit, lang);
   const per = `${unit} / ${t(lang, "decade")}`;
+  // the big number: change per decade (the trend) or the total over the period; remembered
+  const [changeView, setChangeView] = useState<"decade" | "total">(() => {
+    try {
+      return localStorage.getItem("dmc-change") === "total" ? "total" : "decade";
+    } catch {
+      return "decade";
+    }
+  });
+  const pickChange = (x: "decade" | "total") => {
+    setChangeView(x);
+    try {
+      localStorage.setItem("dmc-change", x);
+    } catch {
+      /* private mode */
+    }
+  };
+  // the world trend map is for the whole period: total = mean slope × decades
+  const areaTotal = p.area ? (p.area.summary.meanSlope * (variables.test_years.end - variables.test_years.start)) / 10 : 0;
+  const changeToggle = (
+    <span className="seg small change-toggle" role="group" aria-label={t(lang, "changeView")}>
+      {(["decade", "total"] as const).map((x) => (
+        <button key={x} className={changeView === x ? "on" : ""} aria-pressed={changeView === x} onClick={() => pickChange(x)}>
+          {t(lang, x === "decade" ? "perDecadeShort" : "totalShort")}
+        </button>
+      ))}
+    </span>
+  );
   const place = shown?.label[lang] ?? "";
   const country = p.index.find((c) => c.id === p.countryId);
   const province = p.provinces.find((a) => a.id === p.admin1Id) ?? null;
@@ -388,8 +415,13 @@ export function Panel(p: Props) {
       {ok && verdict!.meaning && <p className="meaning">{verdict!.meaning}</p>}
       {ok && result!.level !== "none" && (
         <div className="headline">
-          <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
-          <span className="unit">{per}</span>
+          {changeView === "total" ? (
+            <NumberTicker className="big" value={result!.totalChange} decimals={decimalsFor(result!.totalChange, v.decimals)} signed comma={tr} />
+          ) : (
+            <NumberTicker className="big" value={result!.slopePerDecade} decimals={decimalsFor(result!.slopePerDecade, v.decimals + 1)} signed comma={tr} />
+          )}
+          <span className="unit">{changeView === "total" ? `${unit} · ${result!.startYear}–${result!.endYear}` : per}</span>
+          {changeToggle}
         </div>
       )}
       <p className="card-text">{verdict!.body}</p>
@@ -442,8 +474,13 @@ export function Panel(p: Props) {
         {t(lang, p.area.kind === "world" ? "meanTrendAll" : "meanTrend")}
       </p>
       <div className="headline">
-        <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
-        <span className="unit">{per}</span>
+        {changeView === "total" ? (
+          <NumberTicker className="big" value={areaTotal} decimals={decimalsFor(areaTotal, v.decimals)} signed comma={tr} />
+        ) : (
+          <NumberTicker className="big" value={p.area.summary.meanSlope} decimals={decimalsFor(p.area.summary.meanSlope, v.decimals + 1)} signed comma={tr} />
+        )}
+        <span className="unit">{changeView === "total" ? `${unit} · ${variables.test_years.start}–${variables.test_years.end}` : per}</span>
+        {changeToggle}
       </div>
       <ShareBar s={p.area.summary} lang={lang} />
       {rankBadge}

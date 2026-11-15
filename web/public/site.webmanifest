@@ -1,0 +1,14 @@
+{
+  "name": "Data May Cry · Earth Trend Detective",
+  "short_name": "Data May Cry",
+  "description": "See whether temperature, rain, soil moisture and more have changed since 1980 anywhere on Earth. NASA MERRA-2 data.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0d16",
+  "theme_color": "#0b0d16",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
