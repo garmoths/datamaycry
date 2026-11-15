@@ -1,6 +1,6 @@
 """Province boundaries for the globe, one file per country (map decoration, not data).
 
-    uv run boundaries.py   → web/public/data/boundaries/admin1/{COUNTRY}.geojson
+    uv run boundaries.py   → web/public/boundaries/admin1/{COUNTRY}.geojson
 
   - Province ids use the SAME rule as the data (regions.py province_ids): ISO 3166-2
     when valid and unique, else Natural Earth adm1_code. So a clicked province always
@@ -20,7 +20,7 @@ from download import ROOT
 from names import place_name
 from regions import NE, province_ids
 
-OUT = ROOT / "web" / "public" / "data" / "boundaries" / "admin1"
+OUT = ROOT / "web" / "public" / "boundaries" / "admin1"
 TOLERANCE = 0.01  # degrees (~1 km)
 
 
