@@ -1,9 +1,9 @@
-# Data May Cry API
+# Aeolus API
 
 Free, no key, JSON, CORS open. The same calculation as the card on the site
 (`web/src/apiCore.ts`, running as Vercel functions in `web/api/v1/`).
 
-Base URL: `https://datamaycry.vercel.app/api/v1` (also opens from the site: ⓘ → API, or `/#api`).
+Base URL: `https://aeolusclimate.vercel.app/api/v1` (also opens from the site: ⓘ → API, or `/#api`).
 
 | Endpoint | What |
 |---|---|
@@ -24,4 +24,4 @@ When the evidence is "none" (no clear change), `change_per_decade`, `change_tota
 Local development: `cd web && npm run dev` serves the same endpoints at `http://localhost:5173/api/v1/…`
 (on the mock data, or on the real package with `VITE_DATA_URL=/pkg/`).
 
-Please credit "NASA MERRA-2 · Data May Cry".
+Please credit "NASA MERRA-2 · Aeolus (Data May Cry)".

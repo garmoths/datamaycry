@@ -45,7 +45,7 @@ const T = {
   data: { tr: "Veri", en: "Data" },
   sources: { tr: "Kaynakça", en: "References" },
   link: { tr: "Bu görünümü açan bağlantı", en: "Link to this view" },
-  made: { tr: "Data May Cry ile oluşturuldu", en: "Made with Data May Cry" },
+  made: { tr: "Aeolus ile oluşturuldu · Data May Cry", en: "Made with Aeolus · Data May Cry" },
   demo: { tr: "DEMO VERİ", en: "DEMO DATA" },
   demoNote: {
     tr: "Bu rapor uydurma desenli demo veriyle üretildi; sayılar gerçek değildir.",

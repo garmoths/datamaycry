@@ -313,7 +313,7 @@ export function Panel(p: Props) {
     const csv = `# ${shown.label.en} · ${v.name.en} (${v.unit}) · ${variables.dataset}\nmonth,value,anomaly_vs_1991_2020\n${rows.join("\n")}\n`;
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = `data-may-cry_${(shown.label.en || "place").replace(/[^\w]+/g, "-")}_${v.id}.csv`;
+    a.download = `aeolus_${(shown.label.en || "place").replace(/[^\w]+/g, "-")}_${v.id}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };

@@ -1,6 +1,6 @@
 {
-  "name": "Data May Cry · Earth Trend Detective",
-  "short_name": "Data May Cry",
+  "name": "Aeolus · Earth Trend Detective",
+  "short_name": "Aeolus",
   "description": "See whether temperature, rain, soil moisture and more have changed since 1980 anywhere on Earth. NASA MERRA-2 data.",
   "start_url": "/",
   "display": "standalone",

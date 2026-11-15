@@ -1,5 +1,5 @@
 /**
- * The public Data May Cry API, framework-free so it runs in Vercel functions (web/api/) and in
+ * The public Aeolus API, framework-free so it runs in Vercel functions (web/api/) and in
  * unit tests (apiCore.test.ts on the mock files). It reads the same data package as the site and
  * runs the same analysis code (trend.ts, caps.ts, i18n.ts), so an API answer always matches the
  * card on the site.
@@ -45,7 +45,7 @@ export class ApiError extends Error {
 }
 
 export const API_VERSION = "1";
-export const DOCS_URL = "https://datamaycry.vercel.app/#api";
+export const DOCS_URL = "https://aeolusclimate.vercel.app/#api";
 const CONTINENTS: ContinentId[] = ["AF", "AN", "AS", "EU", "NA", "OC", "SA"];
 
 /** Turkish-aware folding for search: "Diyarbakır" ~ "diyarbakir". */

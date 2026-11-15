@@ -1,5 +1,5 @@
 /*
- * Data May Cry — UI styles (calm, floating).
+ * Aeolus — UI styles (calm, floating).
  * The Earth floats in a star field; the interface around it is a quiet working tool:
  *   top     three floating groups: logo + view switch · search · actions
  *   right   floating analysis panel: place → answer → shape → (folded) calculation → provinces → checks
@@ -2433,4 +2433,17 @@ dialog.method::backdrop {
   .m-cards { grid-template-columns: 1fr; }
   .m-level { grid-template-columns: 1fr; gap: 6px; }
   .method-inner { padding: 16px; }
+}
+
+/* the project name beside the logo (team: Data May Cry) */
+.wordmark {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-right: 2px;
+}
+@media (max-width: 1180px) {
+  .wordmark { display: none; }
 }
