@@ -44,6 +44,17 @@ function drawStripes(el) {
     row.appendChild(s);
   });
   el.appendChild(row);
+  // optional marker on one year (data-mark="1992"): a frame around that stripe and a short label above it
+  const markYear = Number(el.dataset.mark);
+  if (markYear) {
+    const k = markYear - WORLD_T2M.start;
+    row.children[k]?.classList.add("marked");
+    const m = document.createElement("span");
+    m.className = "stripes-mark";
+    m.textContent = el.dataset.markText || String(markYear);
+    m.style.left = `${((k + 0.5) / vals.length) * 100}%`;
+    el.prepend(m);
+  }
   if (el.hasAttribute("data-labels")) {
     const labels = document.createElement("div");
     labels.className = "stripes-labels";
@@ -76,6 +87,8 @@ const ICONS = {
   rank: "M5 20v-6 M12 20V8 M19 20v-9 M3 20h18 M12 4l1.2 2.4 2.6.4-1.9 1.8.5 2.6L12 10l-2.4 1.2.5-2.6-1.9-1.8 2.6-.4z",
   finger: "M4 12a8 8 0 0 1 16 0 M7 15a5 5 0 0 1 10 0v1 M10 18a2 2 0 0 1 4 0v3 M12 12v9",
   pdf: "M6 3h8l5 5v13H6z M14 3v5h5 M9 13h1.5a1.5 1.5 0 0 1 0 3H9v-3 M9 16v2",
+  energy: "M13 2L4 14h7l-1 8 9-12h-7z",
+  map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15",
 };
 document.querySelectorAll("[data-icon]").forEach((el) => {
   const d = ICONS[el.dataset.icon];
@@ -162,6 +175,66 @@ document.querySelectorAll("[data-generate]").forEach((el) => {
   wrap(el);
 });
 
+// ── auto entrances: every .rise in a slide gets its place in the queue (--d), CSS does the rest ──
+document.querySelectorAll(".reveal .slides > section").forEach((sec) => {
+  sec.querySelectorAll(".rise").forEach((el, k) => el.style.setProperty("--d", String(k)));
+});
+
+// ── time travel: the app's year-by-year map, 46 frames in 10 s, played once; it stops on 2025 and a line appears ──
+const TT = { y0: 1980, y1: 2025, ms: 10000, hold: 1400 };
+let ttTimer = null;
+const ttState = new WeakMap();
+function buildTT(slide) {
+  if (ttState.has(slide)) return ttState.get(slide);
+  const box = slide.querySelector("[data-tt-frames]");
+  const frames = [];
+  for (let y = TT.y0; y <= TT.y1; y++) {
+    const im = document.createElement("img");
+    im.src = `/shots/tt/${y}.jpg?v=2`;
+    im.alt = "";
+    box.appendChild(im);
+    frames.push(im);
+  }
+  const st = { frames, meta: {}, year: slide.querySelector("[data-tt-year]"), val: slide.querySelector("[data-tt-val]"), bar: slide.querySelector("[data-tt-bar]"), cap: slide.querySelector("[data-tt-cap]") };
+  fetch("/shots/tt/meta.json?v=2").then((r) => r.json()).then((m) => (st.meta = m)).catch(() => {});
+  st.show = (k) => {
+    frames.forEach((f, j) => f.classList.toggle("on", j === k));
+    const y = TT.y0 + k;
+    st.year.textContent = String(y);
+    const v = st.meta[y];
+    st.val.textContent = v ? `${v.replace("-", "−")} °C` : "";
+    st.val.classList.toggle("warm", !!v && v.startsWith("+"));
+    st.bar.style.width = `${((k + 1) / frames.length) * 100}%`;
+  };
+  ttState.set(slide, st);
+  return st;
+}
+function stopTT() {
+  clearTimeout(ttTimer);
+  ttTimer = null;
+}
+function startTT(slide) {
+  stopTT();
+  const st = buildTT(slide);
+  const n = st.frames.length;
+  if (reduceMotion) return void st.show(n - 1);
+  st.cap.classList.remove("show");
+  let k = 0;
+  const tick = () => {
+    st.show(k);
+    if (k === n - 1) return void st.cap.classList.add("show"); // one pass only: stop on 2025, the line below comes in
+    k += 1;
+    ttTimer = setTimeout(tick, TT.ms / n);
+  };
+  tick();
+}
+function ttFor(slide) {
+  if (slide?.hasAttribute("data-tt")) startTT(slide);
+  else stopTT();
+}
+// photo wall: two copies of each row so the loop is seamless
+document.querySelectorAll(".wall-track").forEach((t) => (t.innerHTML += t.innerHTML));
+
 // ── marquee: two copies of each row so the loop is seamless ──
 document.querySelectorAll(".marquee-track").forEach((t) => {
   t.innerHTML += t.innerHTML.replace(/class="q"/g, 'class="q" aria-hidden="true"');
@@ -220,9 +293,11 @@ function generate(slide) {
 deck.initialize().then(() => {
   countIn(deck.getCurrentSlide());
   generate(deck.getCurrentSlide());
+  ttFor(deck.getCurrentSlide());
 });
 deck.on("slidechanged", (e) => {
   countIn(e.currentSlide);
   generate(e.currentSlide);
+  ttFor(e.currentSlide);
 });
 deck.on("fragmentshown", (e) => countIn(e.fragment.closest("section")));

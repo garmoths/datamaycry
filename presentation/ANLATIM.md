@@ -6,11 +6,10 @@
 |---|---|---|
 | Dosya | `index.html` (localhost:5180) · yedek `pdf/aeolus-sunum.pdf` | `pdf/aeolus-nasa.pdf` |
 | Dil | Türkçe | İngilizce |
-| Uzunluk | 11 slayt, ~6 dakika + canlı gösterim | 7 sayfa, konuşmacı yok |
+| Uzunluk | 8 slayt, 3 dakika | 7 sayfa, konuşmacı yok |
 | Fark | Sen anlatırsın, 4. slaytta uygulamayı canlı açarsın | Her görselin altında ne gösterdiği yazıyor, her sayfada site linki ve sayfa numarası var |
 
-Slayt → sayfa eşleşmesi: 1 → 1 · 2 → 2 · 3+4 → 3 · 5+6 → 4 · 7 → 5 · 8 → 6 · 9+10+11 → 7.
-Jüri PDF'i okurken senin anlattığın sırayı görür; canlı gösterimin yerini ekran görüntüleri tutar.
+Not: NASA sürümü (`nasa.html`) henüz bu 12 slaytlık yeni sıraya göre güncellenmedi.
 
 **Ana mesaj (tek cümle):** "Aeolus, NASA'nın 46 yıllık iklim verisini herkesin anlayacağı bir cevaba çevirir:
 ne değişti, ne kadar değişti ve ne kadar eminiz."
@@ -19,65 +18,47 @@ Sunarken `S` tuşu konuşmacı ekranını açar (notlar + sonraki slayt + süre)
 
 ---
 
-## Konuşma metni (~6 dk)
+## Konuşma metni (3 dk)
 
-Süreler yaklaşık. Kalın yerler vurgulanacak cümleler.
+8 slayt, toplam ~165 sn. Kartlar kendiliğinden gelir; tuşa sadece slayt değiştirirken basılır.
 
-### 1 · Açılış (30 sn)
-> Merhaba, biz Data May Cry ekibiyiz; projemizin adı **Aeolus**. Yunan mitolojisinde Aeolus rüzgârların bekçisidir:
-> havayı tutar, salar ve nereye estiğini bilir. Bizim Aeolus da 46 yılın havasını izleyip iklimin ne yöne değiştiğini söylüyor.
-> Arkadaki her şerit bir yıl: 1980'den 2025'e dünyanın sıcaklığı. Maviler serin, kırmızılar sıcak; sağa doğru nasıl kızardığını görüyorsunuz.
+### 1 · Açılış (15 sn)
+> Merhaba, biz Data May Cry ekibiyiz; projemizin adı **Aeolus**. Arkadaki her şerit bir yıl: 1980'den bugüne dünyanın sıcaklığı,
+> NASA verisinden. Maviler serin, kırmızılar sıcak. Aeolus, yaşadığınız yerin ikliminin 46 yılda nasıl değiştiğini bir tıkla söylüyor.
 
-### 2 · Herkesin bir sorusu var (40 sn)
-> "Dünya ısınıyor" cümlesini hepimiz biliyoruz. Ama insanların asıl merak ettiği **kendi şehri, kendi köyü**:
-> Erzurum'da kar azaldı mı, Konya'da toprak kuruyor mu, Diyarbakır yazları daha mı sıcak?
-> Bu soruların cevabı NASA'nın verisinde var. Ama okumak için binlerce dosya, garip birimler ve istatistik bilgisi gerekiyor.
-> **Biz bu engeli kaldırmak istedik.**
+### 2 · Herkesin bir sorusu var (20 sn)
+> "Dünya ısınıyor" cümlesini hepimiz biliyoruz. Ama insanların asıl merak ettiği **kendi şehri**: Diyarbakır yazları daha mı sıcak,
+> Konya'da toprak kuruyor mu? Cevap NASA'nın verisinde var, ama 2.244 dosya ve istatistik bilgisi istiyor. **Biz bu engeli kaldırdık.**
 
-### 3 · Üç adımda cevap (20 sn)
-> Kullanmak için hiçbir şey bilmek gerekmiyor. Yerini seç, merak ettiğini seç, cevabı oku. Gösterelim.
+### 3 · Zaman yolculuğu (15 sn) — kendiliğinden bir kez oynar, 2025'te durur
+> Bu, uygulamamızdaki zaman yolculuğu: 1980'den 2025'e her yıl, 10 saniyede. Mavi yıllar normalden serin, son yıllar kırmızı.
+> **46 yılda dünya yaklaşık 0,7 °C ısındı.**
 
-### 4 · Canlı gösterim (2 dk) — en önemli kısım
-Uygulama slaytın içinde açık (Diyarbakır, hava sıcaklığı). Önerilen akış:
+### 4 · Canlı gösterim (40 sn)
+Uygulama slaytın içinde açık (Diyarbakır, hava sıcaklığı):
+1. **Kartı oku:** "Diyarbakır 10 yılda 0,42 °C ısınıyor ve bu net bir değişim."
+2. **"Yaz" sekmesi:** "Yazlar daha hızlı ısınıyor: 0,53."
+3. **"Kış" sekmesi:** "Kışta belirgin bir değişim yok. **Emin değilsek bunu söylüyoruz.**"
+4. **Grafik, parmak izi, sıralama:** paneldeki satırları ve üstteki Sıralama düğmesini aç.
+5. Vakit varsa aramaya `Erzurum` yaz, kar değişkenine geç.
 
-1. **Kartı oku:** "Isınıyor, 10 yılda +0,42 °C. Toplam düğmesine basıyorum: 46 yılda +1,9 °C."
-2. **Yer değiştir:** aramaya `Erzurum` yaz → solda **kar** değişkenine geç. "Kar gerçekten azalmış mı? Kart söylüyor."
-3. **Dönem seç:** soldaki şeritte başlangıcı doğum yılına çek. "Ben doğduğumdan beri ne değişti? Trend anında yeniden hesaplandı."
-4. **Zaman yolculuğu:** sağ üstte ▶. "Dünya yıl yıl: 1992'de Pinatubo yanardağından sonra mavi, 2024'te neredeyse her yer kırmızı."
-5. (Vakit varsa) **İklim parmak izi:** "Dokuz değişken tek tabloda: hava hem ısınıyor hem daha çok nem taşıyor."
+İnternet yoksa slayt ekran görüntüsünü gösterir; aynı cümleleri görüntü üzerinden söyle.
 
-İnternet yoksa: slayt otomatik olarak ekran görüntüsünü gösterir; aynı akışı görüntü üzerinden anlat.
+### 5 · Kim, ne için (20 sn)
+> **Tarım:** Konya'da yazlar 46 yılda 2,4 °C ısındı; bu ürün ve sulama planını değiştirir.
+> **Enerji:** Türkiye'de rüzgâr 46 yılda 0,19 m/s zayıfladı; rüzgâr santrali ve baraj yatırımı için önemli.
+> Ayrıca bölgesel planlama, bilimsel çalışmalar ve toplum.
 
-### 5 · Bir cevap nasıl görünür (30 sn)
-> Her kart üç soruya cevap veriyor: **Ne oluyor?** Tek kelime: "Isınıyor". **Ne kadar?** 10 yılda ya da toplamda, tek düğmeyle.
-> **Ne kadar eminiz?** p-değeri yerine "şans eseri olma ihtimali binde birden az" gibi günlük dil. Lise öğrencisi de anlasın istedik.
+### 6 · Sonuçlar (20 sn)
+> Sonuçlarımızı bağımsız kaynaklarla kontrol ettik. NOAA istasyonlarıyla **%94** aynı sonuç, NASA'nın küresel sıcaklık serisiyle
+> 0,968 uyum. Trend olmayan veride yanlış alarm %5,5'in altında ve altı fizik testinin altısını geçtik.
 
-### 6 · Dürüstlük (30 sn)
-> En çok önem verdiğimiz şey: **emin değilsek söylüyoruz.** Aynı Diyarbakır: 1980–2011 arasına bakınca "belirgin değişim yok",
-> yön bile söylemiyoruz. Dönem uzadıkça kanıt güçleniyor: önce "muhtemel", 2025'e gelince "net değişim".
-> Uydurma bir trend göstermektense "henüz bilmiyoruz" demeyi seçtik.
+### 7 · Avantajlar, dezavantajlar (25 sn)
+> Avantajlarımız: yanlış alarm vermiyor, kendini kontrol ediyor, anında ve ücretsiz.
+> Dezavantajlarımız: en fazla 55 km'lik bir karo kadar ayrıntı görüyoruz, sonuç yılda bir değişiyor ve sadece geçmişi söylüyoruz, tahmin yapmıyoruz.
 
-### 7 · Kim, ne için kullanır (30 sn)
-> Hedefimiz uzmanlar değil, herkes. Çiftçi toprak nemine ve yağışa bakıp sulamasını planlar; öğretmen derste kendi ilinin
-> gerçek verisini gösterir; belediye hangi ilçenin en hızlı ısındığını görür; gazeteci kaynağı belli bir cevap alır.
-> Ve hepimiz şunu sorabiliriz: **doğduğum yıldan bu yana şehrimde ne değişti?**
-
-### 8 · Neler yapabilirsin (20 sn)
-> Canlıda birkaçını gördük: zaman yolculuğu, dönem seçimi, toplam düğmesi. Bunlara ek olarak iller arası sıralama,
-> iklim parmak izi ve tek tıkla PDF rapor var. Başka uygulamalar için de açık bir API sunuyoruz.
-
-### 9 · Neden güvenebilirsin (30 sn)
-> Güzel görünmesi yetmez, doğru olması gerekiyor. Sonuçlarımızı bağımsız kaynaklarla karşılaştırdık:
-> NOAA meteoroloji istasyonlarıyla 1.013 bölgenin 954'ünde, yani **%94'ünde** aynı sonuç. NASA'nın kendi küresel
-> sıcaklık serisiyle uyum 0,968. Su dengesi, El Niño, Pinatubo gibi altı fizik testinin hepsini geçtik.
-
-### 10 · Nasıl çalışıyor (30 sn)
-> Teknik merak edenler için tek slayt: NASA'nın MERRA-2 verisi; her ay kendi 1991–2020 normaliyle karşılaştırılıyor;
-> iklim biliminde standart olan Mann-Kendall testi ve Sen eğimiyle trend bulunuyor. Hesap kullanıcının cihazında,
-> saniyenin binde birinde yapılıyor. Kod açık, 258 otomatik test var, her sayı belgelenmiş.
-
-### 11 · Kapanış (15 sn)
-> QR kodu okutup kendi şehrinize bakabilirsiniz: **aeolusclimate.vercel.app**. Teşekkürler, sorularınızı alalım.
+### 8 · Kapanış (10 sn)
+> QR kodu okutup kendi şehrinize bakabilirsiniz: **aeolusclimate.vercel.app**. Teşekkürler.
 
 ---
 
@@ -87,7 +68,7 @@ Uygulama slaytın içinde açık (Diyarbakır, hava sıcaklığı). Önerilen ak
 - **Neden 1991–2020 normali?** Dünya Meteoroloji Örgütü'nün güncel standart referans dönemi.
 - **"Net değişim" ne demek?** p < 0,01, %95 aralık sıfırı içermiyor ve üç ayrı kontrol aynı yönü gösteriyor. Bağımsız bir kaynak (istasyon, uydu) aynı fikirde değilse "net" verilmiyor.
 - **Birçok yeri aynı anda test edince yanlış alarm çıkmaz mı?** Haritada çoklu test düzeltmesi (FDR) var; trend olmayan yapay veride yanlış alarm oranı %5,5'in altında.
-- **Hesap neden tarayıcıda?** Sunucu masrafı yok, binlerce kişi aynı anda kullanabilir ve dönem değiştirince cevap anında geliyor.
+- **Hesap neden tarayıcıda?** Dönem değiştirince cevap anında geliyor ve binlerce kişi aynı anda kullanabiliyor. API için aynı kod Vercel sunucusunda çalışıyor.
 - **Yerel ölçekte ne kadar doğru?** 55 km'lik ızgara; tek bir köyü değil bölgeyi temsil eder. Bunu sitede açıkça yazıyoruz.
 - **Başka uygulamalar kullanabilir mi?** Evet, açık API: `/api/v1/trend?place=TR-21&var=T2M` (sitede ⓘ → API).
 
