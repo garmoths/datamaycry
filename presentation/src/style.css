@@ -836,3 +836,65 @@ body,
   font-style: italic;
   color: var(--text-2);
 }
+
+/* ═════════ NASA submission deck (nasa.html): 7 dense, static pages ═════════ */
+.qgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 6px 0 22px;
+}
+.qgrid .q { font-size: 19px; padding: 14px 18px; }
+.cards.compact .card { padding: 20px 20px 18px; }
+.cards.compact .card p { font-size: 18px; }
+.shot-split { grid-template-columns: 0.9fr 1.1fr; gap: 36px; align-items: center; }
+.shot-split.wide-shot { grid-template-columns: 1.25fr 0.75fr; gap: 30px; }
+.shot { margin: 0; }
+.shot img {
+  display: block;
+  width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.shot figcaption { margin-top: 10px; font-size: 15px; color: var(--muted); text-align: center; }
+.steps-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.steps-list li { display: flex; gap: 16px; align-items: flex-start; }
+.steps-list .num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--bg);
+  background: var(--text);
+}
+.steps-list b { font-family: var(--display); font-size: 24px; }
+.steps-list p { margin: 4px 0 0; font-size: 18px; color: var(--text-2); line-height: 1.4; }
+.tight-list { gap: 14px; }
+.tight-list li { font-size: 19px; }
+.levels.mini { grid-template-columns: 1fr; gap: 8px; margin: 18px 0 0; }
+.levels.mini .level { padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.levels.mini .pill { font-size: 15px; padding: 4px 10px; flex: none; }
+.levels.mini .level p { margin: 0; font-size: 16px; }
+.features.compact { gap: 12px; }
+.features.compact .feat { padding: 14px 16px; }
+.features.compact .feat h3 { font-size: 19px; }
+.features.compact .feat p { font-size: 15.5px; }
+.stats.compact { margin-top: 16px; gap: 12px; }
+.stats.compact .stat { padding: 16px 18px; }
+.stats.compact .stat b { font-size: 38px; margin-bottom: 6px; }
+.stats.compact .stat span { font-size: 16px; }
+.close-row { display: flex; align-items: center; gap: 36px; margin-top: 26px; }
+.links { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex: 1; }
+.links li { font-size: 19px; color: var(--text-2); }
+.links b { display: inline-block; min-width: 110px; font-family: var(--display); color: var(--text); }
+.links a { color: var(--text); text-decoration: none; border-bottom: 2px solid var(--up); }
+.links span { font-family: var(--mono, ui-monospace), monospace; font-size: 16px; }
+.nasa .qr-ring canvas { width: 170px !important; height: 170px !important; }
+.nasa .team a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--up); }
+
+.frame-box img.frame-shot { display: block; width: 100%; height: 100%; object-fit: cover; }

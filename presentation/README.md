@@ -29,3 +29,20 @@ npm run dev        # http://localhost:5180
 - Animasyonsuz görünüm: `?static` (provada ekran görüntüsü için). PDF'te ve "hareketi azalt" ayarında da kapalı.
 - Sayılar `src/data.js` ve `docs/EVIDENCE.md` içinden; elle uydurulmuş sayı yok.
 - PDF almak için: `http://localhost:5180/?print-pdf` → tarayıcıda Yazdır → PDF olarak kaydet.
+
+## İki sürüm ve PDF
+
+| Dosya | Ne | Sayfa |
+|---|---|---|
+| `index.html` | Türkçe canlı sunum (canlı gösterim slaytı dahil) | 11 |
+| `nasa.html` | NASA'ya yüklenecek İngilizce sürüm (ekran görüntüleriyle, canlı kısım yok) | 7 |
+| `pdf/aeolus-nasa.pdf` | NASA'ya yüklenecek PDF | 7 |
+| `pdf/aeolus-sunum.pdf` | Türkçe sunumun PDF'i (yedek; canlı gösterim yerine ekran görüntüsü) | 11 |
+
+PDF'leri yeniden üretmek için (Chrome/Brave/Edge yüklü olmalı):
+
+```bash
+npm run dev          # bir terminalde, http://localhost:5180
+npm run shots        # uygulama ekran görüntüleri (uygulama http://localhost:5174'te açık olmalı)
+npm run pdf          # pdf/aeolus-sunum.pdf ve pdf/aeolus-nasa.pdf
+```

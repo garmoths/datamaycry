@@ -86,6 +86,17 @@ document.querySelectorAll("[data-icon]").forEach((el) => {
 const appUrl = new URLSearchParams(location.search).get("app") || LIVE_URL;
 const demoUrl = `${appUrl}/#v=T2M&m=region&c=TUR&a=TR-21`;
 document.querySelectorAll("[data-src-live]").forEach((f) => (f.dataset.src = demoUrl)); // reveal lazy-loads data-src
+// a live page cannot be printed: in the PDF the demo slide shows a screenshot of the app instead
+if (/[?&]print-pdf\b/.test(location.search)) {
+  document.querySelectorAll("iframe[data-src-live]").forEach((f) => {
+    const img = document.createElement("img");
+    img.src = f.dataset.shot || "/shots/diyarbakir.jpg";
+    img.alt = "";
+    img.className = "frame-shot";
+    f.replaceWith(img);
+  });
+  document.querySelectorAll(".frame-note").forEach((n) => (n.textContent = n.textContent.replace(" · tıklanabilir", "")));
+}
 document.querySelectorAll("[data-live-label]").forEach((el) => (el.textContent = appUrl.replace(/^https?:\/\//, "")));
 document.querySelectorAll("[data-live-link]").forEach((a) => {
   a.href = LIVE_URL;
@@ -104,7 +115,7 @@ function countUp(el) {
   const sign = el.dataset.sign || "";
   const suffix = el.dataset.suffix || "";
   const fmt = (v) => sign + v.toLocaleString("tr-TR", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suffix;
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return void (el.textContent = fmt(to));
+  if (document.documentElement.classList.contains("still") || matchMedia("(prefers-reduced-motion: reduce)").matches) return void (el.textContent = fmt(to));
   const t0 = performance.now();
   const step = (t) => {
     const p = Math.min(1, (t - t0) / 900);
@@ -192,6 +203,8 @@ const deck = new Reveal({
   width: 1280,
   height: 720,
   margin: 0.06,
+  // PDF: one page per slide, with every step shown
+  pdfSeparateFragments: false,
   plugins: [Notes],
 });
 // replay the word-by-word headline each time a slide is shown
