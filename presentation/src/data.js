@@ -15,4 +15,4 @@ export const WORLD_T2M = {
   ],
 };
 
-export const LIVE_URL = "https://datamaycry.vercel.app";
+export const LIVE_URL = "https://aeolusclimate.vercel.app";

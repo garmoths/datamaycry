@@ -18,7 +18,7 @@ npm run dev        # http://localhost:5180
 | F | tam ekran |
 | O veya Esc | tüm slaytlar |
 
-- Slayt 4'te uygulama canlı gömülü (`datamaycry.vercel.app`). İnternet yoksa yerel kopyayı göster:
+- Slayt 4'te uygulama canlı gömülü (`aeolusclimate.vercel.app`). İnternet yoksa yerel kopyayı göster:
   `http://localhost:5180/?app=http://localhost:5174` (uygulama `web/` içinde `npm run dev` ile açık olmalı).
 - Akış (13 slayt): sorular → sorun → üç adım → **canlı gösterim (slayt 5)** → bir cevap → dürüstlük →
   günlük hayatta kim kullanır → özellikler → 46 yıllık şerit → güven → tek teknik slayt → QR kod.

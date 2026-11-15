@@ -3,7 +3,7 @@
 Free, no key, JSON, CORS open. The same calculation as the card on the site
 (`web/src/apiCore.ts`, running as Vercel functions in `web/api/v1/`).
 
-Base URL: `https://datamaycry.vercel.app/api/v1` (also opens from the site: ⓘ → API, or `/#api`).
+Base URL: `https://aeolusclimate.vercel.app/api/v1` (also opens from the site: ⓘ → API, or `/#api`).
 
 | Endpoint | What |
 |---|---|

@@ -60,7 +60,7 @@ export function MethodDialog({ lang, open, onClose, initialTab = "basics" }: { l
   const reduce = useReducedMotion();
   const [tab, setTab] = useState<MethodTab>(initialTab);
   const [copied, setCopied] = useState<string | null>(null);
-  const base = `${typeof location !== "undefined" ? location.origin : "https://datamaycry.vercel.app"}/api/v1`;
+  const base = `${typeof location !== "undefined" ? location.origin : "https://aeolusclimate.vercel.app"}/api/v1`;
 
   useEffect(() => {
     const d = ref.current;

@@ -45,7 +45,7 @@ export class ApiError extends Error {
 }
 
 export const API_VERSION = "1";
-export const DOCS_URL = "https://datamaycry.vercel.app/#api";
+export const DOCS_URL = "https://aeolusclimate.vercel.app/#api";
 const CONTINENTS: ContinentId[] = ["AF", "AN", "AS", "EU", "NA", "OC", "SA"];
 
 /** Turkish-aware folding for search: "Diyarbakır" ~ "diyarbakir". */
