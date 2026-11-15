@@ -11,7 +11,7 @@ import { cellsInside } from "./continentStats.ts";
 import { bboxOf, labelPoint, mainBbox, parseAdmin1, pointInFeature, type CountryProps } from "./geo.ts";
 import { readLink, writeLink } from "./share.ts";
 
-const DIR = fileURLToPath(new URL("../public/data/boundaries/", import.meta.url));
+const DIR = fileURLToPath(new URL("../public/boundaries/", import.meta.url));
 const read = <P,>(file: string) => JSON.parse(readFileSync(DIR + file, "utf8")) as FeatureCollection<Polygon | MultiPolygon, P>;
 const countries = read<CountryProps>("countries.geojson").features;
 const files = new Set(readdirSync(DIR + "admin1").map((f) => f.replace(".geojson", "")));

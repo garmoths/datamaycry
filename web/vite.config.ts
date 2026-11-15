@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react'
-import { readFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 
@@ -52,7 +53,26 @@ function devApi(): Plugin {
   }
 }
 
+// public/data holds the MOCK files for local development and tests. A build that reads the
+// real data (VITE_DATA_URL set, e.g. on Vercel) must not ship them: drop dist/data.
+function dropMockData(): Plugin {
+  let outDir = ''
+  return {
+    name: 'drop-mock-data',
+    apply: 'build',
+    configResolved(c) {
+      outDir = path.resolve(c.root, c.build.outDir)
+    },
+    closeBundle() {
+      // public/pkg is a local, gitignored link to the real package (dev only): never ship it
+      rmSync(path.join(outDir, 'pkg'), { recursive: true, force: true })
+      if (!process.env.VITE_DATA_URL) return
+      rmSync(path.join(outDir, 'data'), { recursive: true, force: true })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), maplibreWorker(), devApi()],
+  plugins: [react(), maplibreWorker(), devApi(), dropMockData()],
 })

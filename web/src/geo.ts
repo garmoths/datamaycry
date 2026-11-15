@@ -2,7 +2,7 @@
  * Globe helpers: boundary files, continents, and the 4×4 tile grid.
  *
  * Boundaries are map decoration, not data: they come from
- * public/data/boundaries (Natural Earth, public domain) and are the only files
+ * public/boundaries (Natural Earth, public domain) and are the only files
  * the UI reads outside data.ts. Series always come from data.ts.
  *
  * Written with AI assistance (Claude).
@@ -13,7 +13,7 @@ import type { ContinentId } from "./data.ts";
 export type Bounds = [west: number, south: number, east: number, north: number];
 
 export const WORLD: Bounds = [-180, -85, 180, 85];
-const BOUNDARIES = `${import.meta.env.BASE_URL}data/boundaries/`;
+const BOUNDARIES = `${import.meta.env.BASE_URL}boundaries/`;
 
 export interface CountryProps {
   id: string;
