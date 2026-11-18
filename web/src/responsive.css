@@ -242,3 +242,99 @@
     width: auto;
   }
 }
+
+/* ── variable bar: every variable always fits on screen ──────────────────── */
+/* narrow phones: the bar spans the width, the nine variables share it, icons only
+   (the selected variable's name is already in the panel title) */
+@media (max-width: 560px) {
+  .rail .dock {
+    width: 100%;
+    gap: 0;
+    padding: 4px;
+  }
+  .rail .dock-item {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 44px;
+    padding: 0;
+  }
+  .rail .dock-item .dock-name {
+    display: none;
+  }
+  .rail .dock-sep {
+    flex: none;
+    margin: 0 2px;
+  }
+}
+/* phones held sideways: too short for the bar above the sheet; it sits beside the period card */
+@media (max-width: 900px) and (max-height: 520px) {
+  .period {
+    width: min(360px, 48vw);
+  }
+  .rail {
+    top: calc(var(--top-h) + 2px);
+    bottom: auto;
+    left: calc(min(360px, 48vw) + 2 * var(--edge));
+    right: var(--edge);
+    justify-content: flex-end;
+  }
+  .rail .dock {
+    width: 100%;
+    height: 44px;
+    gap: 0;
+    padding: 4px;
+  }
+  .rail .dock-item {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+    padding: 0;
+  }
+  .rail .dock-item .dock-name {
+    display: none;
+  }
+  .rail .dock-sep {
+    flex: none;
+    margin: 0 2px;
+  }
+}
+/* wide but short screens (laptops with a small window, phones sideways in desktop mode):
+   the column of nine names would run off the bottom; it becomes one row of icons under the
+   period card */
+@media (min-width: 901px) and (max-height: 560px) {
+  .rail {
+    top: calc(var(--left-bottom, 176px) + 10px);
+    width: var(--left-w, 357px);
+  }
+  .rail .dock {
+    flex-direction: row;
+    align-items: center;
+    height: 44px;
+    gap: 0;
+    padding: 4px;
+    border-radius: var(--radius-m);
+  }
+  .rail .dock-item {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .rail .dock-item .dock-name {
+    display: none;
+  }
+  .rail .dock-sep {
+    flex: none;
+    width: 1px;
+    height: 20px;
+    margin: 0 2px;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  }
+  .rail .dock-label {
+    left: 50%;
+    top: calc(100% + 10px);
+    bottom: auto;
+    translate: -50% 0;
+  }
+}
